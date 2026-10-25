@@ -32,7 +32,12 @@ import {
   ShieldCheck,
   Crown,
   Ban,
-  UserPlus
+  UserPlus,
+  Trash2,
+  X,
+  Eye,
+  EyeOff,
+  Power
 } from 'lucide-react';
 import { useUniversityManager } from '../../hooks/useUniversityManager';
 import { useListings } from '../../hooks/useListings';
@@ -54,8 +59,25 @@ export const AdminPortalView: React.FC = () => {
     updateApplicationStatus 
   } = useUniversityManager();
 
-  const { listings, offers, orders, refresh: refreshListings } = useListings();
-  const { allRawWarehouses, allRawEquipment, bookingsReceived, updateBookingStatus, refresh: refreshServices } = useServicesManager();
+  const { 
+    listings, 
+    offers, 
+    orders, 
+    deleteListing: deleteCommodityListing,
+    updateListing: updateCommodityListing,
+    refresh: refreshListings 
+  } = useListings();
+
+  const { 
+    allRawWarehouses, 
+    allRawEquipment, 
+    bookingsReceived, 
+    updateBookingStatus, 
+    deleteListing: deleteServiceListing,
+    updateWarehouseListing,
+    updateEquipmentListing,
+    refresh: refreshServices 
+  } = useServicesManager();
   
   // Auth state for user governance
   const { 
@@ -94,6 +116,100 @@ export const AdminPortalView: React.FC = () => {
       showNotice(`Updated contact email for user to ${editingEmail.trim()}`);
     }
     setEditingUserId(null);
+  };
+
+  // Local state for editing / deleting commodity listings
+  const [editingCommodityId, setEditingCommodityId] = useState<string | null>(null);
+  const [editCommodityPrice, setEditCommodityPrice] = useState<number>(0);
+  const [editCommodityQty, setEditCommodityQty] = useState<number>(0);
+
+  // Local state for editing / deleting warehouse facilities
+  const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
+  const [editWarehouseName, setEditWarehouseName] = useState<string>('');
+  const [editWarehouseRate, setEditWarehouseRate] = useState<number>(0);
+  const [editWarehouseCapacity, setEditWarehouseCapacity] = useState<number>(0);
+
+  // Local state for editing / deleting equipment rentals
+  const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(null);
+  const [editEquipmentTitle, setEditEquipmentTitle] = useState<string>('');
+  const [editEquipmentRate, setEditEquipmentRate] = useState<number>(0);
+
+  // Modal / confirmation state for deletion
+  const [deletingItemId, setDeletingItemId] = useState<{ id: string; type: 'commodity' | 'warehouse' | 'equipment'; title: string } | null>(null);
+
+  const handleConfirmDelete = async () => {
+    if (!deletingItemId) return;
+    const { id, type, title } = deletingItemId;
+    try {
+      if (type === 'commodity') {
+        await deleteCommodityListing(id);
+      } else {
+        await deleteServiceListing(id, type);
+      }
+      showNotice(`Successfully deleted "${title}" from platform`);
+    } catch {
+      showNotice(`Removed "${title}"`);
+    } finally {
+      setDeletingItemId(null);
+    }
+  };
+
+  const handleStartEditCommodity = (item: any) => {
+    setEditingCommodityId(item.id);
+    setEditCommodityPrice(Number(item.askingPrice) || 0);
+    setEditCommodityQty(Number(item.quantity) || 0);
+  };
+
+  const handleSaveEditCommodity = async (id: string) => {
+    await updateCommodityListing(id, {
+      askingPrice: editCommodityPrice,
+      quantity: editCommodityQty
+    });
+    showNotice(`Updated price & quantity for trade listing #${id}`);
+    setEditingCommodityId(null);
+  };
+
+  const handleToggleCommodityStatus = async (item: any) => {
+    const nextStatus = item.status === 'active' ? 'sold' : 'active';
+    await updateCommodityListing(item.id, { status: nextStatus });
+    showNotice(`Set trade listing #${item.id} status to ${nextStatus.toUpperCase()}`);
+  };
+
+  const handleStartEditWarehouse = (wh: WarehouseFacility) => {
+    setEditingWarehouseId(wh.id);
+    setEditWarehouseName(wh.name);
+    setEditWarehouseRate(wh.ratePerBagPerMonth);
+    setEditWarehouseCapacity(wh.availableCapacityMT);
+  };
+
+  const handleSaveEditWarehouse = async (id: string) => {
+    await updateWarehouseListing(id, {
+      name: editWarehouseName,
+      ratePerBagPerMonth: editWarehouseRate,
+      availableCapacityMT: editWarehouseCapacity
+    });
+    showNotice(`Updated details for storage facility "${editWarehouseName}"`);
+    setEditingWarehouseId(null);
+  };
+
+  const handleStartEditEquipment = (eq: EquipmentRental) => {
+    setEditingEquipmentId(eq.id);
+    setEditEquipmentTitle(eq.title);
+    setEditEquipmentRate(eq.ratePerHour || eq.ratePerAcre || 0);
+  };
+
+  const handleSaveEditEquipment = async (eq: EquipmentRental) => {
+    const updates: Partial<EquipmentRental> = {
+      title: editEquipmentTitle
+    };
+    if (eq.ratePerHour !== undefined) {
+      updates.ratePerHour = editEquipmentRate;
+    } else {
+      updates.ratePerAcre = editEquipmentRate;
+    }
+    await updateEquipmentListing(eq.id, updates);
+    showNotice(`Updated details for equipment "${editEquipmentTitle}"`);
+    setEditingEquipmentId(null);
   };
 
   // Strictly filter real listings from live users (only exclude static guest demo items)
@@ -947,30 +1063,115 @@ export const AdminPortalView: React.FC = () => {
                       <th className="py-2.5 px-3">Quantity</th>
                       <th className="py-2.5 px-3">Location</th>
                       <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3 text-right">Admin Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-150">
-                    {realCommodityListings.map((item) => (
-                      <tr key={item.id} className="hover:bg-stone-50">
-                        <td className="py-2.5 px-3 font-mono text-stone-700 font-bold">{item.id}</td>
-                        <td className="py-2.5 px-3">
-                          <span className="font-bold text-stone-900">{item.commodity}</span>
-                          {item.variety && <span className="text-stone-700 text-[11px] block">{item.variety}</span>}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="font-medium text-stone-900">{item.sellerName}</span>
-                          <span className="text-stone-700 block text-[10px] capitalize">{item.sellerType}</span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-800">₹{item.askingPrice}/{item.unit}</td>
-                        <td className="py-2.5 px-3 font-mono text-stone-800">{item.quantity} {item.unit}s</td>
-                        <td className="py-2.5 px-3 text-stone-700">{item.location?.district || item.location?.state}, {item.location?.state}</td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold text-[10px] uppercase">
-                            {item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {realCommodityListings.map((item) => {
+                      const isEditing = editingCommodityId === item.id;
+                      return (
+                        <tr key={item.id} className="hover:bg-stone-50">
+                          <td className="py-2.5 px-3 font-mono text-stone-700 font-bold">{item.id}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-bold text-stone-900">{item.commodity}</span>
+                            {item.variety && <span className="text-stone-700 text-[11px] block">{item.variety}</span>}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-medium text-stone-900">{item.sellerName}</span>
+                            <span className="text-stone-700 block text-[10px] capitalize">{item.sellerType}</span>
+                          </td>
+                          
+                          <td className="py-2.5 px-3 font-mono font-bold text-emerald-800">
+                            {isEditing ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-stone-500">₹</span>
+                                <input
+                                  type="number"
+                                  value={editCommodityPrice}
+                                  onChange={(e) => setEditCommodityPrice(Number(e.target.value))}
+                                  className="w-20 px-1.5 py-0.5 text-xs border border-stone-300 rounded font-mono bg-white"
+                                />
+                              </div>
+                            ) : (
+                              <span>₹{item.askingPrice}/{item.unit}</span>
+                            )}
+                          </td>
+
+                          <td className="py-2.5 px-3 font-mono text-stone-800">
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={editCommodityQty}
+                                onChange={(e) => setEditCommodityQty(Number(e.target.value))}
+                                className="w-16 px-1.5 py-0.5 text-xs border border-stone-300 rounded font-mono bg-white"
+                              />
+                            ) : (
+                              <span>{item.quantity} {item.unit}s</span>
+                            )}
+                          </td>
+
+                          <td className="py-2.5 px-3 text-stone-700">
+                            {item.location?.district || item.location?.state}, {item.location?.state}
+                          </td>
+
+                          <td className="py-2.5 px-3">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCommodityStatus(item)}
+                              className={`px-2 py-0.5 rounded font-bold text-[10px] uppercase transition-colors flex items-center gap-1 ${
+                                item.status === 'active'
+                                  ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                                  : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                              }`}
+                              title="Click to toggle status (Active / Paused)"
+                            >
+                              <Power className="w-3 h-3" />
+                              {item.status}
+                            </button>
+                          </td>
+
+                          <td className="py-2.5 px-3 text-right">
+                            {isEditing ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditCommodity(item.id)}
+                                  className="px-2 py-1 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-[10px] rounded"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCommodityId(null)}
+                                  className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditCommodity(item)}
+                                  className="p-1.5 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded transition-colors"
+                                  title="Manage Price & Quantity"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingItemId({ id: item.id, type: 'commodity', title: `${item.commodity} (${item.sellerName})` })}
+                                  className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded transition-colors"
+                                  title="Delete Trade Listing"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -990,20 +1191,98 @@ export const AdminPortalView: React.FC = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {realWarehouses.map((wh: WarehouseFacility) => (
-                    <div key={wh.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
-                      <div className="flex justify-between font-bold text-stone-900">
-                        <span>{wh.name}</span>
-                        <span className="text-emerald-800 font-mono">₹{wh.ratePerBagPerMonth}/bag/mo</span>
+                  {realWarehouses.map((wh: WarehouseFacility) => {
+                    const isEditing = editingWarehouseId === wh.id;
+                    return (
+                      <div key={wh.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs space-y-2">
+                        {isEditing ? (
+                          <div className="space-y-2 p-2 bg-white rounded border border-stone-300">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-stone-700 block">Storage Name:</label>
+                              <input
+                                type="text"
+                                value={editWarehouseName}
+                                onChange={(e) => setEditWarehouseName(e.target.value)}
+                                className="w-full px-2 py-1 text-xs border border-stone-300 rounded font-medium"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] font-bold text-stone-700 block">Rate (₹/bag/mo):</label>
+                                <input
+                                  type="number"
+                                  value={editWarehouseRate}
+                                  onChange={(e) => setEditWarehouseRate(Number(e.target.value))}
+                                  className="w-full px-2 py-1 text-xs border border-stone-300 rounded font-mono"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-stone-700 block">Available MT:</label>
+                                <input
+                                  type="number"
+                                  value={editWarehouseCapacity}
+                                  onChange={(e) => setEditWarehouseCapacity(Number(e.target.value))}
+                                  className="w-full px-2 py-1 text-xs border border-stone-300 rounded font-mono"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditWarehouse(wh.id)}
+                                className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-[10px] rounded"
+                              >
+                                Save Changes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingWarehouseId(null)}
+                                className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <span className="font-bold text-stone-900 block">{wh.name}</span>
+                                <span className="text-stone-700 text-[11px] block">
+                                  Owner: {wh.ownerName} · Location: {wh.district}, {wh.state}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-emerald-800 font-mono font-bold text-xs">
+                                  ₹{wh.ratePerBagPerMonth}/bag/mo
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditWarehouse(wh)}
+                                  className="p-1 text-stone-500 hover:text-stone-900 hover:bg-stone-200 rounded transition-colors"
+                                  title="Edit Storage Facility"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingItemId({ id: wh.id, type: 'warehouse', title: wh.name })}
+                                  className="p-1 text-rose-600 hover:text-rose-900 hover:bg-rose-100 rounded transition-colors"
+                                  title="Delete Storage Facility"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-stone-700 font-mono text-[11px] flex items-center justify-between pt-1 border-t border-stone-200">
+                              <span>Available: {wh.availableCapacityMT} MT / Total: {wh.totalCapacityMT} MT</span>
+                              <span className="text-[10px] text-stone-500">ID: {wh.id}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="text-stone-700 text-[11px] mt-0.5">
-                        Owner: {wh.ownerName} · Location: {wh.district}, {wh.state}
-                      </div>
-                      <div className="text-stone-700 font-mono text-[11px] mt-1">
-                        Available: {wh.availableCapacityMT} MT / Total: {wh.totalCapacityMT} MT
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1019,22 +1298,89 @@ export const AdminPortalView: React.FC = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {realEquipment.map((eq: EquipmentRental) => (
-                    <div key={eq.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
-                      <div className="flex justify-between font-bold text-stone-900">
-                        <span>{eq.title}</span>
-                        <span className="text-emerald-800 font-mono">
-                          {eq.ratePerHour ? `₹${eq.ratePerHour}/hr` : eq.ratePerAcre ? `₹${eq.ratePerAcre}/acre` : 'Negotiable'}
-                        </span>
+                  {realEquipment.map((eq: EquipmentRental) => {
+                    const isEditing = editingEquipmentId === eq.id;
+                    return (
+                      <div key={eq.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs space-y-2">
+                        {isEditing ? (
+                          <div className="space-y-2 p-2 bg-white rounded border border-stone-300">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-stone-700 block">Equipment / Vehicle Title:</label>
+                              <input
+                                type="text"
+                                value={editEquipmentTitle}
+                                onChange={(e) => setEditEquipmentTitle(e.target.value)}
+                                className="w-full px-2 py-1 text-xs border border-stone-300 rounded font-medium"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-stone-700 block">
+                                Rate (₹/{eq.ratePerHour ? 'hr' : 'acre'}):
+                              </label>
+                              <input
+                                type="number"
+                                value={editEquipmentRate}
+                                onChange={(e) => setEditEquipmentRate(Number(e.target.value))}
+                                className="w-full px-2 py-1 text-xs border border-stone-300 rounded font-mono"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditEquipment(eq)}
+                                className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-[10px] rounded"
+                              >
+                                Save Changes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingEquipmentId(null)}
+                                className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <span className="font-bold text-stone-900 block">{eq.title}</span>
+                                <span className="text-stone-700 text-[11px] block">
+                                  Provider: {eq.ownerName} · Category: {eq.category}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-emerald-800 font-mono font-bold text-xs">
+                                  {eq.ratePerHour ? `₹${eq.ratePerHour}/hr` : eq.ratePerAcre ? `₹${eq.ratePerAcre}/acre` : 'Negotiable'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditEquipment(eq)}
+                                  className="p-1 text-stone-500 hover:text-stone-900 hover:bg-stone-200 rounded transition-colors"
+                                  title="Edit Machinery Listing"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingItemId({ id: eq.id, type: 'equipment', title: eq.title })}
+                                  className="p-1 text-rose-600 hover:text-rose-900 hover:bg-rose-100 rounded transition-colors"
+                                  title="Delete Machinery Listing"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-stone-700 text-[11px] flex items-center justify-between pt-1 border-t border-stone-200">
+                              <span>Operator Included: {eq.operatorIncluded ? 'Yes' : 'No'} · District: {eq.district}</span>
+                              <span className="text-[10px] text-stone-500">ID: {eq.id}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="text-stone-700 text-[11px] mt-0.5">
-                        Provider: {eq.ownerName} · Category: {eq.category}
-                      </div>
-                      <div className="text-stone-700 text-[11px] mt-1">
-                        Operator Included: {eq.operatorIncluded ? 'Yes' : 'No'} · District: {eq.district}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1233,6 +1579,47 @@ export const AdminPortalView: React.FC = () => {
       {/* Tab 7: Database Tables & Supabase Schema */}
       {activeTab === 'database_schema' && (
         <DatabaseSchemaView />
+      )}
+
+      {/* Admin Delete Confirmation Modal */}
+      {deletingItemId && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-scale-in">
+            <div className="flex items-center gap-3 text-rose-700">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-stone-900">Confirm Deletion</h3>
+                <p className="text-xs text-stone-600">Admin Removal Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-700 leading-relaxed bg-stone-50 p-3 rounded-lg border border-stone-200">
+              Are you sure you want to permanently delete <strong>"{deletingItemId.title}"</strong> (ID: <span className="font-mono text-stone-900">{deletingItemId.id}</span>)?
+              <br />
+              This will immediately remove the listing from the platform and Supabase database.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingItemId(null)}
+                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded-lg transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
