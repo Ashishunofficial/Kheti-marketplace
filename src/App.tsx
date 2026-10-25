@@ -13,6 +13,7 @@ import { UniversityConnectView } from './components/university/UniversityConnect
 import { FarmManagerView } from './components/farmer/FarmManagerView';
 import { BusinessPortalView } from './components/business/BusinessPortalView';
 import { AdminPortalView } from './components/admin/AdminPortalView';
+import { LegalPagesView } from './components/legal/LegalPagesView';
 import LoginModal from './components/auth/LoginModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -53,9 +54,14 @@ function AppContent() {
   };
 
   const renderCurrentView = () => {
+    if (activeTab.startsWith('legal-')) {
+      const pageType = activeTab.replace('legal-', '') as 'about' | 'privacy' | 'terms' | 'copyright' | 'disclaimer' | 'grievance';
+      return <LegalPagesView pageType={pageType} onNavigateTab={handleNavigateTab} lang={lang} />;
+    }
+
     switch (activeTab) {
       case 'home':
-        return <GovPortalHome onNavigateTab={handleNavigateTab} lang={lang} onSelectLang={(l) => setLang(l)} />;
+        return <GovPortalHome onNavigateTab={handleNavigateTab} lang={lang} onSelectLang={(l) => setLang(l)} onOpenLogin={() => setShowLoginModal(true)} />;
       case 'ai-advisor':
         return (
           <AIAdvisor

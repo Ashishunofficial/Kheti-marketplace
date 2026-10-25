@@ -279,8 +279,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
             <button
               type="button"
               onClick={handleGoogleAuth}
-              disabled={isLoading || !isSupabaseConfigured}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-stone-200 bg-white text-stone-700 font-medium text-sm hover:bg-stone-50 hover:border-stone-300 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-stone-200 bg-white text-stone-700 font-medium text-sm hover:bg-stone-50 hover:border-stone-300 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
             >
               {loadingAction === 'google' ? (
                 <svg className="animate-spin w-5 h-5 mr-2 text-emerald-600" fill="none" viewBox="0 0 24 24">
@@ -482,8 +482,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
             {/* Submit */}
             <button
               type="submit"
-              disabled={isLoading || !isSupabaseConfigured}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {loadingAction === 'email' ? (
                 <>

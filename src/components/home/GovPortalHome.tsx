@@ -33,20 +33,25 @@ import {
   Compass,
   Loader2,
   HelpCircle,
-  Info
+  Info,
+  LogIn,
+  UserCircle
 } from 'lucide-react';
 import { LanguageCode } from '../layout/Navbar';
 import { QuickLinksGrid } from './QuickLinksGrid';
 import { HeroCarousel } from './HeroCarousel';
 import { RightSidebar } from './RightSidebar';
+import { useAuth } from '../../hooks/useAuth';
 
 interface GovPortalHomeProps {
   onNavigateTab: (tab: string, filter?: string) => void;
   lang: LanguageCode;
   onSelectLang?: (lang: LanguageCode) => void;
+  onOpenLogin?: () => void;
 }
 
-export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lang, onSelectLang }) => {
+export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lang, onSelectLang, onOpenLogin }) => {
+  const { user, profile, signOut } = useAuth();
   // Mobile & Location States (Automatic Geolocation)
   const [userLocation, setUserLocation] = useState<string>('Bilaspur, Chhattisgarh');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'auto' | 'default' | 'denied'>('loading');
@@ -206,47 +211,7 @@ export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lan
       {/* ========================================================================= */}
       <div className="md:hidden space-y-3.5 pb-16">
 
-        {/* 1. TOP INSTITUTIONAL HEADER BLOCK (Screen 1 & 3 Mockup) */}
-        <div className="bg-white rounded-2xl p-3 border border-stone-200/90 shadow-2xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {/* Hamburger Menu Toggle Button (Opens Screen 2 Drawer) */}
-            <button
-              onClick={() => setShowMoreMenuModal(true)}
-              className="p-1.5 text-stone-800 hover:bg-stone-100 rounded-xl transition-colors shrink-0"
-              aria-label="Open Navigation Drawer"
-            >
-              <Menu className="w-5 h-5 text-stone-800" />
-            </button>
 
-            {/* Logo Circle */}
-            <div className="w-10 h-10 rounded-full border-2 border-emerald-700 bg-emerald-50/50 flex flex-col items-center justify-center text-center shrink-0">
-              <Sprout className="w-4 h-4 text-emerald-800" />
-              <span className="text-[5.5px] font-extrabold uppercase text-emerald-900 tracking-tighter leading-none mt-0.5">
-                KHETI AI
-              </span>
-            </div>
-
-            {/* Platform Titles */}
-            <div>
-              <h1 className="text-[11.5px] font-extrabold text-stone-900 leading-tight">
-                {lang === 'hi' ? 'राष्ट्रीय कृषि सूचना एवं किसान मंच' : 'National Agriculture Intelligence Platform'}
-              </h1>
-              <div className="text-[7.5px] font-bold text-stone-700 uppercase tracking-tight leading-tight mt-0.5">
-                NATIONAL AGRICULTURE INTELLIGENCE PLATFORM
-              </div>
-            </div>
-          </div>
-
-          {/* Notification Bell Badge */}
-          <button
-            onClick={() => setShowNotificationModal(true)}
-            className="relative w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 border border-stone-200 flex items-center justify-center text-stone-700 shrink-0 transition-colors"
-            title="Notifications"
-          >
-            <Bell className="w-3.5 h-3.5 text-stone-800" />
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-600 animate-pulse ring-2 ring-white" />
-          </button>
-        </div>
 
         {/* 2. AUTOMATIC GPS LOCATION DISPLAY & LANGUAGE BAR */}
         <div className="flex items-center justify-between gap-2">
@@ -1109,8 +1074,40 @@ export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lan
                 </button>
               </div>
 
+              {/* Mobile Login / User Profile Card */}
+              <div className="pt-2">
+                {user ? (
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <UserCircle className="w-5 h-5 text-emerald-700 shrink-0" />
+                      <div className="truncate">
+                        <div className="text-xs font-bold text-emerald-900 truncate">{profile?.name || user.email}</div>
+                        <div className="text-[10px] text-emerald-700">Online Account</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { signOut(); setShowMoreMenuModal(false); }}
+                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition shrink-0 cursor-pointer"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowMoreMenuModal(false);
+                      if (onOpenLogin) onOpenLogin();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>{lang === 'hi' ? 'खेती खाते में लॉगिन (Login / Google)' : 'Login / Continue with Google'}</span>
+                  </button>
+                )}
+              </div>
+
               {/* Drawer Menu Items List */}
-              <div className="space-y-1">
+              <div className="space-y-1 pt-1">
                 {drawerNavItems.map((item, idx) => {
                   const itemLabel = lang === 'hi' ? item.labelHi : lang === 'hinglish' ? item.labelHinglish : item.labelEn;
                   return (
