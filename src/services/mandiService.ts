@@ -431,7 +431,8 @@ export async function fetchLiveMandiPrices(filters?: {
   // Step 1: Query server proxy endpoint
   try {
     const res = await fetch(queryUrl, { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
+    const contentType = res.headers.get('content-type');
+    if (res.ok && contentType && contentType.includes('application/json')) {
       const json = await res.json();
       if (json.records && Array.isArray(json.records) && json.records.length > 0) {
         apiRecords = json.records.map((r: any, idx: number) => {

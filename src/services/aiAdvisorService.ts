@@ -19,7 +19,8 @@ export async function fetchGeminiTTSAudio(text: string): Promise<string | null> 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
-    if (res.ok) {
+    const contentType = res.headers.get('content-type');
+    if (res.ok && contentType && contentType.includes('application/json')) {
       const data = await res.json();
       if (data && data.audioDataUri) {
         return data.audioDataUri;
@@ -106,8 +107,8 @@ export async function processUserMessage(
         conversationId: _conversationId
       })
     });
-    
-    if (res.ok) {
+    const contentType = res.headers.get('content-type');
+    if (res.ok && contentType && contentType.includes('application/json')) {
       const json = await res.json();
       if (json && json.message && !json.fallback) {
         return {
