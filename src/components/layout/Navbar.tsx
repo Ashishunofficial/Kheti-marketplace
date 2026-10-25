@@ -151,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Kheti AI (खेती एआई)</span>
               </div>
               <div className="text-[9px] text-amber-200 font-medium truncate leading-tight">
-                National Agriculture Intelligence & Farmers Platform
+                National Agriculture Intelligence & Marketplace
               </div>
             </div>
           </div>
@@ -208,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-2 font-medium">
             <span className="font-bold text-stone-900 tracking-wide">KHETI AI BHARAT</span>
             <span className="text-stone-300">|</span>
-            <span className="text-stone-600">डिजिटल कृषि एवं किसान मंच (Public Agri Intelligence Network)</span>
+            <span className="text-stone-600">डिजिटल कृषि एवं किसान मंच (Kheti AI National Agriculture Intelligence Network)</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -313,13 +313,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <div>
               <h1 className="text-base sm:text-xl font-bold tracking-tight text-stone-900 leading-tight">
-                राष्ट्रीय कृषि आसूचना एवं किसान मंच
+                खेती एआई (Kheti AI) — राष्ट्रीय कृषि आसूचना एवं किसान मंच
               </h1>
               <h2 className="text-xs sm:text-sm font-semibold text-stone-700 tracking-wide uppercase">
-                National Agriculture Intelligence & Farmers Platform
+                Kheti AI — National Agriculture Intelligence & Farmers Platform
               </h2>
               <div className="text-[11px] text-emerald-800 font-medium mt-0.5">
-                One Intelligent Platform for Farmers, Mandis & Rural Commerce
+                Connecting Farmers, Mandis, Storage, Machinery & Kheti AI Marketplace
               </div>
             </div>
           </div>

@@ -188,15 +188,15 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-stone-200">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">
-            <span>Post-Harvest Agricultural Infrastructure</span>
+            <span>Post-Harvest Infrastructure & Logistics</span>
             <span aria-hidden="true">·</span>
-            <span>WDRA Godowns, Machinery & Direct Storage Bookings</span>
+            <span>Kheti AI Storage & Machinery Marketplace</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 mt-1">
-            Storage, Machinery & Logistics Services
+            Kheti AI Storage, Machinery & Logistics Services
           </h1>
           <p className="text-xs text-stone-600 mt-0.5">
-            Book verified cold storages, dry godowns, harvesters, or list your own space to earn and receive bookings from local farmers.
+            Book verified WDRA godowns, cold storages, harvesters, or list your space & machinery on Kheti AI's marketplace to receive direct bookings.
           </p>
         </div>
 
@@ -207,7 +207,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
             className="px-4 py-2 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>+ List Your Space or Machinery</span>
+            <span>+ List Space or Machinery on Kheti AI</span>
           </button>
         </div>
       </div>

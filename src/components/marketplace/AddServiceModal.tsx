@@ -110,10 +110,10 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
         <div className="px-6 py-4 bg-emerald-800 text-white flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold leading-tight">
-              List Your Storage Space or Machinery
+              List on Kheti AI's Marketplace (Storage & Machinery)
             </h3>
             <p className="text-xs text-emerald-100">
-              Own a godown, cold store, tractor or vehicle? Rent it out to verified farmers & millers.
+              Own a godown, cold store, tractor or vehicle? List on Kheti AI's marketplace to receive direct bookings from verified farmers & millers.
             </p>
           </div>
           <button 

@@ -1,6 +1,6 @@
 {
-  "name": "Kheti AI — National Agriculture Intelligence & Farmers Platform",
-  "description": "An intelligent agricultural platform for India connecting AI advisor, mandi rates, weather intelligence, buyer-seller marketplace, and farmer schemes.",
+  "name": "KrishiSetu — National Agri-Ecosystem, Marketplace & Research Bridge",
+  "description": "National Agri-Ecosystem & Marketplace connecting farmers, students, businessmen, professors, and scientists with AI advisory, mandi prices, and marketplace.",
   "requestFramePermissions": [
     "geolocation",
     "microphone"

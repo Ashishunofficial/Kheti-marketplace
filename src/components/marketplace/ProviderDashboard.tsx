@@ -89,7 +89,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
             className="px-4 py-2 text-xs font-bold bg-white text-emerald-900 hover:bg-emerald-50 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-4 h-4 text-emerald-800" />
-            <span>+ List New Space / Machinery</span>
+            <span>+ List on Kheti AI's Marketplace</span>
           </button>
         </div>
       </div>

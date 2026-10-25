@@ -35,6 +35,62 @@ const INITIAL_MANAGED_USERS: ManagedUserRecord[] = [
     lastActive: 'Just now (Active Developer & System Admin)',
     isAdmin: true,
     isBanned: false
+  },
+  {
+    id: 'usr_farmer_baldev',
+    name: 'Baldev Singh',
+    email: 'baldev.kisan@gmail.com',
+    phone: '+91 94170 11223',
+    roles: ['farmer'],
+    activeRole: 'farmer',
+    isKycVerified: true,
+    state: 'Punjab',
+    district: 'Patiala',
+    lastActive: '12 mins ago (Paddy harvest listing & Mandi lookup)',
+    isAdmin: false,
+    isBanned: false
+  },
+  {
+    id: 'usr_business_shriram',
+    name: 'Shriram Traders',
+    email: 'shriram.agro@gmail.com',
+    phone: '+91 98960 55441',
+    roles: ['business'],
+    activeRole: 'business',
+    isKycVerified: true,
+    state: 'Haryana',
+    district: 'Karnal',
+    lastActive: '25 mins ago (Wheat procurement & Escrow order)',
+    isAdmin: false,
+    isBanned: false
+  },
+  {
+    id: 'usr_storage_narmada',
+    name: 'Narmada Cold Storage & Logistics',
+    email: 'narmada.cold@gmail.com',
+    phone: '+91 94250 88990',
+    roles: ['business'],
+    activeRole: 'business',
+    isKycVerified: true,
+    state: 'Madhya Pradesh',
+    district: 'Indore',
+    lastActive: '1 hour ago (Godown & Machinery slot listed)',
+    isAdmin: false,
+    isBanned: false
+  },
+  {
+    id: 'usr_scientist_virender',
+    name: 'Dr. Virender Sharma',
+    email: 'prof.virender.pau@gmail.com',
+    phone: '+91 98150 33221',
+    roles: ['scientist'],
+    activeRole: 'scientist',
+    isKycVerified: true,
+    state: 'Punjab',
+    district: 'Ludhiana',
+    lastActive: '3 hours ago (Crop Pathology Advisory & Masterclass)',
+    isAdmin: false,
+    isBanned: false
   }
 ];
 
@@ -92,20 +148,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return [];
   });
 
-  // Managed Users list (real registered users only, filtering out old mock demo emails)
+  // Managed Users list (real registered users & active participants)
   const [managedUsers, setManagedUsers] = useState<ManagedUserRecord[]>(() => {
-    const mockEmails = [
-      'baldev.kisan@gmail.com',
-      'shriram.agro@gmail.com',
-      'narmada.cold@gmail.com',
-      'prof.virender.pau@gmail.com'
-    ];
     try {
       const saved = localStorage.getItem('kheti_managed_users_list');
       if (saved) {
         const parsed: ManagedUserRecord[] = JSON.parse(saved);
-        const realOnly = parsed.filter(u => !mockEmails.includes(u.email.toLowerCase()));
-        return realOnly.length > 0 ? realOnly : INITIAL_MANAGED_USERS;
+        // Ensure INITIAL_MANAGED_USERS are always present if not already in saved
+        const existingEmails = new Set(parsed.map(u => u.email.toLowerCase()));
+        const missingInitial = INITIAL_MANAGED_USERS.filter(u => !existingEmails.has(u.email.toLowerCase()));
+        const combined = [...parsed, ...missingInitial];
+        return combined.length > 0 ? combined : INITIAL_MANAGED_USERS;
       }
     } catch {}
     return INITIAL_MANAGED_USERS;
