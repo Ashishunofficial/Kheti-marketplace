@@ -73,59 +73,14 @@ export const AdminPortalView: React.FC = () => {
   const [universitiesInput, setUniversitiesInput] = useState<number>(partnerUniversitiesCount);
   const [countSavedNotice, setCountSavedNotice] = useState<boolean>(false);
 
-  // Pending KYC Verifications
-  const [verifications, setVerifications] = useState([
-    {
-      id: 'kyc_1',
-      applicantName: 'Baldev Singh (Kisan)',
-      type: 'Farmer Land Records',
-      state: 'Punjab (Patiala)',
-      khasraNo: '189/22, 189/23',
-      aadhaarHash: 'XXXX-XXXX-8912',
-      landAcres: 16.0,
-      submittedDate: '16 Oct 2026',
-      status: 'pending'
-    },
-    {
-      id: 'kyc_2',
-      applicantName: 'Shri Ram Agro Traders & Mill',
-      type: 'Agri-Business APMC License',
-      state: 'Haryana (Karnal)',
-      apmcLicense: 'HR-APMC-KRN-2024-88',
-      gstNumber: '06AAECS9812L1ZT',
-      businessType: 'Grain Miller & Trader',
-      submittedDate: '15 Oct 2026',
-      status: 'pending'
-    },
-    {
-      id: 'kyc_3',
-      applicantName: 'Narmada Valley Cold Storage Ltd',
-      type: 'WDRA Warehouse Certification',
-      state: 'Madhya Pradesh (Hoshangabad)',
-      wdraCertNo: 'WDRA-MP-2023-412',
-      capacityMT: 8000,
-      submittedDate: '14 Oct 2026',
-      status: 'pending'
-    }
-  ]);
+  // Pending KYC Verifications (Real submissions only)
+  const [verifications, setVerifications] = useState<any[]>([]);
 
   // Local state for internship statuses in admin view
   const [internshipStatuses, setInternshipStatuses] = useState<Record<string, 'approved' | 'rejected' | 'open'>>({});
 
-  // Disputes
-  const [disputes, setDisputes] = useState([
-    {
-      id: 'dsp_401',
-      orderId: 'ord_kht_8812',
-      buyer: 'Suraj Roller Flour Mills',
-      seller: 'Harpreet Singh (Farmer)',
-      commodity: 'Wheat Sharbati (100 Quintals)',
-      issue: 'Buyer deducted 1.5% at weighbridge citing 13.8% moisture; seller claims moisture tested 11.5% at farm dispatch.',
-      claimedAmount: 3820,
-      status: 'Under Investigation',
-      date: '15 Oct 2026'
-    }
-  ]);
+  // Disputes (Real platform cases only)
+  const [disputes, setDisputes] = useState<any[]>([]);
 
   // Feature flags
   const [flags, setFlags] = useState({

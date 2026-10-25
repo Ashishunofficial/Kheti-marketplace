@@ -112,37 +112,51 @@ export function useServicesManager() {
     }
   }, [messages]);
 
+  // Listen to storage events for instant cross-tab / cross-component sync
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEYS.WAREHOUSES && e.newValue) {
+        try { setWarehouses(JSON.parse(e.newValue)); } catch {}
+      }
+      if (e.key === STORAGE_KEYS.EQUIPMENT && e.newValue) {
+        try { setEquipment(JSON.parse(e.newValue)); } catch {}
+      }
+      if (e.key === STORAGE_KEYS.BOOKINGS && e.newValue) {
+        try { setBookings(JSON.parse(e.newValue)); } catch {}
+      }
+      if (e.key === STORAGE_KEYS.MESSAGES && e.newValue) {
+        try { setMessages(JSON.parse(e.newValue)); } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Derived user-isolated sets
-  // 1. Public browse collections
+  // 1. Public browse collections (visible to other users)
   const publicWarehouses = warehouses.filter(wh => {
-    if (isDemo) return true;
-    const isMock = MOCK_WAREHOUSE_IDS.has(wh.id) || (wh.ownerId ? MOCK_PROVIDER_IDS.has(wh.ownerId) : false) || wh.ownerId === 'usr_rameshwar_99';
-    const isMine = wh.ownerId === currentUserId;
-    return !isMock && !isMine;
+    const isMine = wh.ownerId === currentUserId || (isDemo && (wh.ownerId === 'usr_rameshwar_99' || !wh.ownerId));
+    return !isMine;
   });
 
   const publicEquipment = equipment.filter(eq => {
-    if (isDemo) return true;
-    const isMock = MOCK_EQUIPMENT_IDS.has(eq.id) || (eq.ownerId ? MOCK_PROVIDER_IDS.has(eq.ownerId) : false) || eq.ownerId === 'usr_rameshwar_99';
-    const isMine = eq.ownerId === currentUserId;
-    return !isMock && !isMine;
+    const isMine = eq.ownerId === currentUserId || (isDemo && (eq.ownerId === 'usr_rameshwar_99' || !eq.ownerId));
+    return !isMine;
   });
 
   // 2. My Listings (Warehouses & Machinery owned strictly by this user)
   const myWarehouses = warehouses.filter(wh => {
     if (isDemo) {
-      return wh.ownerId === 'usr_rameshwar_99' || wh.ownerId === currentUserId;
+      return wh.ownerId === 'usr_rameshwar_99' || wh.ownerId === currentUserId || !wh.ownerId;
     }
-    const isMock = MOCK_WAREHOUSE_IDS.has(wh.id) || wh.ownerId === 'usr_rameshwar_99';
-    return !isMock && wh.ownerId === currentUserId;
+    return wh.ownerId === currentUserId;
   });
 
   const myEquipment = equipment.filter(eq => {
     if (isDemo) {
-      return eq.ownerId === 'usr_rameshwar_99' || eq.ownerId === currentUserId;
+      return eq.ownerId === 'usr_rameshwar_99' || eq.ownerId === currentUserId || !eq.ownerId;
     }
-    const isMock = MOCK_EQUIPMENT_IDS.has(eq.id) || eq.ownerId === 'usr_rameshwar_99';
-    return !isMock && eq.ownerId === currentUserId;
+    return eq.ownerId === currentUserId;
   });
 
   const totalMyListings = myWarehouses.length + myEquipment.length;
@@ -152,8 +166,7 @@ export function useServicesManager() {
     if (isDemo) {
       return b.ownerId === 'usr_rameshwar_99' || b.ownerId === currentUserId;
     }
-    const isMock = MOCK_BOOKING_IDS.has(b.id) || b.ownerId === 'usr_rameshwar_99';
-    return !isMock && b.ownerId === currentUserId;
+    return b.ownerId === currentUserId;
   });
 
   // 4. Bookings Made (Spaces/machinery this user booked from other owners)
@@ -161,8 +174,7 @@ export function useServicesManager() {
     if (isDemo) {
       return b.renterId === 'usr_rameshwar_99' || b.renterId === currentUserId;
     }
-    const isMock = MOCK_BOOKING_IDS.has(b.id) || b.renterId === 'usr_rameshwar_99';
-    return !isMock && b.renterId === currentUserId;
+    return b.renterId === currentUserId;
   });
 
   // 5. Messages involving current user
@@ -170,8 +182,7 @@ export function useServicesManager() {
     if (isDemo) {
       return m.senderId === 'usr_rameshwar_99' || m.recipientId === 'usr_rameshwar_99' || m.senderId === currentUserId || m.recipientId === currentUserId;
     }
-    const isMock = MOCK_MESSAGE_IDS.has(m.id) || m.senderId === 'usr_rameshwar_99' || m.recipientId === 'usr_rameshwar_99';
-    return !isMock && (m.senderId === currentUserId || m.recipientId === currentUserId);
+    return m.senderId === currentUserId || m.recipientId === currentUserId;
   });
 
   const unreadMessagesCount = userMessages.filter(
