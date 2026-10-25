@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://khetiai.gov.in/sitemap.xml
