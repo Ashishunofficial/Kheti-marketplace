@@ -470,8 +470,40 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
 
+              {/* Mobile Login / User Profile Card */}
+              <div className="pt-2">
+                {user ? (
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <UserCircle className="w-5 h-5 text-emerald-700 shrink-0" />
+                      <div className="truncate">
+                        <div className="text-xs font-bold text-emerald-900 truncate">{profile?.name || user.email}</div>
+                        <div className="text-[10px] text-emerald-700">Online Account</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { signOut(); setMobileMenuOpen(false); }}
+                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition shrink-0"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      if (onOpenLogin) onOpenLogin();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>{lang === 'hi' ? 'खेती खाते में लॉगिन (Login / Google)' : 'Login / Continue with Google'}</span>
+                  </button>
+                )}
+              </div>
+
               {/* Drawer Menu Items List */}
-              <div className="space-y-1">
+              <div className="space-y-1 pt-1">
                 {drawerNavItems.map((item, idx) => {
                   const isActive = activeTab === item.id;
                   const itemLabel = lang === 'hi' ? item.labelHi : lang === 'hinglish' ? item.labelHinglish : item.labelEn;
