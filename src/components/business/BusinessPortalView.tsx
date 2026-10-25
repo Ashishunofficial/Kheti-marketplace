@@ -13,6 +13,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { CURRENT_USER } from '../../data/mockData';
+import { useAuth } from '../../hooks/useAuth';
 
 interface BusinessPortalViewProps {
   onNavigateTab: (tab: string, filter?: string) => void;
@@ -20,6 +21,13 @@ interface BusinessPortalViewProps {
 }
 
 export const BusinessPortalView: React.FC<BusinessPortalViewProps> = ({ onNavigateTab, onSwitchRole }) => {
+  const { user, profile } = useAuth();
+  const isGuest = !Boolean(user);
+
+  const businessTitle = profile?.businessName || (user ? `${profile?.name || 'Agri'} Commercial Operations` : CURRENT_USER.businessName);
+  const gst = profile?.gstNumber || (isGuest ? CURRENT_USER.gstNumber : '06AAECK2948P1Z5');
+  const apmc = profile?.apmcLicense || (isGuest ? CURRENT_USER.apmcLicense : 'HR-KRN-APMC-8821');
+
   const [inventory, setInventory] = useState([
     { id: 'inv_1', item: 'Milling Wheat (PBW-550 / FAQ)', location: 'Silo #2 (Nilokheri)', stockQuintal: 1420, capacityQuintal: 2500, qualityTest: '11.4% Moisture · 78 Test Weight', status: 'Optimal' },
     { id: 'inv_2', item: 'Basmati Paddy (Pusa 1121 Sella)', location: 'Covered Godown #1', stockQuintal: 850, capacityQuintal: 1500, qualityTest: '8.3mm Length · Zero Chalky', status: 'Optimal' },
@@ -39,13 +47,13 @@ export const BusinessPortalView: React.FC<BusinessPortalViewProps> = ({ onNaviga
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-800">
             <span>Agri-Business Operations & Processing Console</span>
             <span aria-hidden="true">·</span>
-            <span>APMC Reg: {CURRENT_USER.apmcLicense}</span>
+            <span>APMC Reg: {apmc}</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 mt-1">
-            {CURRENT_USER.businessName}
+            {businessTitle}
           </h1>
           <p className="text-sm text-stone-700 mt-0.5">
-            GSTIN: <span className="font-mono font-medium text-stone-900">{CURRENT_USER.gstNumber}</span> · Verified Roller Flour Mill & Commercial Godown Operator.
+            GSTIN: <span className="font-mono font-medium text-stone-900">{gst}</span> · Verified Roller Flour Mill & Commercial Godown Operator.
           </p>
         </div>
 

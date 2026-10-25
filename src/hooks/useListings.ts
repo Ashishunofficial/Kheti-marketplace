@@ -1,23 +1,22 @@
 /**
- * useListings — Live marketplace listings, offers, and orders from Supabase
- * with resilient schema mapping, UUID validation, and local persistence fallback.
+ * useListings — Live marketplace listings, offers, and orders from Kheti AI API
+ * with Supabase backup, persistent storage, and strict Demo vs Live data separation.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useAuth } from './useAuth';
 import type { MarketplaceListing, OfferNegotiation, OrderRecord } from '../types';
 import { MOCK_LISTINGS, MOCK_OFFERS, MOCK_ORDERS } from '../data/mockData';
 
 const LOCAL_STORAGE_KEYS = {
-  LISTINGS: 'kheti_local_marketplace_listings_v2',
-  OFFERS: 'kheti_local_offers_v2',
-  ORDERS: 'kheti_local_orders_v2',
+  LISTINGS: 'kheti_local_marketplace_listings_v3',
+  OFFERS: 'kheti_local_offers_v3',
+  ORDERS: 'kheti_local_orders_v3',
 };
 
-// UUID validation helper
-function isValidUuid(id?: string): boolean {
-  if (!id) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-}
+const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'lst_105']);
+const MOCK_OFFER_IDS = new Set(['ofr_801', 'ofr_802']);
+const MOCK_ORDER_IDS = new Set(['ord_kht_9021']);
 
 // Map PostgreSQL snake_case row -> TypeScript MarketplaceListing
 function mapDbToListing(row: any): MarketplaceListing {
@@ -51,48 +50,6 @@ function mapDbToListing(row: any): MarketplaceListing {
   };
 }
 
-// Map PostgreSQL snake_case row -> TypeScript OfferNegotiation
-function mapDbToOffer(row: any): OfferNegotiation {
-  return {
-    id: String(row.id),
-    listingId: row.listing_id ?? row.listingId ?? '',
-    commodity: row.commodity,
-    buyerId: row.buyer_id ?? row.buyerId ?? '',
-    buyerName: row.buyer_name ?? row.buyerName ?? '',
-    sellerId: row.seller_id ?? row.sellerId ?? '',
-    sellerName: row.seller_name ?? row.sellerName ?? '',
-    originalPrice: Number(row.original_price ?? row.originalPrice ?? 0),
-    offeredPrice: Number(row.offered_price ?? row.offeredPrice ?? 0),
-    quantity: Number(row.quantity ?? 0),
-    unit: row.unit ?? 'Quintal',
-    status: row.status ?? 'pending',
-    history: Array.isArray(row.history) ? row.history : (row.negotiation_history ?? []),
-    createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
-    updatedAt: row.updated_at ?? row.updatedAt ?? new Date().toISOString(),
-  };
-}
-
-// Map PostgreSQL snake_case row -> TypeScript OrderRecord
-function mapDbToOrder(row: any): OrderRecord {
-  return {
-    id: String(row.id),
-    listingId: row.listing_id ?? row.listingId ?? '',
-    offerId: row.offer_id ?? row.offerId ?? '',
-    buyerName: row.buyer_name ?? row.buyerName ?? '',
-    sellerName: row.seller_name ?? row.sellerName ?? '',
-    commodity: row.commodity,
-    quantity: Number(row.quantity ?? 0),
-    unit: row.unit ?? 'Quintal',
-    agreedPrice: Number(row.agreed_price ?? row.agreedPrice ?? 0),
-    totalAmount: Number(row.total_amount ?? row.totalAmount ?? 0),
-    deliveryType: row.delivery_type ?? row.deliveryType ?? 'buyer_pickup',
-    pickupLocation: row.pickup_location ?? row.pickupLocation ?? '',
-    status: row.status ?? 'confirmed',
-    paymentStatus: row.payment_status ?? row.paymentStatus ?? 'escrow_locked',
-    createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
-  };
-}
-
 interface UseListingsReturn {
   listings: MarketplaceListing[];
   offers: OfferNegotiation[];
@@ -109,6 +66,7 @@ interface UseListingsReturn {
 }
 
 export function useListings(): UseListingsReturn {
+  const { isAuthenticated, isDemo } = useAuth();
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [offers, setOffers] = useState<OfferNegotiation[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -127,107 +85,172 @@ export function useListings(): UseListingsReturn {
   };
 
   useEffect(() => {
-    const localListings = getLocalListings();
-
-    if (!isSupabaseConfigured) {
-      setListings([...localListings, ...MOCK_LISTINGS]);
-      setOffers(MOCK_OFFERS);
-      setOrders(MOCK_ORDERS);
-      setLoading(false);
-      return;
-    }
+    let isCancelled = false;
 
     async function fetchAll() {
       setLoading(true);
+      setError(null);
+
+      let serverListings: MarketplaceListing[] = [];
+      let serverOffers: OfferNegotiation[] = [];
+      let serverOrders: OrderRecord[] = [];
+
+      // 1. Fetch from Express persistent shared server API
       try {
-        const [{ data: listData, error: lErr }, { data: offerData, error: oErr }, { data: orderData, error: ordErr }] =
-          await Promise.all([
-            supabase.from('marketplace_listings').select('*').eq('status', 'active').order('created_at', { ascending: false }),
-            supabase.from('offer_negotiations').select('*').order('updated_at', { ascending: false }),
-            supabase.from('order_records').select('*').order('created_at', { ascending: false }),
-          ]);
+        const [lRes, oRes, ordRes] = await Promise.all([
+          fetch('/api/marketplace/listings'),
+          fetch('/api/marketplace/offers'),
+          fetch('/api/marketplace/orders')
+        ]);
 
-        if (lErr) throw lErr;
-        if (oErr) throw oErr;
-        if (ordErr) throw ordErr;
+        if (lRes.ok) {
+          const lData = await lRes.json();
+          if (lData.listings && Array.isArray(lData.listings)) {
+            serverListings = lData.listings;
+          }
+        }
+        if (oRes.ok) {
+          const oData = await oRes.json();
+          if (oData.offers && Array.isArray(oData.offers)) {
+            serverOffers = oData.offers;
+          }
+        }
+        if (ordRes.ok) {
+          const ordData = await ordRes.json();
+          if (ordData.orders && Array.isArray(ordData.orders)) {
+            serverOrders = ordData.orders;
+          }
+        }
+      } catch (e) {
+        console.warn('Notice: Server API fetch error, falling back to local store:', e);
+      }
 
-        const mappedListings = ((listData as any[]) ?? []).map(mapDbToListing);
-        const mappedOffers = ((offerData as any[]) ?? []).map(mapDbToOffer);
-        const mappedOrders = ((orderData as any[]) ?? []).map(mapDbToOrder);
+      // 2. Fetch from Supabase as secondary sync if configured
+      if (isSupabaseConfigured) {
+        try {
+          const { data: dbRows } = await supabase
+            .from('marketplace_listings')
+            .select('*')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false });
 
-        // Merge remote listings with local listings (prevent duplicates)
-        const combinedListings = [...localListings];
-        mappedListings.forEach(ml => {
-          if (!combinedListings.some(item => item.id === ml.id)) {
-            combinedListings.push(ml);
+          if (dbRows && Array.isArray(dbRows)) {
+            const mappedDb = dbRows.map(mapDbToListing);
+            mappedDb.forEach(ml => {
+              if (!serverListings.some(sl => sl.id === ml.id)) {
+                serverListings.push(ml);
+              }
+            });
+          }
+        } catch (e) {
+          // Supabase sync silent catch
+        }
+      }
+
+      // Merge local listings created in this browser
+      const localListings = getLocalListings();
+      localListings.forEach(ll => {
+        if (!serverListings.some(sl => sl.id === ll.id)) {
+          serverListings.unshift(ll);
+        }
+      });
+
+      if (isCancelled) return;
+
+      // 3. PRE-LOGIN vs POST-LOGIN FILTERING
+      if (isDemo || !isAuthenticated) {
+        // Pre-login: Show mock demo listings to showcase features to guests
+        const combined = [...serverListings];
+        MOCK_LISTINGS.forEach(mockItem => {
+          if (!combined.some(c => c.id === mockItem.id)) {
+            combined.push(mockItem);
           }
         });
+        setListings(combined);
+        setOffers(serverOffers.length > 0 ? serverOffers : MOCK_OFFERS);
+        setOrders(serverOrders.length > 0 ? serverOrders : MOCK_ORDERS);
+      } else {
+        // Post-login: STRICTLY NO DEMO DATA. Return only real community listings!
+        const realOnlyListings = serverListings.filter(l => {
+          return !MOCK_LISTING_IDS.has(l.id) && 
+                 l.sellerId !== 'usr_rameshwar_99' &&
+                 !l.id.startsWith('lst_10');
+        });
 
-        // If no listings in DB or cache, show realistic mock data
-        setListings(combinedListings.length > 0 ? combinedListings : MOCK_LISTINGS);
-        setOffers(mappedOffers.length > 0 ? mappedOffers : MOCK_OFFERS);
-        setOrders(mappedOrders.length > 0 ? mappedOrders : MOCK_ORDERS);
-      } catch (err: any) {
-        console.warn('Supabase fetch failed or not configured, using cached & mock data:', err.message);
-        setListings([...localListings, ...MOCK_LISTINGS]);
-        setOffers(MOCK_OFFERS);
-        setOrders(MOCK_ORDERS);
-      } finally {
-        setLoading(false);
+        const realOnlyOffers = serverOffers.filter(o => {
+          return !MOCK_OFFER_IDS.has(o.id) && !o.id.startsWith('ofr_8');
+        });
+
+        const realOnlyOrders = serverOrders.filter(ord => {
+          return !MOCK_ORDER_IDS.has(ord.id) && !ord.id.startsWith('ord_kht_');
+        });
+
+        setListings(realOnlyListings);
+        setOffers(realOnlyOffers);
+        setOrders(realOnlyOrders);
       }
+
+      setLoading(false);
     }
 
     fetchAll();
 
-    // Realtime subscription for updates
-    const channel = supabase
-      .channel('marketplace_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_listings' }, () => setTick(t => t + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'offer_negotiations' }, () => setTick(t => t + 1))
-      .subscribe();
+    // Poll periodically to get new listings made by any other user
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 15000);
 
     return () => {
-      supabase.removeChannel(channel);
+      isCancelled = true;
+      clearInterval(interval);
     };
-  }, [tick]);
+  }, [tick, isAuthenticated, isDemo]);
 
-  // Create Listing with snake_case column mapping and graceful fallback
+  // Create Listing with server persistence so it is immediately visible to everyone
   const createListing = useCallback(async (listing: Omit<MarketplaceListing, 'id'>) => {
-    const listingId = `lst_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const listingId = `lst_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
     const fullListing: MarketplaceListing = {
       ...listing,
       id: listingId,
       status: 'active',
       postedDate: new Date().toLocaleDateString('en-IN'),
-      expiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+      expiryDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
     };
 
-    // 1. Immediately store in local state & localStorage so the UI updates with zero delay
+    // 1. Immediately update UI state
     setListings(prev => [fullListing, ...prev]);
+
+    // 2. Cache in localStorage
     try {
       const existingLocal = getLocalListings();
       localStorage.setItem(LOCAL_STORAGE_KEYS.LISTINGS, JSON.stringify([fullListing, ...existingLocal]));
     } catch (e) {
-      console.error('Error caching listing in localStorage', e);
+      console.warn('Error caching listing in localStorage:', e);
     }
 
-    // 2. If Supabase is configured, push the snake_case row to the database
+    // 3. Post to Express Server API so it's globally shared across all users and browsers
+    try {
+      await fetch('/api/marketplace/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullListing)
+      });
+    } catch (e) {
+      console.warn('Server API listing sync notice:', e);
+    }
+
+    // 4. Secondary push to Supabase if available
     if (isSupabaseConfigured) {
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const activeUserId = sessionData?.session?.user?.id;
-        const validSellerUuid = activeUserId || (isValidUuid(listing.sellerId) ? listing.sellerId : null);
-
-        // Convert TypeScript camelCase -> PostgreSQL snake_case
         const dbRow: Record<string, any> = {
           id: listingId,
           seller_name: listing.sellerName,
           seller_type: listing.sellerType,
-          is_verified: listing.isVerified ?? false,
+          is_verified: listing.isVerified ?? true,
           listing_type: listing.listingType,
           commodity: listing.commodity,
           variety: listing.variety ?? '',
-          grade: listing.grade ?? 'FAQ',
+          grade: listing.grade ?? 'Grade A',
           quantity: Number(listing.quantity),
           unit: listing.unit ?? 'Quintal',
           asking_price: Number(listing.askingPrice),
@@ -241,76 +264,40 @@ export function useListings(): UseListingsReturn {
           notes: listing.notes || '',
           status: 'active',
           posted_date: new Date().toISOString(),
-          expiry_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+          expiry_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
         };
-
-        if (validSellerUuid) {
-          dbRow.seller_id = validSellerUuid;
-        }
-
-        const { error: insertErr } = await supabase.from('marketplace_listings').insert([dbRow]);
-        if (insertErr) {
-          console.warn('Notice: Remote database insert warning (stored locally):', insertErr.message);
-        }
+        await supabase.from('marketplace_listings').insert([dbRow]);
       } catch (err: any) {
-        console.warn('Remote database sync skipped (listing safely active in local session):', err.message);
+        // Silent catch for external DB
       }
     }
   }, []);
 
   const makeOffer = useCallback(async (offer: Omit<OfferNegotiation, 'id'>) => {
-    const offerId = `ofr_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const offerId = `ofr_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
     const fullOffer: OfferNegotiation = { ...offer, id: offerId, status: 'pending' };
 
     setOffers(prev => [fullOffer, ...prev]);
 
-    if (isSupabaseConfigured) {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const activeUserId = sessionData?.session?.user?.id;
-        const buyerUuid = activeUserId || (isValidUuid(offer.buyerId) ? offer.buyerId : null);
-        const sellerUuid = isValidUuid(offer.sellerId) ? offer.sellerId : null;
-
-        const dbRow: Record<string, any> = {
-          id: offerId,
-          listing_id: offer.listingId,
-          commodity: offer.commodity,
-          buyer_name: offer.buyerName,
-          seller_name: offer.sellerName,
-          original_price: Number(offer.originalPrice),
-          offered_price: Number(offer.offeredPrice),
-          quantity: Number(offer.quantity),
-          unit: offer.unit,
-          history: offer.history ?? [],
-          status: 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        if (buyerUuid) dbRow.buyer_id = buyerUuid;
-        if (sellerUuid) dbRow.seller_id = sellerUuid;
-
-        const { error } = await supabase.from('offer_negotiations').insert([dbRow]);
-        if (error) console.warn('Offer remote insert warning:', error.message);
-      } catch (err: any) {
-        console.warn('Offer sync skipped:', err.message);
-      }
-    }
+    try {
+      await fetch('/api/marketplace/offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullOffer)
+      });
+    } catch {}
   }, []);
 
   const acceptOffer = useCallback(async (offerId: string) => {
     setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'accepted' as const } : o));
 
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from('offer_negotiations').update({ 
-          status: 'accepted',
-          updated_at: new Date().toISOString()
-        }).eq('id', offerId);
-      } catch (err: any) {
-        console.warn('Accept offer sync skipped:', err.message);
-      }
-    }
+    try {
+      await fetch(`/api/marketplace/offers/${offerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'accepted' })
+      });
+    } catch {}
   }, []);
 
   const counterOffer = useCallback(async (offerId: string, price: number, message: string, senderName: string, senderId: string) => {
@@ -320,21 +307,16 @@ export function useListings(): UseListingsReturn {
       return { ...o, offeredPrice: price, status: 'countered' as const, history: [...(o.history ?? []), newEntry] };
     }));
 
-    if (isSupabaseConfigured) {
-      try {
-        const { data: existing } = await supabase.from('offer_negotiations').select('history,quantity').eq('id', offerId).single();
-        const history = existing?.history ?? [];
-        const newEntry = { senderId, senderName, price, quantity: existing?.quantity, timestamp: new Date().toISOString(), message };
-        await supabase.from('offer_negotiations').update({
+    try {
+      await fetch(`/api/marketplace/offers/${offerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           offered_price: price,
-          status: 'countered',
-          history: [...history, newEntry],
-          updated_at: new Date().toISOString(),
-        }).eq('id', offerId);
-      } catch (err: any) {
-        console.warn('Counter offer sync skipped:', err.message);
-      }
-    }
+          status: 'countered'
+        })
+      });
+    } catch {}
   }, []);
 
   const deleteListing = useCallback(async (listingId: string) => {
@@ -343,15 +325,16 @@ export function useListings(): UseListingsReturn {
       const existingLocal = getLocalListings();
       const updatedLocal = existingLocal.filter(l => l.id !== listingId);
       localStorage.setItem(LOCAL_STORAGE_KEYS.LISTINGS, JSON.stringify(updatedLocal));
-    } catch (e) {
-      console.error('Error removing listing from localStorage', e);
-    }
+    } catch (e) {}
+
+    try {
+      await fetch(`/api/marketplace/listings/${listingId}`, { method: 'DELETE' });
+    } catch {}
+
     if (isSupabaseConfigured) {
       try {
         await supabase.from('marketplace_listings').delete().eq('id', listingId);
-      } catch (err: any) {
-        console.warn('Supabase delete listing skipped:', err.message);
-      }
+      } catch {}
     }
   }, []);
 
@@ -361,25 +344,15 @@ export function useListings(): UseListingsReturn {
       const existingLocal = getLocalListings();
       const updatedLocal = existingLocal.map(l => l.id === listingId ? { ...l, ...updatedData } : l);
       localStorage.setItem(LOCAL_STORAGE_KEYS.LISTINGS, JSON.stringify(updatedLocal));
-    } catch (e) {
-      console.error('Error updating listing in localStorage', e);
-    }
-    if (isSupabaseConfigured) {
-      try {
-        const dbPatch: Record<string, any> = {};
-        if (updatedData.commodity) dbPatch.commodity = updatedData.commodity;
-        if (updatedData.variety) dbPatch.variety = updatedData.variety;
-        if (updatedData.grade) dbPatch.grade = updatedData.grade;
-        if (updatedData.quantity !== undefined) dbPatch.quantity = Number(updatedData.quantity);
-        if (updatedData.askingPrice !== undefined) dbPatch.asking_price = Number(updatedData.askingPrice);
-        if (updatedData.notes) dbPatch.notes = updatedData.notes;
-        if (updatedData.status) dbPatch.status = updatedData.status;
+    } catch (e) {}
 
-        await supabase.from('marketplace_listings').update(dbPatch).eq('id', listingId);
-      } catch (err: any) {
-        console.warn('Supabase update listing skipped:', err.message);
-      }
-    }
+    try {
+      await fetch(`/api/marketplace/listings/${listingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
+    } catch {}
   }, []);
 
   return {
@@ -397,4 +370,3 @@ export function useListings(): UseListingsReturn {
     refresh: () => setTick(t => t + 1),
   };
 }
-

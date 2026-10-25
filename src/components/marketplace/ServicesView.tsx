@@ -163,7 +163,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
           <div className="flex items-center gap-2 text-amber-950">
             <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>🎭 Prototype Pitch Demo Active:</strong> Showing sample post-harvest godowns and machinery for pitching. Switch to Live Account to manage your private facility.
+              <strong>🎭 Preview Mode (Sample Data):</strong> Showing demo godowns and machinery. Sign in to view live real farmer listings and post your own equipment or space.
             </span>
           </div>
         </div>
@@ -172,14 +172,14 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
             <span>
-              <strong>🟢 Live Isolated Infrastructure Network:</strong> Showing facilities from other providers. Your listed space/machinery is inside <strong>"My Space Dashboard"</strong>.
+              <strong>🟢 Live National Infrastructure & Machinery:</strong> All warehouses and farm machines listed by any registered user are visible to everyone. Manage your own space/equipment in <strong>"My Space Dashboard"</strong>.
             </span>
           </div>
           <button
             onClick={() => setActiveTab('provider-dashboard')}
             className="text-[11px] font-bold text-emerald-900 bg-white border border-emerald-300 hover:bg-emerald-100 px-2.5 py-1 rounded-md shrink-0 transition-colors"
           >
-            Open My Space Dashboard →
+            My Space Dashboard →
           </button>
         </div>
       )}
@@ -413,12 +413,21 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
 
                   <div className="mt-4 pt-3 border-t border-stone-150 flex items-center justify-between">
                     <span className="text-xs font-mono text-stone-600">{wh.contactPhone}</span>
-                    <button
-                      onClick={() => setSelectedServiceForBooking({ service: wh, type: 'warehouse' })}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs"
-                    >
-                      Reserve Space
-                    </button>
+                    {isMine ? (
+                      <button
+                        onClick={() => setActiveTab('provider-dashboard')}
+                        className="px-3 py-1.5 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+                      >
+                        Manage Facility →
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setSelectedServiceForBooking({ service: wh, type: 'warehouse' })}
+                        className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs"
+                      >
+                        Reserve Space
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -551,14 +560,24 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-stone-150 flex items-center justify-end">
-                    <button
-                      disabled={!eq.isAvailableNow}
-                      onClick={() => setSelectedServiceForBooking({ service: eq, type: 'equipment' })}
-                      className="w-full py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 disabled:opacity-40 rounded-lg transition-colors shadow-xs"
-                    >
-                      {eq.isAvailableNow ? 'Book Machinery' : 'Join Waiting List'}
-                    </button>
+                  <div className="mt-4 pt-3 border-t border-stone-150 flex items-center justify-between">
+                    <span className="text-xs font-mono text-stone-600">{eq.contactPhone || 'Contact Provider'}</span>
+                    {isMine ? (
+                      <button
+                        onClick={() => setActiveTab('provider-dashboard')}
+                        className="px-3 py-1.5 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+                      >
+                        Manage Machinery →
+                      </button>
+                    ) : (
+                      <button
+                        disabled={!eq.isAvailableNow}
+                        onClick={() => setSelectedServiceForBooking({ service: eq, type: 'equipment' })}
+                        className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 disabled:opacity-40 rounded-lg transition-colors shadow-xs"
+                      >
+                        {eq.isAvailableNow ? 'Book Machinery' : 'Join Waiting List'}
+                      </button>
+                    )}
                   </div>
                 </div>
               );

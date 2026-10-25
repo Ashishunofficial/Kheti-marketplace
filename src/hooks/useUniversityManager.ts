@@ -401,6 +401,48 @@ export function useUniversityManager() {
           createdAt: d.created_at
         })));
       }
+
+      const { data: consData, error: consErr } = await supabase.from('field_consultations').select('*');
+      if (!consErr && consData && consData.length > 0) {
+        setConsultations(consData.map((d: any) => ({
+          id: d.id,
+          farmerId: d.farmer_id,
+          farmerName: d.farmer_name,
+          farmerVillage: d.farmer_village,
+          farmerDistrict: d.farmer_district,
+          expertId: d.expert_id,
+          expertName: d.expert_name,
+          expertUniversity: d.expert_university,
+          crop: d.crop,
+          issueType: d.issue_type,
+          symptoms: d.symptoms || d.symptoms_or_query,
+          urgency: d.urgency,
+          status: d.status,
+          diagnosis: d.diagnosis,
+          prescription: d.scientific_remedy || d.prescription,
+          createdAt: d.created_at,
+          repliedAt: d.replied_at
+        })));
+      }
+
+      const { data: appData, error: appErr } = await supabase.from('internship_applications').select('*');
+      if (!appErr && appData && appData.length > 0) {
+        setApplications(appData.map((d: any) => ({
+          id: d.id,
+          internshipId: d.internship_id,
+          farmName: d.farm_name,
+          farmerId: d.farmer_id,
+          applicantId: d.applicant_id,
+          applicantName: d.applicant_name,
+          applicantCollege: d.applicant_college,
+          degree: d.degree,
+          yearOfStudy: d.year_of_study,
+          phone: d.phone,
+          statement: d.statement,
+          status: d.status,
+          appliedAt: d.applied_at
+        })));
+      }
     } catch {
       // Fallback cleanly to local storage
     }

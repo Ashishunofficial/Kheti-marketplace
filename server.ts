@@ -5,6 +5,8 @@ import { GoogleGenAI } from '@google/genai';
 import rateLimit from 'express-rate-limit';
 import { createGeminiRouter } from './routes/gemini';
 import { createMandiRouter } from './routes/mandi';
+import { createMarketplaceRouter } from './routes/marketplace';
+import { createServicesRouter } from './routes/services';
 
 dotenv.config();
 
@@ -56,6 +58,8 @@ app.use('/api', apiLimiter);
 // ─── API Routes ────────────────────────────────────────────────────────────────
 app.use('/api/gemini', createGeminiRouter(genAI));
 app.use('/api/mandi', createMandiRouter());
+app.use('/api/marketplace', createMarketplaceRouter());
+app.use('/api/services', createServicesRouter());
 
 // Server tool executor endpoint
 app.post('/api/tools/execute', (req: Request, res: Response) => {

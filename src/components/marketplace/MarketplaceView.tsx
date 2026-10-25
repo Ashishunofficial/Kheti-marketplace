@@ -88,10 +88,8 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     setTimeout(() => setNotificationMsg(null), 4000);
   };
 
-  // Public listings: In live mode, exclude user's own listing so they don't buy from themselves, while ensuring marketplace lots from other farmers and verified traders remain accessible
+  // Public listings: All active listings from all registered users are visible to everyone
   const filteredListings = listings.filter((l) => {
-    const isMine = currentUserId && (l.sellerId === currentUserId || l.sellerId.includes(currentUserId));
-    if (isMine) return false;
     const matchesTab = activeTab === 'all' || l.listingType === activeTab;
     const matchesCommodity = selectedCommodity === 'All' || l.commodity.includes(selectedCommodity);
     return matchesTab && matchesCommodity;
@@ -245,14 +243,14 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
             <span>
-              <strong>🟢 Live Isolated User Network:</strong> Showing active listings from other farmers and buyers. Your own harvest lots are separated into <strong>"My Listing Dashboard"</strong>.
+              <strong>🟢 Live Kheti AI Marketplace:</strong> All listings made by any farmer or business are visible to everyone across India. Your personal lots are also highlighted below and managed in <strong>"My Dashboard"</strong>.
             </span>
           </div>
           <button
             onClick={() => setActiveTab('dashboard')}
             className="text-[11px] font-bold text-emerald-900 bg-white border border-emerald-300 hover:bg-emerald-100 px-2.5 py-1 rounded-md shrink-0 transition-colors"
           >
-            Open My Dashboard →
+            My Dashboard →
           </button>
         </div>
       )}
@@ -506,13 +504,27 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                     <Sparkles className="w-3 h-3 text-emerald-600" /> Fair Price?
                   </button>
 
-                  <button
-                    onClick={() => handleOpenOfferModal(listing)}
-                    className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
-                  >
-                    <span>Make Offer</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  {currentUserId && (listing.sellerId === currentUserId || listing.sellerId.includes(currentUserId)) ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                        ✓ Your Listing
+                      </span>
+                      <button
+                        onClick={() => setActiveTab('dashboard')}
+                        className="px-2.5 py-1 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+                      >
+                        Manage →
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenOfferModal(listing)}
+                      className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                    >
+                      <span>Make Offer</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))

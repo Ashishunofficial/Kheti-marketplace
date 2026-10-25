@@ -104,37 +104,43 @@ const STORAGE_KEYS = {
 
 export const FarmManagerView: React.FC<FarmManagerViewProps> = ({ onNavigateTab }) => {
   const { user, profile } = useAuth();
+  const isGuest = !Boolean(user);
+  const userKey = user ? user.id : 'guest';
 
-  const userName = profile?.name || user?.user_metadata?.full_name || CURRENT_USER.name;
-  const userVillage = profile?.village || CURRENT_USER.village;
-  const userDistrict = profile?.district || CURRENT_USER.district;
-  const userState = profile?.state || CURRENT_USER.state;
+  const userPlotKey = `kheti_farm_plots_${userKey}`;
+  const userExpKey = `kheti_farm_expenses_${userKey}`;
+  const userRevKey = `kheti_farm_revenue_${userKey}`;
+
+  const userName = profile?.name || user?.user_metadata?.full_name || (isGuest ? CURRENT_USER.name : 'Kisan Farmer');
+  const userVillage = profile?.village || (isGuest ? CURRENT_USER.village : 'Field Parcel');
+  const userDistrict = profile?.district || (isGuest ? CURRENT_USER.district : 'Patiala');
+  const userState = profile?.state || (isGuest ? CURRENT_USER.state : 'Punjab / Haryana');
 
   // 1. Plots state
   const [plots, setPlots] = useState<FarmPlotRecord[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PLOTS);
+      const saved = localStorage.getItem(userPlotKey);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return INITIAL_PLOTS;
+    return isGuest ? INITIAL_PLOTS : [];
   });
 
   // 2. Expenses state
   const [expenses, setExpenses] = useState<FarmExpenseRecord[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
+      const saved = localStorage.getItem(userExpKey);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return INITIAL_EXPENSES;
+    return isGuest ? INITIAL_EXPENSES : [];
   });
 
   // 3. Harvest Sales Revenue state
   const [totalSalesRevenue, setTotalSalesRevenue] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.REVENUE);
+      const saved = localStorage.getItem(userRevKey);
       if (saved) return Number(saved);
     } catch {}
-    return 555600;
+    return isGuest ? 555600 : 0;
   });
 
   // Modals state
@@ -159,30 +165,30 @@ export const FarmManagerView: React.FC<FarmManagerViewProps> = ({ onNavigateTab 
   const [showRevenueModal, setShowRevenueModal] = useState(false);
   const [revenueInput, setRevenueInput] = useState<number>(totalSalesRevenue);
 
-  // Sync state to localStorage
+  // Sync state to user-specific localStorage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.PLOTS, JSON.stringify(plots));
+      localStorage.setItem(userPlotKey, JSON.stringify(plots));
     } catch (e) {
       console.warn('Storage save error:', e);
     }
-  }, [plots]);
+  }, [plots, userPlotKey]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+      localStorage.setItem(userExpKey, JSON.stringify(expenses));
     } catch (e) {
       console.warn('Storage save error:', e);
     }
-  }, [expenses]);
+  }, [expenses, userExpKey]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.REVENUE, String(totalSalesRevenue));
+      localStorage.setItem(userRevKey, String(totalSalesRevenue));
     } catch (e) {
       console.warn('Storage save error:', e);
     }
-  }, [totalSalesRevenue]);
+  }, [totalSalesRevenue, userRevKey]);
 
   // Derived financials
   const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -320,19 +326,40 @@ export const FarmManagerView: React.FC<FarmManagerViewProps> = ({ onNavigateTab 
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      {/* Mode Banner */}
+      {isGuest ? (
+        <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-950">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>🎭 Guest Preview (Demo Farm Ledger):</strong> Showing sample farm plots and seasonal expense ledger. Log in to create and track your own private farm records.
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-950">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+            <span>
+              <strong>🟢 Live Private Ledger:</strong> Logged in as <strong>{userName}</strong>. All field parcels, input expenditures, and crop yields are saved strictly to your private account.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-200">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">
             <span>Kisan Farm Operations & Crop Records</span>
             <span aria-hidden="true">·</span>
-            <span>Khasra No: 142/9 & 142/10</span>
+            <span>Real Registered Farmer Holding</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 mt-1">
             {userName}'s Farm Dashboard
           </h1>
           <p className="text-sm text-stone-700 mt-0.5">
-            {totalCultivatedAcres} Acres cultivable holding in {userVillage || 'Nilokheri'}, {userDistrict || 'Karnal'}, {userState || 'Haryana'}.
+            {totalCultivatedAcres} Acres cultivable holding in {userVillage || 'Field Parcel'}, {userDistrict || 'Patiala'}, {userState || 'Punjab / Haryana'}.
           </p>
         </div>
 

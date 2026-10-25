@@ -98,7 +98,17 @@ const GoogleLogo = () => (
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hinglish' }) => {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, setSessionFromUrlOrTokens } = useAuth();
+  const { 
+    signInWithEmail, 
+    signUpWithEmail, 
+    signInWithGoogle, 
+    setSessionFromUrlOrTokens, 
+    allManagedUsers, 
+    loginAsManagedUser, 
+    user: currentUser, 
+    profile, 
+    signOut 
+  } = useAuth();
 
   const t = labels[lang];
   const [isSignUp, setIsSignUp] = useState(false);
@@ -273,6 +283,82 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
               <span>{successMsg}</span>
             </div>
           )}
+
+          {/* Active Session Card if user is currently logged in */}
+          {currentUser && (
+            <div className="p-3.5 bg-emerald-50/80 border border-emerald-300 rounded-xl flex items-center justify-between gap-3 text-xs">
+              <div>
+                <div className="font-extrabold text-emerald-950 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                  <span>Currently Signed In: {profile?.name || currentUser.email}</span>
+                </div>
+                <div className="text-[11px] text-emerald-800">
+                  Role: <span className="font-semibold uppercase">{profile?.activeRole || 'User'}</span> · Account: <span className="font-mono text-[10px]">{currentUser.email || currentUser.id}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut();
+                  setSuccessMsg('Logged out. Switched to Guest Demo preview.');
+                }}
+                className="px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-white border border-rose-300 hover:bg-rose-50 rounded-lg transition-colors shrink-0 cursor-pointer"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
+
+          {/* Quick Login as Registered Platform Users */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-stone-700">
+                👥 Registered Users ({allManagedUsers.length})
+              </span>
+              <span className="text-[10px] text-stone-500 font-medium">Click any profile to test multi-user view</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {allManagedUsers.map((u) => {
+                const isSelected = currentUser?.email?.toLowerCase() === u.email.toLowerCase() || currentUser?.id === u.id;
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      loginAsManagedUser(u);
+                      setSuccessMsg(`Signed in as ${u.name}!`);
+                      setTimeout(() => {
+                        handleClose();
+                      }, 400);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                      isSelected
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-500 shadow-2xs'
+                        : 'border-stone-200 bg-stone-50/50 hover:bg-white hover:border-emerald-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-stone-900 truncate">{u.name}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
+                        u.isAdmin ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                        u.activeRole === 'business' ? 'bg-sky-100 text-sky-900 border border-sky-300' :
+                        u.activeRole === 'scientist' ? 'bg-purple-100 text-purple-900 border border-purple-300' :
+                        'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      }`}>
+                        {u.isAdmin ? 'Admin' : u.activeRole}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-stone-700 truncate mt-0.5">
+                      {u.district ? `${u.district}, ${u.state}` : u.email}
+                    </div>
+                    <div className="text-[9px] text-emerald-800 mt-1 flex items-center justify-between font-medium">
+                      <span>{isSelected ? '✓ Active Session' : 'Sign in as this user →'}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* ── Google sign-in button ──────────────────────────────────────────── */}
           <div>

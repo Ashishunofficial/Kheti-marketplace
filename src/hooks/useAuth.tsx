@@ -116,6 +116,7 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   setSessionFromUrlOrTokens: (tokenOrUrl: string) => Promise<void>;
+  loginAsManagedUser: (userRecord: ManagedUserRecord) => void;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
@@ -453,10 +454,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
       if (session?.user) {
+        setUser(session.user);
         setIsPitchDemo(false);
         fetchProfile(session.user.id);
+      } else {
+        // Check if an authenticated managed user was saved
+        try {
+          const savedSession = localStorage.getItem('kheti_active_user_session');
+          if (savedSession) {
+            const { user: savedUser, profile: savedProf } = JSON.parse(savedSession);
+            if (savedUser && savedProf) {
+              setUser(savedUser);
+              setProfile(savedProf);
+              setIsPitchDemo(false);
+            }
+          }
+        } catch {}
       }
       setLoading(false);
     });
@@ -465,11 +479,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUser(session?.user ?? null);
       if (session?.user) {
+        setUser(session.user);
         setIsPitchDemo(false);
         fetchProfile(session.user.id);
       } else {
+        // Only clear if no local user session is stored
+        try {
+          const savedSession = localStorage.getItem('kheti_active_user_session');
+          if (savedSession) {
+            const { user: savedUser, profile: savedProf } = JSON.parse(savedSession);
+            if (savedUser) {
+              setUser(savedUser);
+              setProfile(savedProf);
+              setIsPitchDemo(false);
+              return;
+            }
+          }
+        } catch {}
+        setUser(null);
         setProfile(null);
       }
     });
@@ -541,8 +569,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginAsManagedUser = (userRecord: ManagedUserRecord) => {
+    const isMaster = userRecord.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
+    const isUserAdmin = isMaster || adminEmails.some(e => e.toLowerCase() === userRecord.email.toLowerCase()) || userRecord.isAdmin;
+
+    const synthesizedUser: any = {
+      id: userRecord.id,
+      email: userRecord.email,
+      phone: userRecord.phone,
+      user_metadata: {
+        full_name: userRecord.name,
+        name: userRecord.name,
+        phone: userRecord.phone
+      },
+      confirmed_at: new Date().toISOString(),
+      email_confirmed_at: new Date().toISOString()
+    };
+
+    const newProfile: UserProfile = {
+      id: userRecord.id,
+      name: userRecord.name,
+      phone: userRecord.phone,
+      roles: (isUserAdmin ? ['admin', 'farmer', 'business', 'scientist'] : (userRecord.roles as any)) || ['farmer'],
+      activeRole: (isUserAdmin ? 'admin' : (userRecord.activeRole as any)) || 'farmer',
+      isKycVerified: true,
+      state: userRecord.state || 'Punjab / Haryana',
+      district: userRecord.district || 'Patiala',
+      village: 'Field Office',
+      farmSizeAcres: userRecord.activeRole === 'farmer' ? 14.5 : 0,
+      primaryCrops: ['Wheat (गेहूं)', 'Basmati Paddy (धान)'],
+      businessName: userRecord.activeRole === 'business' ? userRecord.name : undefined,
+      businessType: userRecord.activeRole === 'business' ? 'trader' : undefined,
+      gstNumber: userRecord.activeRole === 'business' ? '06AABCS1234F1Z9' : undefined,
+      apmcLicense: userRecord.activeRole === 'business' ? 'HR-KRN-APMC-7712' : undefined
+    };
+
+    setUser(synthesizedUser);
+    setProfile(newProfile);
+    setIsPitchDemo(false);
+    registerOrUpdateActiveUser(synthesizedUser, newProfile);
+
+    try {
+      localStorage.setItem('kheti_active_user_session', JSON.stringify({ user: synthesizedUser, profile: newProfile }));
+    } catch (e) {
+      console.warn('Error saving user session:', e);
+    }
+  };
+
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {}
+    try {
+      localStorage.removeItem('kheti_active_user_session');
+    } catch {}
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -563,14 +643,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (updates.farmSizeAcres !== undefined) dbUpdates.land_acres = updates.farmSizeAcres;
     if (updates.primaryCrops !== undefined) dbUpdates.primary_crops = updates.primaryCrops;
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(dbUpdates)
-      .eq('id', user.id);
+    try {
+      await supabase
+        .from('profiles')
+        .update(dbUpdates)
+        .eq('id', user.id);
+    } catch {}
 
-    if (error) throw error;
-
-    setProfile((prev) => (prev ? { ...prev, ...updates } : prev));
+    setProfile((prev) => {
+      const next = prev ? { ...prev, ...updates } : prev;
+      if (next) {
+        try {
+          const saved = localStorage.getItem('kheti_active_user_session');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            localStorage.setItem('kheti_active_user_session', JSON.stringify({ ...parsed, profile: next }));
+          }
+        } catch {}
+      }
+      return next;
+    });
   };
 
   // Computed all managed users with up to date admin and ban states
@@ -602,6 +694,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUpWithEmail,
         signInWithGoogle,
         setSessionFromUrlOrTokens,
+        loginAsManagedUser,
         signOut,
         updateProfile,
       }}

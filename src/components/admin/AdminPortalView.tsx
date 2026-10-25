@@ -38,9 +38,11 @@ import { useUniversityManager } from '../../hooks/useUniversityManager';
 import { useListings } from '../../hooks/useListings';
 import { useServicesManager } from '../../hooks/useServicesManager';
 import { useAuth, ManagedUserRecord } from '../../hooks/useAuth';
+import { WarehouseFacility, EquipmentRental } from '../../types';
+import { DatabaseSchemaView } from './DatabaseSchemaView';
 
 export const AdminPortalView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'users_governance' | 'verification' | 'academic_governance' | 'marketplace_ledger' | 'disputes' | 'ai_health' | 'feature_flags'>('users_governance');
+  const [activeTab, setActiveTab] = useState<'users_governance' | 'verification' | 'academic_governance' | 'marketplace_ledger' | 'disputes' | 'ai_health' | 'feature_flags' | 'database_schema'>('users_governance');
 
   // Hooks for platform state
   const { 
@@ -280,6 +282,15 @@ export const AdminPortalView: React.FC = () => {
           }`}
         >
           Feature Flags
+        </button>
+        <button
+          onClick={() => setActiveTab('database_schema')}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'database_schema' ? 'bg-white text-emerald-950 shadow-xs font-bold' : 'text-stone-700 hover:text-stone-900'
+          }`}
+        >
+          <Database className="w-3.5 h-3.5 text-emerald-700" />
+          Database Tables & Supabase Schema
         </button>
       </div>
 
@@ -811,7 +822,7 @@ export const AdminPortalView: React.FC = () => {
                 Storage & Godown Infrastructure ({allRawWarehouses.length})
               </h3>
               <div className="space-y-2">
-                {allRawWarehouses.map((wh) => (
+                {allRawWarehouses.map((wh: WarehouseFacility) => (
                   <div key={wh.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
                     <div className="flex justify-between font-bold text-stone-900">
                       <span>{wh.name}</span>
@@ -834,7 +845,7 @@ export const AdminPortalView: React.FC = () => {
                 Agri Equipment & Vehicles ({allRawEquipment.length})
               </h3>
               <div className="space-y-2">
-                {allRawEquipment.map((eq) => (
+                {allRawEquipment.map((eq: EquipmentRental) => (
                   <div key={eq.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
                     <div className="flex justify-between font-bold text-stone-900">
                       <span>{eq.title}</span>
@@ -1042,6 +1053,11 @@ export const AdminPortalView: React.FC = () => {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Tab 7: Database Tables & Supabase Schema */}
+      {activeTab === 'database_schema' && (
+        <DatabaseSchemaView />
       )}
     </div>
   );

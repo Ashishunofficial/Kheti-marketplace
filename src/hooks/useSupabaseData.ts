@@ -69,3 +69,68 @@ export function useExperts() {
 
   return { experts, loading };
 }
+
+/**
+ * useUniversityAdvisories — Scientific crop bulletins & alerts from Supabase
+ */
+export interface UniversityAdvisoryItem {
+  id: string;
+  university: string;
+  scientistName: string;
+  designation?: string;
+  department?: string;
+  crop: string;
+  title: string;
+  advisoryType: string;
+  severity: string;
+  content: string;
+  scientificSolution?: string;
+  organicAlternative?: string;
+  district?: string;
+  state?: string;
+  publishedDate?: string;
+}
+
+export function useUniversityAdvisories() {
+  const [advisories, setAdvisories] = useState<UniversityAdvisoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+    async function fetchAdvisories() {
+      try {
+        const { data, error } = await supabase
+          .from('university_advisories')
+          .select('*')
+          .order('published_date', { ascending: false });
+        if (!error && data && data.length > 0) {
+          setAdvisories(data.map((r: any) => ({
+            id: r.id,
+            university: r.university,
+            scientistName: r.scientist_name,
+            designation: r.designation,
+            department: r.department,
+            crop: r.crop,
+            title: r.title,
+            advisoryType: r.advisory_type,
+            severity: r.severity,
+            content: r.content,
+            scientificSolution: r.scientific_solution,
+            organicAlternative: r.organic_alternative,
+            district: r.district,
+            state: r.state,
+            publishedDate: r.published_date
+          })));
+        }
+      } catch {}
+      setLoading(false);
+    }
+    fetchAdvisories();
+  }, []);
+
+  return { advisories, loading };
+}
+

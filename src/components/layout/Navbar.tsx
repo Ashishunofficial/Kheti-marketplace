@@ -276,19 +276,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Account Button */}
             {user ? (
               <button
-                onClick={() => signOut()}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-900 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded hover:bg-emerald-100 transition-colors"
+                onClick={onOpenLogin}
+                className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-900 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
+                title="Manage Account or Switch User"
               >
-                <UserCircle className="w-3 h-3 text-emerald-700" />
-                <span>{profile?.name?.split(' ')[0] || 'Account'}</span>
+                <UserCircle className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{profile?.name || user.email?.split('@')[0] || 'Account'}</span>
+                <span className="text-[10px] text-emerald-700 font-normal">▾</span>
               </button>
             ) : (
               <button
                 onClick={onOpenLogin}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-stone-700 bg-white border border-stone-300 px-2 py-0.5 rounded hover:bg-stone-50 transition-colors"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-stone-700 bg-white border border-stone-300 px-2.5 py-0.5 rounded hover:bg-stone-50 transition-colors cursor-pointer"
               >
-                <LogIn className="w-3 h-3" />
-                <span>{lang === 'hi' ? 'लॉगिन' : 'Login'}</span>
+                <LogIn className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{lang === 'hi' ? 'लॉगिन / खाता' : 'Login / Accounts'}</span>
               </button>
             )}
           </div>
