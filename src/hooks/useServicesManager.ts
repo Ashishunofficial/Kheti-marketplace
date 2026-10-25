@@ -215,6 +215,14 @@ export function useServicesManager() {
     }
   }, []);
 
+  const updateWarehouseListing = useCallback((id: string, data: Partial<WarehouseFacility>) => {
+    setWarehouses(prev => prev.map(w => w.id === id ? { ...w, ...data } : w));
+  }, []);
+
+  const updateEquipmentListing = useCallback((id: string, data: Partial<EquipmentRental>) => {
+    setEquipment(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));
+  }, []);
+
   // Create a Booking (Renter booking a godown or machine from an Owner)
   const createBooking = useCallback((
     bookingData: {
@@ -367,6 +375,8 @@ export function useServicesManager() {
     // Operations
     addWarehouseListing,
     addEquipmentListing,
+    updateWarehouseListing,
+    updateEquipmentListing,
     deleteListing,
     createBooking,
     updateBookingStatus,

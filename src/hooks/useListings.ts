@@ -100,6 +100,8 @@ interface UseListingsReturn {
   loading: boolean;
   error: string | null;
   createListing: (listing: Omit<MarketplaceListing, 'id'>) => Promise<void>;
+  updateListing: (id: string, data: Partial<MarketplaceListing>) => Promise<void>;
+  deleteListing: (id: string) => Promise<void>;
   makeOffer: (offer: Omit<OfferNegotiation, 'id'>) => Promise<void>;
   acceptOffer: (offerId: string) => Promise<void>;
   counterOffer: (offerId: string, price: number, message: string, senderName: string, senderId: string) => Promise<void>;
@@ -335,6 +337,51 @@ export function useListings(): UseListingsReturn {
     }
   }, []);
 
+  const deleteListing = useCallback(async (listingId: string) => {
+    setListings(prev => prev.filter(l => l.id !== listingId));
+    try {
+      const existingLocal = getLocalListings();
+      const updatedLocal = existingLocal.filter(l => l.id !== listingId);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.LISTINGS, JSON.stringify(updatedLocal));
+    } catch (e) {
+      console.error('Error removing listing from localStorage', e);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('marketplace_listings').delete().eq('id', listingId);
+      } catch (err: any) {
+        console.warn('Supabase delete listing skipped:', err.message);
+      }
+    }
+  }, []);
+
+  const updateListing = useCallback(async (listingId: string, updatedData: Partial<MarketplaceListing>) => {
+    setListings(prev => prev.map(l => l.id === listingId ? { ...l, ...updatedData } : l));
+    try {
+      const existingLocal = getLocalListings();
+      const updatedLocal = existingLocal.map(l => l.id === listingId ? { ...l, ...updatedData } : l);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.LISTINGS, JSON.stringify(updatedLocal));
+    } catch (e) {
+      console.error('Error updating listing in localStorage', e);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const dbPatch: Record<string, any> = {};
+        if (updatedData.commodity) dbPatch.commodity = updatedData.commodity;
+        if (updatedData.variety) dbPatch.variety = updatedData.variety;
+        if (updatedData.grade) dbPatch.grade = updatedData.grade;
+        if (updatedData.quantity !== undefined) dbPatch.quantity = Number(updatedData.quantity);
+        if (updatedData.askingPrice !== undefined) dbPatch.asking_price = Number(updatedData.askingPrice);
+        if (updatedData.notes) dbPatch.notes = updatedData.notes;
+        if (updatedData.status) dbPatch.status = updatedData.status;
+
+        await supabase.from('marketplace_listings').update(dbPatch).eq('id', listingId);
+      } catch (err: any) {
+        console.warn('Supabase update listing skipped:', err.message);
+      }
+    }
+  }, []);
+
   return {
     listings,
     offers,
@@ -342,9 +389,12 @@ export function useListings(): UseListingsReturn {
     loading,
     error,
     createListing,
+    updateListing,
+    deleteListing,
     makeOffer,
     acceptOffer,
     counterOffer,
     refresh: () => setTick(t => t + 1),
   };
 }
+

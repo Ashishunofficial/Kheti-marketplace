@@ -15,7 +15,8 @@ import {
   MapPin, 
   AlertCircle,
   ChevronRight,
-  Boxes
+  Boxes,
+  Trash2
 } from 'lucide-react';
 import { WarehouseFacility, EquipmentRental, ServiceBooking } from '../../types';
 
@@ -29,6 +30,7 @@ interface ProviderDashboardProps {
   onUpdateBookingStatus: (bookingId: string, status: ServiceBooking['status']) => void;
   onOpenChatWithCustomer: (booking: ServiceBooking) => void;
   isDemoMode?: boolean;
+  onDeleteListing?: (id: string, type: 'warehouse' | 'equipment') => void;
 }
 
 export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
@@ -40,7 +42,8 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   onOpenAddModal,
   onUpdateBookingStatus,
   onOpenChatWithCustomer,
-  isDemoMode = false
+  isDemoMode = false,
+  onDeleteListing
 }) => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed'>('all');
 
@@ -220,9 +223,17 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
                   <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-xs">
                     <span className="text-[11px] font-mono text-stone-500">{wh.contactPhone}</span>
-                    <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                      Live in Directory
-                    </span>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete warehouse "${wh.name}"?`)) {
+                          onDeleteListing?.(wh.id, 'warehouse');
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded flex items-center gap-1"
+                      title="Delete Listing"
+                    >
+                      <Trash2 className="w-3 h-3 text-rose-600" /> Delete
+                    </button>
                   </div>
                 </div>
               );
@@ -272,9 +283,17 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
                   <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-xs">
                     <span className="text-[11px] font-mono text-stone-500">{eq.contactPhone || 'Available'}</span>
-                    <span className="text-xs font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded">
-                      Live in Directory
-                    </span>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete equipment "${eq.title}"?`)) {
+                          onDeleteListing?.(eq.id, 'equipment');
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded flex items-center gap-1"
+                      title="Delete Listing"
+                    >
+                      <Trash2 className="w-3 h-3 text-rose-600" /> Delete
+                    </button>
                   </div>
                 </div>
               );

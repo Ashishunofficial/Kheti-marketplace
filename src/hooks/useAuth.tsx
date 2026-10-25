@@ -35,62 +35,6 @@ const INITIAL_MANAGED_USERS: ManagedUserRecord[] = [
     lastActive: 'Just now (Active Developer & System Admin)',
     isAdmin: true,
     isBanned: false
-  },
-  {
-    id: 'kyc_1',
-    name: 'Baldev Singh (Kisan)',
-    email: 'baldev.kisan@gmail.com',
-    phone: '+91 98765 11223',
-    roles: ['farmer'],
-    activeRole: 'farmer',
-    isKycVerified: true,
-    state: 'Punjab',
-    district: 'Patiala',
-    lastActive: '16 Oct 2026',
-    isAdmin: false,
-    isBanned: false
-  },
-  {
-    id: 'kyc_2',
-    name: 'Shri Ram Agro Traders & Mill',
-    email: 'shriram.agro@gmail.com',
-    phone: '+91 98124 99887',
-    roles: ['business'],
-    activeRole: 'business',
-    isKycVerified: true,
-    state: 'Haryana',
-    district: 'Karnal',
-    lastActive: '15 Oct 2026',
-    isAdmin: false,
-    isBanned: false
-  },
-  {
-    id: 'kyc_3',
-    name: 'Narmada Valley Cold Storage Ltd',
-    email: 'narmada.cold@gmail.com',
-    phone: '+91 97555 44321',
-    roles: ['business'],
-    activeRole: 'business',
-    isKycVerified: false,
-    state: 'Madhya Pradesh',
-    district: 'Hoshangabad',
-    lastActive: '14 Oct 2026',
-    isAdmin: false,
-    isBanned: false
-  },
-  {
-    id: 'prof_virender',
-    name: 'Dr. Virender Kumar',
-    email: 'prof.virender.pau@gmail.com',
-    phone: '+91 98111 22334',
-    roles: ['scientist'],
-    activeRole: 'scientist',
-    isKycVerified: true,
-    state: 'Punjab',
-    district: 'Ludhiana',
-    lastActive: '23 Oct 2026',
-    isAdmin: false,
-    isBanned: false
   }
 ];
 
@@ -148,11 +92,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return [];
   });
 
-  // Managed Users list
+  // Managed Users list (real registered users only, filtering out old mock demo emails)
   const [managedUsers, setManagedUsers] = useState<ManagedUserRecord[]>(() => {
+    const mockEmails = [
+      'baldev.kisan@gmail.com',
+      'shriram.agro@gmail.com',
+      'narmada.cold@gmail.com',
+      'prof.virender.pau@gmail.com'
+    ];
     try {
       const saved = localStorage.getItem('kheti_managed_users_list');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: ManagedUserRecord[] = JSON.parse(saved);
+        const realOnly = parsed.filter(u => !mockEmails.includes(u.email.toLowerCase()));
+        return realOnly.length > 0 ? realOnly : INITIAL_MANAGED_USERS;
+      }
     } catch {}
     return INITIAL_MANAGED_USERS;
   });

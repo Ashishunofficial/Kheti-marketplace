@@ -12,7 +12,9 @@ import {
   MessageSquare, 
   Boxes,
   MapPin,
-  Sparkles
+  Sparkles,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 import { MarketplaceListing, OfferNegotiation, UserProfile } from '../../types';
 
@@ -26,6 +28,8 @@ interface MarketplaceDashboardProps {
   onAcceptOffer: (offerId: string) => void;
   onCounterOffer: (offer: OfferNegotiation) => void;
   onRejectOffer?: (offerId: string) => void;
+  onDeleteListing?: (id: string) => void;
+  onUpdateListing?: (id: string, data: Partial<MarketplaceListing>) => void;
 }
 
 export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
@@ -37,9 +41,15 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
   onOpenNewListingModal,
   onAcceptOffer,
   onCounterOffer,
-  onRejectOffer
+  onRejectOffer,
+  onDeleteListing,
+  onUpdateListing
 }) => {
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'accepted'>('all');
+  const [editingListing, setEditingListing] = useState<MarketplaceListing | null>(null);
+  const [editPrice, setEditPrice] = useState<number>(0);
+  const [editQuantity, setEditQuantity] = useState<number>(0);
+  const [editNotes, setEditNotes] = useState<string>('');
 
   const activeUserId = currentUserId || currentUser.id;
 
@@ -266,9 +276,31 @@ const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'l
 
                   <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-xs">
                     <span className="text-[11px] font-mono text-stone-400">Listed: {listing.postedDate}</span>
-                    <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                      Escrow Protected
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setEditingListing(listing);
+                          setEditPrice(listing.askingPrice);
+                          setEditQuantity(listing.quantity);
+                          setEditNotes(listing.notes || '');
+                        }}
+                        className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold rounded flex items-center gap-1"
+                        title="Edit Listing"
+                      >
+                        <Edit3 className="w-3 h-3 text-stone-600" /> Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete listing for ${listing.commodity}?`)) {
+                            onDeleteListing?.(listing.id);
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded flex items-center gap-1"
+                        title="Delete Listing"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-600" /> Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -400,6 +432,74 @@ const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'l
           </div>
         )}
       </div>
+
+      {/* Edit Listing Modal */}
+      {editingListing && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <h3 className="text-base font-bold text-stone-900">Edit Harvest Listing</h3>
+              <button onClick={() => setEditingListing(null)} className="text-stone-400 hover:text-stone-700">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Asking Price (₹ / {editingListing.unit})</label>
+                <input
+                  type="number"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Total Quantity ({editingListing.unit})</label>
+                <input
+                  type="number"
+                  value={editQuantity}
+                  onChange={(e) => setEditQuantity(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Notes / Quality Info</label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-stone-150">
+              <button
+                onClick={() => setEditingListing(null)}
+                className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded-lg font-semibold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onUpdateListing?.(editingListing.id, {
+                    askingPrice: editPrice,
+                    quantity: editQuantity,
+                    notes: editNotes,
+                  });
+                  setEditingListing(null);
+                }}
+                className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-semibold text-xs shadow-xs"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

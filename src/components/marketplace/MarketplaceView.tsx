@@ -39,7 +39,8 @@ interface MarketplaceViewProps {
 }
 
 export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery }) => {
-  const { listings, offers, orders, loading, createListing, makeOffer, counterOffer, acceptOffer } = useListings();
+  const { listings, offers, orders, loading, createListing, updateListing, deleteListing, makeOffer, counterOffer, acceptOffer } = useListings();
+  const [isSubmittingListing, setIsSubmittingListing] = useState(false);
   const { profile, user, isAuthenticated, isDemo } = useAuth();
 
   const currentUserId = user?.id || profile?.id || (isDemo ? 'usr_rameshwar_99' : '');
@@ -172,6 +173,9 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
 
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingListing) return;
+    setIsSubmittingListing(true);
+
     const newListing: Omit<MarketplaceListing, 'id'> = {
       sellerId: currentUser.id,
       sellerName: `${currentUser.name} (${currentUser.activeRole === 'farmer' ? 'Kisan' : 'Enterprise'})`,
@@ -201,9 +205,11 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     try {
       await createListing(newListing);
       setShowNewListingModal(false);
-      showNotification(`Your ${newListingType === 'sell' ? 'Produce Sell Offer' : 'Buying Request'} has been published!`);
+      showNotification(`Your ${newListingType === 'sell' ? 'Produce Sell Offer' : 'Buying Request'} has been published successfully!`);
     } catch (err: any) {
       showNotification(`Error: ${err.message}`);
+    } finally {
+      setIsSubmittingListing(false);
     }
   };
 
@@ -364,6 +370,8 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
           onCounterOffer={(off) => {
             handleOpenOfferModal(listings.find(l => l.id === off.listingId) || listings[0]);
           }}
+          onDeleteListing={deleteListing}
+          onUpdateListing={updateListing}
         />
       ) : (
         <>
@@ -837,9 +845,17 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs"
+                  disabled={isSubmittingListing}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 rounded-lg transition-colors shadow-xs flex items-center gap-1.5"
                 >
-                  Publish Listing
+                  {isSubmittingListing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <span>Publish Listing</span>
+                  )}
                 </button>
               </div>
             </form>
