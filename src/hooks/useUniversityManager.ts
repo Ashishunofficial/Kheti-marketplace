@@ -261,11 +261,11 @@ export function useUniversityManager() {
   const [partnerUniversitiesCount, setPartnerUniversitiesCount] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('kheti_partner_universities_count');
-      if (saved) return Number(saved);
+      if (saved && saved !== '42') return Number(saved);
     } catch {
       // fallback
     }
-    return 42;
+    return 0;
   });
 
   const updatePartnerUniversitiesCount = (count: number) => {
@@ -653,8 +653,8 @@ export function useUniversityManager() {
   return {
     masterclasses: publicMasterclasses,
     internships: publicInternships,
-    allMasterclasses: masterclasses,
-    allInternships: internships,
+    allMasterclasses: isDemo ? masterclasses : masterclasses.filter(mc => !MOCK_MC_IDS.has(mc.id) && !mc.id.startsWith('mc_0')),
+    allInternships: isDemo ? internships : internships.filter(i => !MOCK_INTERN_IDS.has(i.id) && !i.id.startsWith('intern_0')),
     myMasterclasses,
     myInternships,
     applications: myApplications,

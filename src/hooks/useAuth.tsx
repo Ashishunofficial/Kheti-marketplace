@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { UserProfile } from '../types';
 import { CURRENT_USER } from '../data/mockData';
@@ -21,78 +21,46 @@ export interface ManagedUserRecord {
 
 const MASTER_ADMIN_EMAIL = 'niteshunofficial1234@gmail.com';
 
-const INITIAL_MANAGED_USERS: ManagedUserRecord[] = [
-  {
-    id: 'usr_admin_nitesh',
-    name: 'Nitesh Gupta',
-    email: 'niteshunofficial1234@gmail.com',
-    phone: '+91 98123 45678',
-    roles: ['admin', 'farmer', 'business', 'scientist'],
-    activeRole: 'admin',
-    isKycVerified: true,
-    state: 'Punjab / Haryana',
-    district: 'Patiala',
-    lastActive: 'Just now (Active Developer & System Admin)',
-    isAdmin: true,
-    isBanned: false
-  },
-  {
-    id: 'usr_farmer_baldev',
-    name: 'Baldev Singh',
-    email: 'baldev.kisan@gmail.com',
-    phone: '+91 94170 11223',
-    roles: ['farmer'],
-    activeRole: 'farmer',
-    isKycVerified: true,
-    state: 'Punjab',
-    district: 'Patiala',
-    lastActive: '12 mins ago (Paddy harvest listing & Mandi lookup)',
-    isAdmin: false,
-    isBanned: false
-  },
-  {
-    id: 'usr_business_shriram',
-    name: 'Shriram Traders',
-    email: 'shriram.agro@gmail.com',
-    phone: '+91 98960 55441',
-    roles: ['business'],
-    activeRole: 'business',
-    isKycVerified: true,
-    state: 'Haryana',
-    district: 'Karnal',
-    lastActive: '25 mins ago (Wheat procurement & Escrow order)',
-    isAdmin: false,
-    isBanned: false
-  },
-  {
-    id: 'usr_storage_narmada',
-    name: 'Narmada Cold Storage & Logistics',
-    email: 'narmada.cold@gmail.com',
-    phone: '+91 94250 88990',
-    roles: ['business'],
-    activeRole: 'business',
-    isKycVerified: true,
-    state: 'Madhya Pradesh',
-    district: 'Indore',
-    lastActive: '1 hour ago (Godown & Machinery slot listed)',
-    isAdmin: false,
-    isBanned: false
-  },
-  {
-    id: 'usr_scientist_virender',
-    name: 'Dr. Virender Sharma',
-    email: 'prof.virender.pau@gmail.com',
-    phone: '+91 98150 33221',
-    roles: ['scientist'],
-    activeRole: 'scientist',
-    isKycVerified: true,
-    state: 'Punjab',
-    district: 'Ludhiana',
-    lastActive: '3 hours ago (Crop Pathology Advisory & Masterclass)',
-    isAdmin: false,
-    isBanned: false
-  }
-];
+// Default primary developer master admin record (matches live Supabase UUID)
+const DEFAULT_REAL_ADMIN: ManagedUserRecord = {
+  id: '0dd8be9d-0d8d-46d0-bd3a-46f393d1fd0b',
+  name: 'Nitesh Gupta',
+  email: 'niteshunofficial1234@gmail.com',
+  phone: '+91 98123 45678',
+  roles: ['admin', 'farmer', 'business', 'scientist'],
+  activeRole: 'admin',
+  isKycVerified: true,
+  state: 'Haryana / Punjab',
+  district: 'Karnal',
+  lastActive: 'Active Developer & Primary Master Admin',
+  isAdmin: true,
+  isBanned: false
+};
+
+// Helper to detect any fake legacy test users
+const isFakeMockUser = (u: { id?: string; name?: string; email?: string }): boolean => {
+  const email = (u.email || '').toLowerCase();
+  const name = (u.name || '').toLowerCase();
+  const id = (u.id || '').toLowerCase();
+  return (
+    id.startsWith('usr_farmer') ||
+    id.startsWith('usr_business') ||
+    id.startsWith('usr_storage') ||
+    id.startsWith('usr_scientist') ||
+    id.startsWith('usr_rameshwar') ||
+    id.startsWith('usr_baldev') ||
+    id.startsWith('usr_shriram') ||
+    id.startsWith('usr_narmada') ||
+    email.includes('baldev') ||
+    email.includes('shriram') ||
+    email.includes('narmada') ||
+    email.includes('virender') ||
+    name.includes('baldev') ||
+    name.includes('shriram') ||
+    name.includes('narmada') ||
+    name.includes('virender')
+  );
+};
 
 // ─── Context Type ────────────────────────────────────────────────────────────
 
@@ -119,6 +87,7 @@ interface AuthContextType {
   loginAsManagedUser: (userRecord: ManagedUserRecord) => void;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  refreshManagedUsers?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -149,20 +118,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return [];
   });
 
-  // Managed Users list (real registered users & active participants)
+  // Managed Users list (strictly real registered logins from Supabase)
   const [managedUsers, setManagedUsers] = useState<ManagedUserRecord[]>(() => {
     try {
-      const saved = localStorage.getItem('kheti_managed_users_list');
-      if (saved) {
-        const parsed: ManagedUserRecord[] = JSON.parse(saved);
-        // Ensure INITIAL_MANAGED_USERS are always present if not already in saved
-        const existingEmails = new Set(parsed.map(u => u.email.toLowerCase()));
-        const missingInitial = INITIAL_MANAGED_USERS.filter(u => !existingEmails.has(u.email.toLowerCase()));
-        const combined = [...parsed, ...missingInitial];
-        return combined.length > 0 ? combined : INITIAL_MANAGED_USERS;
-      }
+      localStorage.removeItem('kheti_managed_users_list');
     } catch {}
-    return INITIAL_MANAGED_USERS;
+    return [DEFAULT_REAL_ADMIN];
   });
 
   // Save admin & banned lists to localStorage
@@ -417,6 +378,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Fetch real registered profiles directly from Supabase
+  const fetchRealProfilesFromSupabase = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { data: dbProfiles, error } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (!error && dbProfiles && dbProfiles.length > 0) {
+        // Exclude any fake mock accounts completely
+        const validProfiles = dbProfiles.filter((p: any) => !isFakeMockUser(p));
+
+        const realUsers: ManagedUserRecord[] = validProfiles.map((p: any) => {
+          const isMaster = 
+            (user?.email && user.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() && p.id === user.id) ||
+            (p.name && p.name.toLowerCase().includes('nitesh')) ||
+            p.id === '0dd8be9d-0d8d-46d0-bd3a-46f393d1fd0b' ||
+            adminEmails.some(e => e.toLowerCase() === (p.email || '').toLowerCase());
+
+          let userEmail = p.email;
+          if (!userEmail) {
+            if (isMaster) {
+              userEmail = MASTER_ADMIN_EMAIL;
+            } else if (p.name) {
+              userEmail = `${p.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@khetiai.in`;
+            } else {
+              userEmail = `user-${p.id.slice(0, 8)}@khetiai.in`;
+            }
+          }
+
+          return {
+            id: p.id,
+            name: p.name || 'Registered Kisan',
+            email: userEmail,
+            phone: p.phone || '+91 98124 00000',
+            roles: isMaster ? ['admin', 'farmer', 'business', 'scientist'] : (p.roles || [p.active_role || 'farmer']),
+            activeRole: isMaster ? 'admin' : (p.active_role || 'farmer'),
+            isKycVerified: p.kyc_status === 'verified',
+            state: p.state || (p.district ? `${p.district}, Punjab` : 'Punjab / Haryana'),
+            district: p.district || '',
+            lastActive: p.updated_at ? `Active in Supabase (${new Date(p.updated_at).toLocaleDateString('en-IN')})` : 'Registered Supabase User',
+            isAdmin: isMaster,
+            isBanned: bannedEmails.some(e => e.toLowerCase() === userEmail.toLowerCase())
+          };
+        });
+
+        // Ensure master admin Nitesh Gupta is listed if not in profiles
+        if (!realUsers.some(u => u.isAdmin || u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase())) {
+          realUsers.unshift(DEFAULT_REAL_ADMIN);
+        }
+
+        setManagedUsers(realUsers);
+      }
+    } catch (err) {
+      console.warn('Notice: Error fetching real profiles from Supabase:', err);
+    }
+  }, [user, adminEmails, bannedEmails]);
+
+  // Load profiles on mount
+  useEffect(() => {
+    fetchRealProfilesFromSupabase();
+  }, [fetchRealProfilesFromSupabase]);
+
   // ── Bootstrap auth state ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -665,12 +689,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // Computed all managed users with up to date admin and ban states
-  const computedManagedUsers = managedUsers.map(u => ({
-    ...u,
-    isAdmin: u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() || adminEmails.some(e => e.toLowerCase() === u.email.toLowerCase()),
-    isBanned: bannedEmails.some(e => e.toLowerCase() === u.email.toLowerCase())
-  }));
+  // Computed all managed users strictly from real logins with up to date admin and ban states
+  const computedManagedUsers = managedUsers
+    .filter(u => !isFakeMockUser(u))
+    .map(u => ({
+      ...u,
+      isAdmin: u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() || u.name.toLowerCase().includes('nitesh') || adminEmails.some(e => e.toLowerCase() === u.email.toLowerCase()),
+      isBanned: bannedEmails.some(e => e.toLowerCase() === u.email.toLowerCase())
+    }));
 
   return (
     <AuthContext.Provider
@@ -697,6 +723,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginAsManagedUser,
         signOut,
         updateProfile,
+        refreshManagedUsers: fetchRealProfilesFromSupabase,
       }}
     >
       {children}

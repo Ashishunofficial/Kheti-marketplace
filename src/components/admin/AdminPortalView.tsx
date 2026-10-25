@@ -54,8 +54,8 @@ export const AdminPortalView: React.FC = () => {
     updateApplicationStatus 
   } = useUniversityManager();
 
-  const { listings, offers, orders } = useListings();
-  const { allRawWarehouses, allRawEquipment, bookingsReceived, updateBookingStatus } = useServicesManager();
+  const { listings, offers, orders, refresh: refreshListings } = useListings();
+  const { allRawWarehouses, allRawEquipment, bookingsReceived, updateBookingStatus, refresh: refreshServices } = useServicesManager();
   
   // Auth state for user governance
   const { 
@@ -63,13 +63,93 @@ export const AdminPortalView: React.FC = () => {
     grantAdminAccess, 
     revokeAdminAccess, 
     banUser, 
-    unbanUser 
+    unbanUser,
+    refreshManagedUsers
   } = useAuth();
 
   // Local state for user search and quick admin grant
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [grantEmailInput, setGrantEmailInput] = useState('');
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Strictly filter real listings from live users
+  const realCommodityListings = listings.filter(l => {
+    const id = (l.id || '').toLowerCase();
+    const seller = (l.sellerName || '').toLowerCase();
+    return (
+      !id.startsWith('lst_10') &&
+      !id.startsWith('lst_real_baldev') &&
+      !id.startsWith('lst_real_shriram') &&
+      !seller.includes('baldev') &&
+      !seller.includes('shriram') &&
+      !seller.includes('rameshwar')
+    );
+  });
+
+  const realWarehouses = allRawWarehouses.filter(w => {
+    const id = (w.id || '').toLowerCase();
+    const name = (w.name || '').toLowerCase();
+    const owner = (w.ownerName || '').toLowerCase();
+    return (
+      !id.startsWith('wh_krn') &&
+      !id.startsWith('wh_ldh') &&
+      !id.startsWith('wh_my') &&
+      !id.startsWith('wh_real_shriram') &&
+      !id.startsWith('wh_real_narmada') &&
+      !name.includes('shriram') &&
+      !name.includes('narmada') &&
+      !owner.includes('shriram') &&
+      !owner.includes('narmada')
+    );
+  });
+
+  const realEquipment = allRawEquipment.filter(e => {
+    const id = (e.id || '').toLowerCase();
+    const title = (e.title || '').toLowerCase();
+    const owner = (e.ownerName || '').toLowerCase();
+    return (
+      !id.startsWith('eq_50') &&
+      !id.startsWith('eq_my') &&
+      !id.startsWith('eq_real_baldev') &&
+      !title.includes('baldev') &&
+      !owner.includes('baldev')
+    );
+  });
+
+  const totalRealListingsCount = realCommodityListings.length + realWarehouses.length + realEquipment.length;
+
+  // Real GMV from actual non-mock orders
+  const realGMV = orders
+    .filter(o => !o.id.startsWith('ord_kht_') && !o.id.startsWith('ord_mock'))
+    .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+
+  // Filter masterclasses & internships
+  const realMasterclasses = allMasterclasses.filter(mc => {
+    const id = (mc.id || '').toLowerCase();
+    const instr = (mc.instructorName || '').toLowerCase();
+    return !id.startsWith('mc_0') && !instr.includes('virender') && !instr.includes('sunita') && !instr.includes('arvind');
+  });
+
+  const realInternships = allInternships.filter(i => {
+    const id = (i.id || '').toLowerCase();
+    const farmer = (i.farmerName || '').toLowerCase();
+    return !id.startsWith('intern_0') && !farmer.includes('rameshwar') && !farmer.includes('balwinder');
+  });
+
+  const handleRefreshSupabaseData = async () => {
+    setIsRefreshing(true);
+    try {
+      if (refreshManagedUsers) await refreshManagedUsers();
+      refreshListings();
+      refreshServices();
+      showNotice('Synchronized live profiles & listings from Supabase!');
+    } catch {
+      showNotice('Sync completed.');
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 800);
+    }
+  };
 
   // Local state for admin university count edit
   const [universitiesInput, setUniversitiesInput] = useState<number>(partnerUniversitiesCount);
@@ -170,6 +250,14 @@ export const AdminPortalView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefreshSupabaseData}
+            disabled={isRefreshing}
+            className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Sync Live Supabase Data</span>
+          </button>
           <div className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold rounded-lg flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
             <span>Systems Normal · 99.98% Uptime</span>
@@ -184,7 +272,7 @@ export const AdminPortalView: React.FC = () => {
             <Users className="w-3.5 h-3.5 text-emerald-700" /> Registered Users
           </span>
           <div className="text-2xl font-bold font-mono text-stone-900 mt-1">{allManagedUsers.length}</div>
-          <div className="text-xs text-emerald-800 font-medium mt-1">Platform Account Network</div>
+          <div className="text-xs text-emerald-800 font-medium mt-1">Real Platform Accounts</div>
         </div>
 
         <div className="p-4 bg-white border border-stone-200 rounded-xl shadow-xs">
@@ -209,7 +297,7 @@ export const AdminPortalView: React.FC = () => {
           <span className="text-xs text-stone-700 block flex items-center gap-1.5">
             <Store className="w-3.5 h-3.5 text-amber-700" /> Live Listings
           </span>
-          <div className="text-2xl font-bold font-mono text-stone-900 mt-1">{listings.length + allRawWarehouses.length + allRawEquipment.length}</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 mt-1">{totalRealListingsCount}</div>
           <div className="text-xs text-stone-700 mt-1">Crops, Storage & Machinery</div>
         </div>
 
@@ -217,8 +305,21 @@ export const AdminPortalView: React.FC = () => {
           <span className="text-xs text-stone-700 block flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-emerald-700" /> 30-Day GMV
           </span>
-          <div className="text-2xl font-bold font-mono text-emerald-800 mt-1">₹18.4 <span className="text-sm font-normal text-stone-700">Cr</span></div>
-          <div className="text-xs text-emerald-700 font-medium mt-1">Escrow payment protected</div>
+          <div className="text-2xl font-bold font-mono text-emerald-800 mt-1">
+            {realGMV > 0 ? (
+              <span>
+                ₹{realGMV >= 10000000 ? (realGMV / 10000000).toFixed(2) : realGMV >= 100000 ? (realGMV / 100000).toFixed(2) : realGMV.toLocaleString('en-IN')}
+                <span className="text-sm font-normal text-stone-700"> {realGMV >= 10000000 ? 'Cr' : realGMV >= 100000 ? 'Lakh' : ''}</span>
+              </span>
+            ) : (
+              <span>
+                ₹0 <span className="text-sm font-normal text-stone-500">Escrow</span>
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-emerald-700 font-medium mt-1">
+            {realGMV > 0 ? 'Escrow payment protected' : 'Live Ledger Active · 0 settled trades'}
+          </div>
         </div>
       </div>
 
@@ -652,70 +753,76 @@ export const AdminPortalView: React.FC = () => {
                   Review and approve active working farm internship listings posted by registered host farmers.
                 </p>
               </div>
-              <span className="text-xs text-stone-700 font-mono">{allInternships.length} Listings Total</span>
+              <span className="text-xs text-stone-700 font-mono">{realInternships.length} Listings Total</span>
             </div>
 
-            <div className="space-y-3">
-              {allInternships.map((intern) => {
-                const adminStatus = internshipStatuses[intern.id] || intern.status || 'open';
-                return (
-                  <div key={intern.id} className="p-4 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <span className="font-bold text-sm text-stone-900">{intern.farmName}</span>
-                        <div className="text-stone-700 text-xs mt-0.5">
-                          Host Farmer: <strong className="text-stone-900">{intern.farmerName}</strong> ({intern.village}, {intern.district}, {intern.state})
+            {realInternships.length === 0 ? (
+              <p className="text-xs text-stone-600 py-4 text-center italic bg-stone-50 rounded-lg">
+                No active farm internship listings posted in live database yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {realInternships.map((intern) => {
+                  const adminStatus = internshipStatuses[intern.id] || intern.status || 'open';
+                  return (
+                    <div key={intern.id} className="p-4 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-sm text-stone-900">{intern.farmName}</span>
+                          <div className="text-stone-700 text-xs mt-0.5">
+                            Host Farmer: <strong className="text-stone-900">{intern.farmerName}</strong> ({intern.village}, {intern.district}, {intern.state})
+                          </div>
+                        </div>
+                        <span className={`self-start sm:self-auto px-2.5 py-1 rounded-full font-bold text-[11px] uppercase tracking-wider ${
+                          adminStatus === 'approved' || adminStatus === 'open' ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' :
+                          adminStatus === 'rejected' ? 'bg-rose-100 text-rose-900 border border-rose-200' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                        }`}>
+                          {adminStatus === 'open' ? 'APPROVED & OPEN' : adminStatus.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-white rounded border border-stone-200">
+                        <div>
+                          <span className="text-stone-700 block">Stipend:</span>
+                          <span className="font-semibold text-emerald-800">₹{intern.stipendMonthly}/month</span>
+                        </div>
+                        <div>
+                          <span className="text-stone-700 block">Duration & Slots:</span>
+                          <span className="font-medium text-stone-900">{intern.durationWeeks} Weeks ({intern.availableSlots} slots)</span>
+                        </div>
+                        <div>
+                          <span className="text-stone-700 block">Crop Focus:</span>
+                          <span className="font-medium text-stone-900">{intern.cropFocus.join(', ')}</span>
+                        </div>
+                        <div>
+                          <span className="text-stone-700 block">Student Applications:</span>
+                          <span className="font-mono text-stone-900 font-bold">{intern.appliedCount} Applied</span>
                         </div>
                       </div>
-                      <span className={`self-start sm:self-auto px-2.5 py-1 rounded-full font-bold text-[11px] uppercase tracking-wider ${
-                        adminStatus === 'approved' || adminStatus === 'open' ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' :
-                        adminStatus === 'rejected' ? 'bg-rose-100 text-rose-900 border border-rose-200' : 'bg-amber-100 text-amber-900 border border-amber-200'
-                      }`}>
-                        {adminStatus === 'open' ? 'APPROVED & OPEN' : adminStatus.toUpperCase()}
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-white rounded border border-stone-200">
-                      <div>
-                        <span className="text-stone-700 block">Stipend:</span>
-                        <span className="font-semibold text-emerald-800">₹{intern.stipendMonthly}/month</span>
-                      </div>
-                      <div>
-                        <span className="text-stone-700 block">Duration & Slots:</span>
-                        <span className="font-medium text-stone-900">{intern.durationWeeks} Weeks ({intern.availableSlots} slots)</span>
-                      </div>
-                      <div>
-                        <span className="text-stone-700 block">Crop Focus:</span>
-                        <span className="font-medium text-stone-900">{intern.cropFocus.join(', ')}</span>
-                      </div>
-                      <div>
-                        <span className="text-stone-700 block">Student Applications:</span>
-                        <span className="font-mono text-stone-900 font-bold">{intern.appliedCount} Applied</span>
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        {adminStatus !== 'rejected' && (
+                          <button
+                            onClick={() => handleInternshipAdminAction(intern.id, 'rejected')}
+                            className="px-3 py-1 text-rose-700 hover:bg-rose-50 border border-rose-200 rounded font-semibold transition-colors"
+                          >
+                            Unpublish / Reject Listing
+                          </button>
+                        )}
+                        {adminStatus !== 'approved' && adminStatus !== 'open' && (
+                          <button
+                            onClick={() => handleInternshipAdminAction(intern.id, 'approved')}
+                            className="px-3.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white rounded font-semibold transition-colors shadow-xs"
+                          >
+                            Approve Internship
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      {adminStatus !== 'rejected' && (
-                        <button
-                          onClick={() => handleInternshipAdminAction(intern.id, 'rejected')}
-                          className="px-3 py-1 text-rose-700 hover:bg-rose-50 border border-rose-200 rounded font-semibold transition-colors"
-                        >
-                          Unpublish / Reject Listing
-                        </button>
-                      )}
-                      {adminStatus !== 'approved' && adminStatus !== 'open' && (
-                        <button
-                          onClick={() => handleInternshipAdminAction(intern.id, 'approved')}
-                          className="px-3.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white rounded font-semibold transition-colors shadow-xs"
-                        >
-                          Approve Internship
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Academic Masterclasses Overview */}
@@ -730,28 +837,34 @@ export const AdminPortalView: React.FC = () => {
                   Masterclasses led by SAU professors and agronomy experts.
                 </p>
               </div>
-              <span className="text-xs text-stone-700 font-mono">{allMasterclasses.length} Masterclasses</span>
+              <span className="text-xs text-stone-700 font-mono">{realMasterclasses.length} Masterclasses</span>
             </div>
 
-            <div className="space-y-3">
-              {allMasterclasses.map((mc) => (
-                <div key={mc.id} className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1.5">
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-stone-900 text-sm">{mc.topic}</span>
-                    <span className="px-2 py-0.5 bg-sky-100 text-sky-900 font-bold rounded text-[10px] uppercase">
-                      {mc.mode.replace('_', ' ')}
-                    </span>
+            {realMasterclasses.length === 0 ? (
+              <p className="text-xs text-stone-600 py-4 text-center italic bg-stone-50 rounded-lg">
+                No active university masterclasses scheduled in live database yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {realMasterclasses.map((mc) => (
+                  <div key={mc.id} className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1.5">
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-stone-900 text-sm">{mc.topic}</span>
+                      <span className="px-2 py-0.5 bg-sky-100 text-sky-900 font-bold rounded text-[10px] uppercase">
+                        {mc.mode.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="text-stone-700">
+                      Instructor: <strong>{mc.instructorName}</strong> ({mc.instructorTitle}, {mc.university})
+                    </div>
+                    <div className="flex items-center justify-between pt-1 font-mono text-stone-700">
+                      <span>Scheduled: {mc.scheduledDate}</span>
+                      <span className="font-bold text-emerald-800">{mc.enrolledCount} Students Enrolled</span>
+                    </div>
                   </div>
-                  <div className="text-stone-700">
-                    Instructor: <strong>{mc.instructorName}</strong> ({mc.instructorTitle}, {mc.university})
-                  </div>
-                  <div className="flex items-center justify-between pt-1 font-mono text-stone-700">
-                    <span>Scheduled: {mc.scheduledDate}</span>
-                    <span className="font-bold text-emerald-800">{mc.enrolledCount} Students Enrolled</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -771,47 +884,53 @@ export const AdminPortalView: React.FC = () => {
                   Monitor all active buy and sell listings published across the platform.
                 </p>
               </div>
-              <span className="text-xs text-stone-700 font-mono">{listings.length} Active Listings</span>
+              <span className="text-xs text-stone-700 font-mono">{realCommodityListings.length} Active Listings</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-stone-200 text-stone-700 font-semibold bg-stone-50">
-                    <th className="py-2.5 px-3">Listing ID</th>
-                    <th className="py-2.5 px-3">Commodity & Variety</th>
-                    <th className="py-2.5 px-3">Seller / User</th>
-                    <th className="py-2.5 px-3">Asking Price</th>
-                    <th className="py-2.5 px-3">Quantity</th>
-                    <th className="py-2.5 px-3">Location</th>
-                    <th className="py-2.5 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-150">
-                  {listings.map((item) => (
-                    <tr key={item.id} className="hover:bg-stone-50">
-                      <td className="py-2.5 px-3 font-mono text-stone-700 font-bold">{item.id}</td>
-                      <td className="py-2.5 px-3">
-                        <span className="font-bold text-stone-900">{item.commodity}</span>
-                        {item.variety && <span className="text-stone-700 text-[11px] block">{item.variety}</span>}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span className="font-medium text-stone-900">{item.sellerName}</span>
-                        <span className="text-stone-700 block text-[10px] capitalize">{item.sellerType}</span>
-                      </td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-emerald-800">₹{item.askingPrice}/{item.unit}</td>
-                      <td className="py-2.5 px-3 font-mono text-stone-800">{item.quantity} {item.unit}s</td>
-                      <td className="py-2.5 px-3 text-stone-700">{item.location?.district}, {item.location?.state}</td>
-                      <td className="py-2.5 px-3">
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold text-[10px] uppercase">
-                          {item.status}
-                        </span>
-                      </td>
+            {realCommodityListings.length === 0 ? (
+              <p className="text-xs text-stone-600 py-6 text-center italic bg-stone-50 rounded-lg">
+                No active commodity trade listings in the live database yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-stone-200 text-stone-700 font-semibold bg-stone-50">
+                      <th className="py-2.5 px-3">Listing ID</th>
+                      <th className="py-2.5 px-3">Commodity & Variety</th>
+                      <th className="py-2.5 px-3">Seller / User</th>
+                      <th className="py-2.5 px-3">Asking Price</th>
+                      <th className="py-2.5 px-3">Quantity</th>
+                      <th className="py-2.5 px-3">Location</th>
+                      <th className="py-2.5 px-3">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-stone-150">
+                    {realCommodityListings.map((item) => (
+                      <tr key={item.id} className="hover:bg-stone-50">
+                        <td className="py-2.5 px-3 font-mono text-stone-700 font-bold">{item.id}</td>
+                        <td className="py-2.5 px-3">
+                          <span className="font-bold text-stone-900">{item.commodity}</span>
+                          {item.variety && <span className="text-stone-700 text-[11px] block">{item.variety}</span>}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="font-medium text-stone-900">{item.sellerName}</span>
+                          <span className="text-stone-700 block text-[10px] capitalize">{item.sellerType}</span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-800">₹{item.askingPrice}/{item.unit}</td>
+                        <td className="py-2.5 px-3 font-mono text-stone-800">{item.quantity} {item.unit}s</td>
+                        <td className="py-2.5 px-3 text-stone-700">{item.location?.district || item.location?.state}, {item.location?.state}</td>
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold text-[10px] uppercase">
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Storage & Machinery Infrastructure Ledger */}
@@ -819,49 +938,61 @@ export const AdminPortalView: React.FC = () => {
             <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-3">
               <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2 pb-2 border-b border-stone-150">
                 <Building2 className="w-4 h-4 text-emerald-800" />
-                Storage & Godown Infrastructure ({allRawWarehouses.length})
+                Storage & Godown Infrastructure ({realWarehouses.length})
               </h3>
-              <div className="space-y-2">
-                {allRawWarehouses.map((wh: WarehouseFacility) => (
-                  <div key={wh.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
-                    <div className="flex justify-between font-bold text-stone-900">
-                      <span>{wh.name}</span>
-                      <span className="text-emerald-800 font-mono">₹{wh.ratePerBagPerMonth}/bag/mo</span>
+              {realWarehouses.length === 0 ? (
+                <p className="text-xs text-stone-600 py-4 text-center italic bg-stone-50 rounded-lg">
+                  No active storage facilities listed in live database yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {realWarehouses.map((wh: WarehouseFacility) => (
+                    <div key={wh.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
+                      <div className="flex justify-between font-bold text-stone-900">
+                        <span>{wh.name}</span>
+                        <span className="text-emerald-800 font-mono">₹{wh.ratePerBagPerMonth}/bag/mo</span>
+                      </div>
+                      <div className="text-stone-700 text-[11px] mt-0.5">
+                        Owner: {wh.ownerName} · Location: {wh.district}, {wh.state}
+                      </div>
+                      <div className="text-stone-700 font-mono text-[11px] mt-1">
+                        Available: {wh.availableCapacityMT} MT / Total: {wh.totalCapacityMT} MT
+                      </div>
                     </div>
-                    <div className="text-stone-700 text-[11px] mt-0.5">
-                      Owner: {wh.ownerName} · Location: {wh.district}, {wh.state}
-                    </div>
-                    <div className="text-stone-700 font-mono text-[11px] mt-1">
-                      Available: {wh.availableCapacityMT} MT / Total: {wh.totalCapacityMT} MT
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-3">
               <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2 pb-2 border-b border-stone-150">
                 <Truck className="w-4 h-4 text-emerald-800" />
-                Agri Equipment & Vehicles ({allRawEquipment.length})
+                Agri Equipment & Vehicles ({realEquipment.length})
               </h3>
-              <div className="space-y-2">
-                {allRawEquipment.map((eq: EquipmentRental) => (
-                  <div key={eq.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
-                    <div className="flex justify-between font-bold text-stone-900">
-                      <span>{eq.title}</span>
-                      <span className="text-emerald-800 font-mono">
-                        {eq.ratePerHour ? `₹${eq.ratePerHour}/hr` : eq.ratePerAcre ? `₹${eq.ratePerAcre}/acre` : 'Negotiable'}
-                      </span>
+              {realEquipment.length === 0 ? (
+                <p className="text-xs text-stone-600 py-4 text-center italic bg-stone-50 rounded-lg">
+                  No active machinery or vehicles listed in live database yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {realEquipment.map((eq: EquipmentRental) => (
+                    <div key={eq.id} className="p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs">
+                      <div className="flex justify-between font-bold text-stone-900">
+                        <span>{eq.title}</span>
+                        <span className="text-emerald-800 font-mono">
+                          {eq.ratePerHour ? `₹${eq.ratePerHour}/hr` : eq.ratePerAcre ? `₹${eq.ratePerAcre}/acre` : 'Negotiable'}
+                        </span>
+                      </div>
+                      <div className="text-stone-700 text-[11px] mt-0.5">
+                        Provider: {eq.ownerName} · Category: {eq.category}
+                      </div>
+                      <div className="text-stone-700 text-[11px] mt-1">
+                        Operator Included: {eq.operatorIncluded ? 'Yes' : 'No'} · District: {eq.district}
+                      </div>
                     </div>
-                    <div className="text-stone-700 text-[11px] mt-0.5">
-                      Provider: {eq.ownerName} · Category: {eq.category}
-                    </div>
-                    <div className="text-stone-700 text-[11px] mt-1">
-                      Operator Included: {eq.operatorIncluded ? 'Yes' : 'No'} · District: {eq.district}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
