@@ -293,14 +293,14 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
               {t.googleBtn}
             </button>
 
-            {/* Helper toggle: fix localhost redirect issue */}
+            {/* Helper toggle: fix redirect issue */}
             <div className="mt-2 text-center">
               <button
                 type="button"
                 onClick={() => setShowOAuthHelp((v) => !v)}
                 className="inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 font-medium hover:underline transition"
               >
-                <span>⚡ Got redirected to <code className="bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-mono text-[11px]">localhost:3000 refused to connect</code>?</span>
+                <span>⚡ Got redirected to <code className="bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-mono text-[11px]">refused to connect</code>?</span>
                 <span className="text-[10px]">{showOAuthHelp ? '▲ Hide' : '▼ Click to fix'}</span>
               </button>
             </div>
@@ -329,21 +329,21 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
                         : 'text-amber-800 hover:bg-amber-100'
                     }`}
                   >
-                    Supabase 1-Min Permanent Fix
+                    Supabase Subdomain Fix
                   </button>
                 </div>
 
                 {activeHelpTab === 'token' ? (
                   <form onSubmit={handleTokenPasteAuth} className="space-y-2">
                     <p className="text-[11px] text-amber-900 leading-relaxed">
-                      If you just logged in with Google and got redirected to the browser page showing <strong className="font-semibold text-stone-800">localhost refused to connect</strong>, copy that entire URL from your address bar and paste it below:
+                      If you just logged in with Google and got redirected with token parameters, copy that entire URL from your address bar and paste it below:
                     </p>
                     <div className="space-y-1.5">
                       <input
                         type="text"
                         value={pastedTokenOrUrl}
                         onChange={(e) => setPastedTokenOrUrl(e.target.value)}
-                        placeholder="Paste http://localhost:3000/#access_token=... here"
+                        placeholder="Paste https://khetiai.developerbilaspur.in/#access_token=... here"
                         className="w-full text-xs px-3 py-2 border border-amber-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono text-stone-700"
                         disabled={isLoading}
                       />
@@ -359,11 +359,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
                 ) : (
                   <div className="space-y-2 text-[11px] text-amber-900">
                     <p>
-                      Supabase redirected you to <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">localhost:3000</code> because your cloud app domain is not yet in your Supabase project&apos;s allowed Redirect URLs.
+                      Supabase redirected back because your subdomain <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">https://khetiai.developerbilaspur.in</code> needs to be in your Supabase project&apos;s allowed Redirect URLs.
                     </p>
                     <div className="bg-white p-2.5 rounded-lg border border-amber-200 space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-stone-700">Your Current App URL:</span>
+                        <span className="font-semibold text-stone-700">Subdomain App URL:</span>
                         <button
                           type="button"
                           onClick={handleCopyOrigin}
@@ -373,7 +373,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
                         </button>
                       </div>
                       <div className="font-mono text-[11px] text-stone-600 break-all select-all bg-stone-50 p-1.5 rounded border border-stone-200">
-                        {currentOrigin}
+                        {currentOrigin || 'https://khetiai.developerbilaspur.in'}
                       </div>
                     </div>
                     <ol className="list-decimal list-inside space-y-1 pl-1 text-[11px]">
@@ -388,12 +388,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
                           Supabase URL Configuration ↗
                         </a>
                       </li>
-                      <li>Change <strong>Site URL</strong> to: <code className="font-mono bg-amber-100 px-1 rounded">{currentOrigin}</code></li>
+                      <li>Set <strong>Site URL</strong> to: <code className="font-mono bg-amber-100 px-1 rounded">https://khetiai.developerbilaspur.in</code></li>
                       <li>In <strong>Redirect URLs</strong>, add:
                         <ul className="list-disc list-inside pl-3 mt-0.5 space-y-0.5 font-mono text-[10px] text-stone-700">
-                          <li>{currentOrigin}/**</li>
-                          <li>https://*.run.app/**</li>
-                          <li>http://localhost:3000/**</li>
+                          <li>https://khetiai.developerbilaspur.in/**</li>
+                          <li>https://*.vercel.app/**</li>
                         </ul>
                       </li>
                       <li>Click <strong>Save</strong>. Google Login will then redirect seamlessly!</li>
