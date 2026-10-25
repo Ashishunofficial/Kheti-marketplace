@@ -51,7 +51,9 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
     updateBookingStatus,
     sendMessage,
     markConversationAsRead,
-    deleteListing
+    deleteListing,
+    updateWarehouseListing,
+    updateEquipmentListing
   } = useServicesManager();
 
   const [activeTab, setActiveTab] = useState<TabType>('warehouse');
@@ -578,6 +580,8 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
           onOpenChatWithCustomer={handleOpenChatFromDashboard}
           isDemoMode={isDemo}
           onDeleteListing={deleteListing}
+          onUpdateWarehouse={updateWarehouseListing}
+          onUpdateEquipment={updateEquipmentListing}
         />
       )}
 

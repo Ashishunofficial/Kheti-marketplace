@@ -136,7 +136,7 @@ export const LegalPagesView: React.FC<LegalPagesViewProps> = ({ pageType, onNavi
               <p>
                 In accordance with the Information Technology Act 2000 and applicable rules, the details of the Grievance Officer and Nodal Officer are provided below for addressing any complaints or queries regarding platform operations, data privacy, or trade disputes.
               </p>
-              <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2">
+              <div className="border-t border-b border-stone-200 py-3 space-y-1 text-xs">
                 <div className="font-bold text-stone-900">Grievance &amp; Nodal Officer</div>
                 <div className="text-stone-700">Dr. R. K. Sharma (Director, Digital Agriculture Operations)</div>
                 <div className="text-stone-700">Email: grievance@kheti-ai.gov.in</div>

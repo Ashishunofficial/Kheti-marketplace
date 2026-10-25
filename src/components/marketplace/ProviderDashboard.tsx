@@ -16,7 +16,8 @@ import {
   AlertCircle,
   ChevronRight,
   Boxes,
-  Trash2
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { WarehouseFacility, EquipmentRental, ServiceBooking } from '../../types';
 
@@ -31,6 +32,8 @@ interface ProviderDashboardProps {
   onOpenChatWithCustomer: (booking: ServiceBooking) => void;
   isDemoMode?: boolean;
   onDeleteListing?: (id: string, type: 'warehouse' | 'equipment') => void;
+  onUpdateWarehouse?: (id: string, data: Partial<WarehouseFacility>) => void;
+  onUpdateEquipment?: (id: string, data: Partial<EquipmentRental>) => void;
 }
 
 export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
@@ -43,7 +46,9 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   onUpdateBookingStatus,
   onOpenChatWithCustomer,
   isDemoMode = false,
-  onDeleteListing
+  onDeleteListing,
+  onUpdateWarehouse,
+  onUpdateEquipment
 }) => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed'>('all');
 
@@ -223,17 +228,38 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
                   <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-xs">
                     <span className="text-[11px] font-mono text-stone-500">{wh.contactPhone}</span>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Delete warehouse "${wh.name}"?`)) {
-                          onDeleteListing?.(wh.id, 'warehouse');
-                        }
-                      }}
-                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded flex items-center gap-1"
-                      title="Delete Listing"
-                    >
-                      <Trash2 className="w-3 h-3 text-rose-600" /> Delete
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          const newName = prompt('Update Warehouse Name:', wh.name);
+                          if (newName === null) return;
+                          const newRate = prompt('Update Rate per Bag (₹):', String(wh.ratePerBagPerMonth));
+                          if (newRate === null) return;
+                          const newCap = prompt('Update Available Capacity (MT):', String(wh.availableCapacityMT));
+                          if (newCap === null) return;
+                          onUpdateWarehouse?.(wh.id, {
+                            name: newName.trim() || wh.name,
+                            ratePerBagPerMonth: Number(newRate) || wh.ratePerBagPerMonth,
+                            availableCapacityMT: Number(newCap) || wh.availableCapacityMT,
+                          });
+                        }}
+                        className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold rounded flex items-center gap-1"
+                        title="Edit Listing"
+                      >
+                        <Edit2 className="w-3 h-3 text-stone-600" /> Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete warehouse "${wh.name}"?`)) {
+                            onDeleteListing?.(wh.id, 'warehouse');
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded flex items-center gap-1"
+                        title="Delete Listing"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-600" /> Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -283,17 +309,38 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
                   <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-xs">
                     <span className="text-[11px] font-mono text-stone-500">{eq.contactPhone || 'Available'}</span>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Delete equipment "${eq.title}"?`)) {
-                          onDeleteListing?.(eq.id, 'equipment');
-                        }
-                      }}
-                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded flex items-center gap-1"
-                      title="Delete Listing"
-                    >
-                      <Trash2 className="w-3 h-3 text-rose-600" /> Delete
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          const newTitle = prompt('Update Equipment/Vehicle Title:', eq.title);
+                          if (newTitle === null) return;
+                          const newRateAcre = prompt('Update Rate per Acre (₹):', String(eq.ratePerAcre || ''));
+                          if (newRateAcre === null) return;
+                          const newRateHour = prompt('Update Hourly Rate (₹):', String(eq.ratePerHour || ''));
+                          if (newRateHour === null) return;
+                          onUpdateEquipment?.(eq.id, {
+                            title: newTitle.trim() || eq.title,
+                            ratePerAcre: newRateAcre ? Number(newRateAcre) : eq.ratePerAcre,
+                            ratePerHour: newRateHour ? Number(newRateHour) : eq.ratePerHour,
+                          });
+                        }}
+                        className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold rounded flex items-center gap-1"
+                        title="Edit Listing"
+                      >
+                        <Edit2 className="w-3 h-3 text-stone-600" /> Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete equipment "${eq.title}"?`)) {
+                            onDeleteListing?.(eq.id, 'equipment');
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded flex items-center gap-1"
+                        title="Delete Listing"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-600" /> Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
