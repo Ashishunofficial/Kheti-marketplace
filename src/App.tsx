@@ -18,7 +18,7 @@ import LoginModal from './components/auth/LoginModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { UserRole } from './types';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, ShieldCheck } from 'lucide-react';
 
 // Smooth page transition wrapper
 const PageTransition: React.FC<{ tabKey: string; children: React.ReactNode }> = ({ tabKey, children }) => (
@@ -362,46 +362,153 @@ function AppContent() {
 
       {/* Footer (Hidden on AI Advisor page per user request) */}
       {activeTab !== 'ai-advisor' && (
-        <footer className="bg-white border-t border-stone-200 mt-10 py-6 text-xs text-stone-600">
-          <div className="max-w-7xl mx-auto px-4 text-center space-y-3">
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-semibold text-stone-700">
-              <button onClick={() => handleNavigateTab('home')} className="hover:text-emerald-800 hover:underline">
+        <footer className="bg-white border-t border-stone-200 mt-10 py-7 text-xs text-stone-600">
+          <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
+            {/* Primary Modules Row */}
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 font-semibold text-stone-700">
+              <a
+                href="/"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('home'); }}
+                className="hover:text-emerald-800 hover:underline"
+              >
                 {lang === 'hi' ? 'मुख्य पृष्ठ' : 'Home'}
-              </button>
-              <span>/</span>
-              <button onClick={() => handleNavigateTab('ai-advisor')} className="hover:text-emerald-800 hover:underline">
+              </a>
+              <span className="text-stone-300">/</span>
+              <a
+                href="/ai-advisor"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('ai-advisor'); }}
+                className="hover:text-emerald-800 hover:underline"
+              >
                 {lang === 'hi' ? 'खेती एआई सलाहकार' : 'AI Advisor'}
-              </button>
-              <span>/</span>
-              <button onClick={() => handleNavigateTab('mandi')} className="hover:text-emerald-800 hover:underline">
+              </a>
+              <span className="text-stone-300">/</span>
+              <a
+                href="/mandi-bhav"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('mandi'); }}
+                className="hover:text-emerald-800 hover:underline"
+              >
                 {lang === 'hi' ? 'मंडी नेटवर्क' : 'Mandi Rates'}
-              </button>
-              <span>/</span>
-              <button onClick={() => handleNavigateTab('university')} className="hover:text-emerald-800 hover:underline">
-                {lang === 'hi' ? 'विश्वविद्यालय वैज्ञानिक संवाद' : 'University Connect'}
-              </button>
-              <span>/</span>
-              <button onClick={() => handleNavigateTab('schemes')} className="hover:text-emerald-800 hover:underline">
+              </a>
+              <span className="text-stone-300">/</span>
+              <a
+                href="/marketplace"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('marketplace'); }}
+                className="hover:text-emerald-800 hover:underline font-bold text-emerald-900"
+              >
+                {lang === 'hi' ? 'खेती एआई मार्केटप्लेस' : "Kheti AI's Marketplace"}
+              </a>
+              <span className="text-stone-300">/</span>
+              <a
+                href="/weather-advisory"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('weather'); }}
+                className="hover:text-emerald-800 hover:underline"
+              >
+                {lang === 'hi' ? 'मौसम पूर्वानुमान' : 'Weather Advisory'}
+              </a>
+              <span className="text-stone-300">/</span>
+              <a
+                href="/storage-machinery"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('services'); }}
+                className="hover:text-emerald-800 hover:underline"
+              >
+                {lang === 'hi' ? 'भंडारण व मशीनरी' : 'Storage & Machinery'}
+              </a>
+              <span className="text-stone-300">/</span>
+              <a
+                href="/university-connect"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('university'); }}
+                className="hover:text-emerald-800 hover:underline"
+              >
+                {lang === 'hi' ? 'वैज्ञानिक संवाद' : 'University Connect'}
+              </a>
+              <span className="text-stone-300">/</span>
+              <a
+                href="/farmer-schemes"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('schemes'); }}
+                className="hover:text-emerald-800 hover:underline"
+              >
                 {lang === 'hi' ? 'किसान योजनाएं' : 'Farmer Schemes'}
-              </button>
+              </a>
               {isAdmin && (
                 <>
-                  <span>/</span>
-                  <button
-                    onClick={() => {
+                  <span className="text-stone-300">/</span>
+                  <a
+                    href="/admin"
+                    onClick={(e) => {
+                      e.preventDefault();
                       setActiveRole('admin');
                       handleNavigateTab('admin');
                     }}
                     className="hover:text-emerald-800 hover:underline"
                   >
                     {lang === 'hi' ? 'प्रशासनिक पोर्टल' : 'Admin Portal'}
-                  </button>
+                  </a>
                 </>
               )}
-              <span>/</span>
-              <a href="https://pmkisan.gov.in" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-800 hover:underline flex items-center gap-1">
+              <span className="text-stone-300">/</span>
+              <a
+                href="https://pmkisan.gov.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-emerald-800 hover:underline inline-flex items-center gap-1 text-stone-500"
+              >
                 <span>PM-KISAN Portal (Official)</span>
                 <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            {/* Dedicated Legal, Compliance & Policy Links Row (Desktop & Mobile) */}
+            <div className="bg-stone-50 border border-stone-200/90 rounded-xl py-2.5 px-4 flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-2 text-[12px] font-semibold text-stone-700 shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold uppercase tracking-wider text-[10px]">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{lang === 'hi' ? 'वैधानिक नीतियां' : 'Legal & Policies'}:</span>
+              </span>
+              <a
+                href="/about-us"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('legal-about'); }}
+                className="hover:text-emerald-800 hover:underline transition-colors cursor-pointer"
+              >
+                {lang === 'hi' ? 'हमारे बारे में' : 'About Us'}
+              </a>
+              <span className="text-stone-300">|</span>
+              <a
+                href="/privacy-policy"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('legal-privacy'); }}
+                className="hover:text-emerald-800 hover:underline transition-colors cursor-pointer"
+              >
+                {lang === 'hi' ? 'गोपनीयता नीति' : 'Privacy Policy'}
+              </a>
+              <span className="text-stone-300">|</span>
+              <a
+                href="/terms-of-service"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('legal-terms'); }}
+                className="hover:text-emerald-800 hover:underline transition-colors cursor-pointer"
+              >
+                {lang === 'hi' ? 'सेवा की शर्तें' : 'Terms of Service'}
+              </a>
+              <span className="text-stone-300">|</span>
+              <a
+                href="/copyright-policy"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('legal-copyright'); }}
+                className="hover:text-emerald-800 hover:underline transition-colors cursor-pointer"
+              >
+                {lang === 'hi' ? 'कॉपीराइट नीति' : 'Copyright Policy'}
+              </a>
+              <span className="text-stone-300">|</span>
+              <a
+                href="/disclaimer"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('legal-disclaimer'); }}
+                className="hover:text-emerald-800 hover:underline transition-colors cursor-pointer"
+              >
+                {lang === 'hi' ? 'अस्वीकरण' : 'Disclaimer'}
+              </a>
+              <span className="text-stone-300">|</span>
+              <a
+                href="/grievance-redressal"
+                onClick={(e) => { e.preventDefault(); handleNavigateTab('legal-grievance'); }}
+                className="hover:text-emerald-800 hover:underline transition-colors text-emerald-800 font-bold cursor-pointer"
+              >
+                {lang === 'hi' ? 'शिकायत निवारण अधिकारी' : 'Grievance Redressal'}
               </a>
             </div>
 
@@ -416,7 +523,7 @@ function AppContent() {
             <div className="text-[11px] text-stone-500 border-t border-stone-200/70 pt-2.5">
               Copyright {new Date().getFullYear()}. All Rights Reserved. National Agriculture Intelligence &amp; Farmers Platform (Kheti AI).
               <div className="text-[10px] text-stone-400 mt-0.5">
-                Public Agri Data Sources: Agmarknet APMC Mandis &amp; India Meteorological Department (IMD).
+                Public Agri Data Sources: Agmarknet APMC Mandis &amp; India Meteorological Department (IMD). SSL Secured · 256-Bit Encrypted.
               </div>
             </div>
           </div>

@@ -1,45 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Core Home Portal -->
   <url>
     <loc>https://khetiai.developerbilaspur.in/</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <!-- Marketplace & Trade Lots -->
   <url>
-    <loc>https://khetiai.developerbilaspur.in/#marketplace</loc>
+    <loc>https://khetiai.developerbilaspur.in/marketplace</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
+
+  <!-- AI Crop Doctor & Advisor -->
   <url>
-    <loc>https://khetiai.developerbilaspur.in/#advisory</loc>
+    <loc>https://khetiai.developerbilaspur.in/ai-advisor</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
+
+  <!-- Live APMC Mandi Rates -->
   <url>
-    <loc>https://khetiai.developerbilaspur.in/#mandi</loc>
+    <loc>https://khetiai.developerbilaspur.in/mandi-bhav</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
+
+  <!-- Storage, Godowns & Machinery -->
   <url>
-    <loc>https://khetiai.developerbilaspur.in/#services</loc>
+    <loc>https://khetiai.developerbilaspur.in/storage-machinery</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Weather & Spray Forecast -->
+  <url>
+    <loc>https://khetiai.developerbilaspur.in/weather-advisory</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.8</priority>
   </url>
+
+  <!-- Central & State Farmer Schemes -->
   <url>
-    <loc>https://khetiai.developerbilaspur.in/#schemes</loc>
+    <loc>https://khetiai.developerbilaspur.in/farmer-schemes</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+
+  <!-- University Scientists & Research Connect -->
   <url>
-    <loc>https://khetiai.developerbilaspur.in/#weather</loc>
+    <loc>https://khetiai.developerbilaspur.in/university-connect</loc>
     <lastmod>2026-10-25</lastmod>
-    <changefreq>hourly</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+
+  <!-- Legal & Trust Anchor Pages (Crucial for Google E-E-A-T and Indexation) -->
+  <url>
+    <loc>https://khetiai.developerbilaspur.in/about-us</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://khetiai.developerbilaspur.in/privacy-policy</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://khetiai.developerbilaspur.in/terms-of-service</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://khetiai.developerbilaspur.in/copyright-policy</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://khetiai.developerbilaspur.in/disclaimer</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://khetiai.developerbilaspur.in/grievance-redressal</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>

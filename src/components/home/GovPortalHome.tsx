@@ -1166,7 +1166,7 @@ export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lan
               <button
                 onClick={() => {
                   setShowMoreMenuModal(false);
-                  onNavigateTab('home');
+                  onNavigateTab('legal-about');
                 }}
                 className="w-full p-2 rounded-lg text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between"
               >
