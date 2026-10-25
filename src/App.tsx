@@ -16,6 +16,7 @@ import { AdminPortalView } from './components/admin/AdminPortalView';
 import { LegalPagesView } from './components/legal/LegalPagesView';
 import LoginModal from './components/auth/LoginModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { UserRole } from './types';
 import { ExternalLink, ShieldCheck } from 'lucide-react';
@@ -349,13 +350,17 @@ function AppContent() {
           >
             <div className="p-3">
               <PageTransition tabKey={activeTab}>
-                {renderCurrentView()}
+                <ErrorBoundary>
+                  {renderCurrentView()}
+                </ErrorBoundary>
               </PageTransition>
             </div>
           </MobileFrame>
         ) : (
           <PageTransition tabKey={activeTab}>
-            {renderCurrentView()}
+            <ErrorBoundary>
+              {renderCurrentView()}
+            </ErrorBoundary>
           </PageTransition>
         )}
       </main>

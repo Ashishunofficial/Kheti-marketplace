@@ -25,10 +25,13 @@ import { ChatMessage } from '../../types';
 import { processUserMessage, fetchGeminiTTSAudio } from '../../services/aiAdvisorService';
 import { ServiceCards } from './ServiceCards';
 import { LiveVoiceAgentHUD, AgentState } from './LiveVoiceAgentHUD';
+import { AIDoctorProgressStepper } from './AIDoctorProgressStepper';
+import { FormattedMessageContent } from './FormattedMessageContent';
 
 interface ExtendedChatMessage extends ChatMessage {
   audioDataUri?: string;
   isAudioLoading?: boolean;
+  userImage?: string;
 }
 
 interface AIAdvisorProps {
@@ -41,9 +44,9 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
     {
       id: 'msg_welcome',
       sender: 'assistant',
-      content: `नमस्ते जी! राम-राम! 🙏 मैं आपकी डिजिटल कृषि सहायक **Kheti AI** (Powered by Gemini 1.5 Flash) हूँ।\n\nआप मुझसे बिना किसी झिझक के सीधे बोलकर या लिखकर पूछ सकते हैं:\n• आज का ताजा मंडी भाव (गेहूँ, धान, सरसों, कपास, आलू)\n• अपने जिले का मौसम पूर्वानुमान व कृषि सलाह\n• फसल रोग की पहचान व जैविक/रासायनिक उपचार\n• सरकारी योजनाएँ (PM-KISAN 19वीं किश्त, फसल बीमा)\n• अपने खेत, मिट्टी और फसल की व्यक्तिगत सलाह`,
+      content: `नमस्ते जी! राम-राम! 🙏 मैं आपकी **AI Doctor & Crop Clinic (एआई डॉक्टर)** हूँ (Powered by Pl@ntNet & Gemini 3.8 Flash)।\n\n🩺 **Pl@ntNet + Gemini AI** द्वारा संचालित फसल रोग क्लीनिक:\n• अपनी किसी भी फसल/पत्ती की फोटो स्कैन या अपलोड करें — **Pl@ntNet** तुरंत सटीक प्रजाति (Botanical Species) पहचानेगा\n• **Gemini 3.8 Flash** रोग/कीट की पहचान कर वैज्ञानिक डॉक्टर का पर्चा (Prescription), रासायनिक खुराक व जैविक उपचार देगा\n• आज का मंडी भाव, मौसम व सरकारी योजनाओं के बारे में बोलकर या लिखकर सलाह लें`,
       timestamp: 'Just now',
-      toolCallsExecuted: ['Gemini 1.5 Flash']
+      toolCallsExecuted: ['Pl@ntNet API', 'Gemini 3.8 Flash']
     }
   ]);
 
@@ -62,6 +65,9 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
   const [voiceLang, setVoiceLang] = useState<'hi-IN' | 'en-IN'>('hi-IN');
   const [leafImagePreview, setLeafImagePreview] = useState<string | null>(null);
   const [conversationId] = useState(`conv_${Date.now().toString(36)}`);
+
+  const [processingStep, setProcessingStep] = useState<number>(0);
+  const [isProcessingImage, setIsProcessingImage] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -202,16 +208,29 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
     if (!trimmed && !imagePayload) return;
 
     stopAllAudio();
+    const hasImage = !!imagePayload;
+    setIsProcessingImage(hasImage);
+    setProcessingStep(0);
     setAgentState('processing');
     setInterimTranscript('');
-    setActiveToolName('Gemini 1.5 Flash Advisor');
+    setActiveToolName(hasImage ? 'AI Doctor (Pl@ntNet + Gemini)' : 'AI Doctor Assistant');
+
+    // Live progress stepper interval (advances every 1.1s)
+    let stepCount = 0;
+    const maxSteps = hasImage ? 5 : 4;
+    const stepInterval = setInterval(() => {
+      stepCount++;
+      if (stepCount < maxSteps) {
+        setProcessingStep(stepCount);
+      }
+    }, 1100);
 
     const userMsg: ExtendedChatMessage = {
       id: `usr_${Date.now()}`,
       sender: 'user',
-      content: trimmed || 'Examine this crop leaf image for disease or deficiency',
+      content: trimmed || 'Doctor, please examine this crop leaf photo for disease or deficiency',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      actionCard: imagePayload ? { type: 'crop_diagnosis', data: { image: imagePayload } } : undefined
+      userImage: imagePayload || undefined
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -220,7 +239,10 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
 
     try {
       const response = await processUserMessage(trimmed, conversationId, imagePayload || undefined);
-      setActiveToolName(response.detectedToolName || 'Gemini 1.5 Flash');
+      clearInterval(stepInterval);
+      setProcessingStep(maxSteps - 1); // Set to final completed step
+
+      setActiveToolName(response.detectedToolName || 'AI Doctor (Pl@ntNet + Gemini)');
 
       const asstMsgId = `asst_${Date.now()}`;
       const speechToPlay = response.audioPlaybackText || response.message.substring(0, 180);
@@ -231,7 +253,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
         content: response.message,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         actionCard: response.actionCard,
-        toolCallsExecuted: ['Gemini 1.5 Flash']
+        toolCallsExecuted: ['Pl@ntNet API', 'Gemini 3.8 Flash']
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -249,6 +271,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
       });
 
     } catch (err) {
+      clearInterval(stepInterval);
       setMessages((prev) => [
         ...prev,
         {
@@ -450,24 +473,24 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
                         <div className="flex items-center justify-between pb-2 border-b border-stone-200/80">
                           <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
                             <Cpu className="w-3.5 h-3.5 text-amber-700" />
-                            <span>Gemini 1.5 Flash</span>
+                            <span>AI Doctor (Kheti AI Vision & Intelligence)</span>
                           </div>
 
                           <span className="bg-emerald-50 border border-emerald-300 text-emerald-900 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3 text-emerald-700" /> Verified
+                            <CheckCircle className="w-3 h-3 text-emerald-700" /> Verified Doctor
                           </span>
                         </div>
                       )}
 
                       {/* Text Content */}
-                      <div className="whitespace-pre-wrap font-medium leading-relaxed">
-                        {msg.content}
+                      <div className="font-medium leading-relaxed">
+                        <FormattedMessageContent content={msg.content} isAssistant={isAssistant} />
                       </div>
 
                       {/* Leaf Image Upload Preview */}
-                      {msg.actionCard?.data?.image && (
+                      {(msg.userImage || msg.actionCard?.data?.image) && (
                         <div className="mt-2 rounded-xl overflow-hidden border border-stone-200 max-w-sm">
-                          <img src={msg.actionCard.data.image} alt="Crop Leaf" className="w-full h-44 object-cover" />
+                          <img src={msg.userImage || msg.actionCard?.data?.image} alt="Crop Leaf" className="w-full h-44 object-cover" />
                         </div>
                       )}
 
@@ -518,12 +541,12 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
                 );
               })}
 
-              {/* Processing Loader */}
+              {/* Interactive Step-by-Step Clinical Analysis Stepper */}
               {agentState === 'processing' && (
-                <div className="p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-center gap-2.5 text-xs text-amber-950 font-bold shadow-2xs max-w-md">
-                  <RefreshCw className="w-4 h-4 text-amber-700 animate-spin" />
-                  <span>Kheti AI (Gemini 1.5 Flash) उत्तर तैयार कर रहा है...</span>
-                </div>
+                <AIDoctorProgressStepper
+                  currentStep={processingStep}
+                  isImage={isProcessingImage}
+                />
               )}
 
               <div ref={messagesEndRef} />
@@ -531,6 +554,37 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
 
             {/* Desktop Composer Bar */}
             <div className="p-3 bg-stone-50 border-t border-stone-200">
+              {/* Selected Image Preview Badge */}
+              {leafImagePreview && (
+                <div className="mb-2.5 p-2 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <div className="relative w-12 h-12 rounded-lg overflow-hidden border-2 border-emerald-500 shrink-0">
+                      <img src={leafImagePreview} alt="Selected Crop Specimen" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1 text-xs font-extrabold text-emerald-950">
+                        <Camera className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span>📸 फसल पत्ती फोटो चुनी गई है (Photo Uploaded)</span>
+                      </div>
+                      <p className="text-[11px] text-stone-600 truncate font-medium">
+                        AI Doctor रोग जांच हेतु तैयार है। 'भेजें' बटन दबाएं।
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLeafImagePreview(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="p-1.5 hover:bg-emerald-200/60 rounded-lg text-emerald-950 transition-colors shrink-0"
+                    title="Remove image"
+                  >
+                    <X className="w-4 h-4 text-stone-700" />
+                  </button>
+                </div>
+              )}
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -737,7 +791,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
 
             <div className="bg-amber-50 border border-amber-300 text-amber-950 px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
               <Cpu className="w-3 h-3 text-amber-700" />
-              <span>Gemini 1.5 Flash</span>
+              <span>Kheti AI Intelligence</span>
             </div>
           </div>
 
@@ -763,22 +817,22 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
                       <div className="flex items-center justify-between pb-2 border-b border-stone-150">
                         <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
                           <Cpu className="w-3.5 h-3.5 text-amber-700" />
-                          <span>Gemini 1.5 Flash</span>
+                          <span>AI Doctor (Kheti AI Vision & Intelligence)</span>
                         </div>
 
                         <span className="bg-emerald-50 border border-emerald-300 text-emerald-900 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3 text-emerald-700" /> Verified
+                          <CheckCircle className="w-3 h-3 text-emerald-700" /> Verified Doctor
                         </span>
                       </div>
                     )}
 
-                    <div className="whitespace-pre-wrap font-medium leading-relaxed">
-                      {msg.content}
+                    <div className="font-medium leading-relaxed">
+                      <FormattedMessageContent content={msg.content} isAssistant={isAssistant} />
                     </div>
 
-                    {msg.actionCard?.data?.image && (
+                    {(msg.userImage || msg.actionCard?.data?.image) && (
                       <div className="mt-2 rounded-xl overflow-hidden border border-stone-200 max-w-xs">
-                        <img src={msg.actionCard.data.image} alt="Crop Leaf" className="w-full h-36 object-cover" />
+                        <img src={msg.userImage || msg.actionCard?.data?.image} alt="Crop Leaf" className="w-full h-36 object-cover" />
                       </div>
                     )}
 
@@ -829,10 +883,10 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
             })}
 
             {agentState === 'processing' && (
-              <div className="p-3 bg-white border border-amber-300 rounded-2xl flex items-center gap-2.5 text-xs text-amber-950 font-bold shadow-2xs">
-                <RefreshCw className="w-4 h-4 text-amber-700 animate-spin" />
-                <span>Kheti AI (Gemini 1.5 Flash) उत्तर तैयार कर रहा है...</span>
-              </div>
+              <AIDoctorProgressStepper
+                currentStep={processingStep}
+                isImage={isProcessingImage}
+              />
             )}
 
             <div ref={messagesEndRef} />
@@ -854,6 +908,37 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
 
         {/* ─── STICKY BOTTOM INPUT COMPOSER BAR ─── */}
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200 p-2.5 z-20">
+          {/* Mobile Image Selected Preview Badge */}
+          {leafImagePreview && (
+            <div className="mb-2 p-2 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <div className="relative w-10 h-10 rounded-lg overflow-hidden border-2 border-emerald-500 shrink-0">
+                  <img src={leafImagePreview} alt="Selected Specimen" className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1 text-[11px] font-extrabold text-emerald-950">
+                    <Camera className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span>📸 फोटो अपलोड हो गई है</span>
+                  </div>
+                  <p className="text-[10px] text-stone-600 truncate font-medium">
+                    'भेजें' बटन दबाएं — AI Doctor जांच करेगा
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLeafImagePreview(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+                className="p-1 hover:bg-emerald-200/60 rounded-lg text-stone-700 transition-colors shrink-0"
+                title="Remove image"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <form
             onSubmit={(e) => {
               e.preventDefault();

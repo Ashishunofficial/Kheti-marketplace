@@ -76,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const navItems = [
     { id: 'home', labelEn: 'Home', labelHi: 'मुख्य पृष्ठ', labelHinglish: 'Home', isHome: true },
-    { id: 'ai-advisor', labelEn: 'AI Advisor', labelHi: 'एआई सलाहकार', labelHinglish: 'AI Advisor' },
+    { id: 'ai-advisor', labelEn: 'AI Doctor', labelHi: 'एआई डॉक्टर', labelHinglish: 'AI Doctor' },
     { id: 'mandi', labelEn: 'Mandi Rates', labelHi: 'दैनिक मंडी भाव', labelHinglish: 'Mandi Bhav' },
     { id: 'weather', labelEn: 'Weather & Spray', labelHi: 'मौसम व स्प्रे', labelHinglish: 'Mausam & Spray' },
     { id: 'marketplace', labelEn: 'Marketplace', labelHi: 'उपज खरीद-बिक्री', labelHinglish: 'Buy & Sell' },
@@ -99,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Drawer Menu Items with Multi-language labels
   const drawerNavItems = [
     { id: 'home', labelHi: 'मुख्य पृष्ठ', labelEn: 'Home', labelHinglish: 'Home', icon: '🟢', color: 'text-emerald-700' },
-    { id: 'ai-advisor', labelHi: 'एआई सलाहकार', labelEn: 'AI Advisor', labelHinglish: 'AI Advisor', icon: '🤖', color: 'text-sky-700' },
+    { id: 'ai-advisor', labelHi: 'एआई डॉक्टर', labelEn: 'AI Doctor', labelHinglish: 'AI Doctor', icon: '🩺', color: 'text-sky-700' },
     { id: 'mandi', labelHi: 'मंडी भाव', labelEn: 'Mandi Rates', labelHinglish: 'Mandi Bhav', icon: '📊', color: 'text-amber-700' },
     { id: 'schemes', labelHi: 'योजनाएँ', labelEn: 'Farmer Schemes', labelHinglish: 'Kisan Yojana', icon: '📜', color: 'text-orange-700' },
     { id: 'university', labelHi: 'वैज्ञानिक संवाद', labelEn: 'Scientist Connect', labelHinglish: 'Scientist Connect', icon: '🧪', color: 'text-purple-700' },

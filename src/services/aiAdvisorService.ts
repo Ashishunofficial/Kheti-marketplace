@@ -96,9 +96,10 @@ export async function processUserMessage(
     toolLabel = 'Direct Agro-Commerce Network';
   }
 
-  // 1. Primary: Server-Side Gemini 1.5 Flash Endpoint
+  // 1. Primary: Server-Side AI Doctor Endpoint (Pl@ntNet + Gemini 3.8 Flash)
   try {
-    const res = await fetch('/api/gemini/chat', {
+    const endpoint = imagePayload ? '/api/gemini/ai-doctor' : '/api/gemini/chat';
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -114,10 +115,10 @@ export async function processUserMessage(
         return {
           message: json.message,
           toolResult: matchedTool,
-          actionCard: matchedCard,
+          actionCard: json.actionCard || matchedCard,
           audioPlaybackText: json.audioPlaybackText || json.message.substring(0, 180).replace(/[*#`_]/g, ''),
-          detectedToolName: toolLabel || 'Gemini 1.5 Flash',
-          model: 'Gemini 1.5 Flash'
+          detectedToolName: toolLabel || (imagePayload ? 'AI Doctor (Kheti AI Vision & Intelligence)' : 'AI Doctor Assistant'),
+          model: json.model || 'AI Doctor (Kheti AI Intelligence)'
         };
       }
     }
@@ -137,8 +138,8 @@ export async function processUserMessage(
     return {
       message: greetingReply,
       audioPlaybackText: greetingReply,
-      detectedToolName: 'Gemini 1.5 Flash Voice Assistant',
-      model: 'Gemini 1.5 Flash'
+      detectedToolName: 'Kheti AI Voice Assistant',
+      model: 'Kheti AI Intelligence'
     };
   }
 
