@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "Kheti AI Bharat — National Agriculture Platform",
+  "short_name": "Kheti AI",
+  "description": "National Agriculture Intelligence & Farmers Platform connecting AI advisor, Mandi rates, weather intelligence, buyer-seller marketplace, and verified farmer schemes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#15803d",
+  "theme_color": "#15803d",
+  "icons": [
+    {
+      "src": "/assets/aistudio/image_3bc57367.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/image_3bc57367.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

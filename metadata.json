@@ -1,0 +1,9 @@
+{
+  "name": "Kheti AI — National Agriculture Intelligence & Farmers Platform",
+  "description": "An intelligent agricultural platform for India connecting AI advisor, mandi rates, weather intelligence, buyer-seller marketplace, and farmer schemes.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
