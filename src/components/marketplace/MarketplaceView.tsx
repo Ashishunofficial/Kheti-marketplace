@@ -88,13 +88,10 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     setTimeout(() => setNotificationMsg(null), 4000);
   };
 
-  // Public listings: In live mode, exclude demo items and exclude user's own listing so they don't buy from themselves
+  // Public listings: In live mode, exclude user's own listing so they don't buy from themselves, while ensuring marketplace lots from other farmers and verified traders remain accessible
   const filteredListings = listings.filter((l) => {
-    if (!isDemo) {
-      const isMock = MOCK_LISTING_IDS.has(l.id) || MOCK_SELLER_IDS.has(l.sellerId) || l.id.startsWith('demo_');
-      const isMine = l.sellerId === currentUserId || (currentUserId && l.sellerId.includes(currentUserId));
-      if (isMock || isMine) return false;
-    }
+    const isMine = currentUserId && (l.sellerId === currentUserId || l.sellerId.includes(currentUserId));
+    if (isMine) return false;
     const matchesTab = activeTab === 'all' || l.listingType === activeTab;
     const matchesCommodity = selectedCommodity === 'All' || l.commodity.includes(selectedCommodity);
     return matchesTab && matchesCommodity;

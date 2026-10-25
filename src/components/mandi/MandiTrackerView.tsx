@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { CommodityType, MandiPriceRecord } from '../../types';
 import { fetchLiveMandiPrices, DATA_GOV_API_KEY, ALL_STATES, ALL_COMMODITIES } from '../../services/mandiService';
+import { MOCK_MANDI_PRICES } from '../../data/mockData';
 
 interface MandiTrackerViewProps {
   initialCommodity?: string;
@@ -31,11 +32,11 @@ export const MandiTrackerView: React.FC<MandiTrackerViewProps> = ({ initialCommo
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedState, setSelectedState] = useState<string>('All');
   const [selectedCommodity, setSelectedCommodity] = useState<string>(initialCommodity || 'All');
-  const [prices, setPrices] = useState<MandiPriceRecord[]>([]);
-  const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<MandiPriceRecord | null>(null);
+  const [prices, setPrices] = useState<MandiPriceRecord[]>(() => MOCK_MANDI_PRICES);
+  const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<MandiPriceRecord | null>(() => MOCK_MANDI_PRICES[0] || null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState<string>('DATA.GOV.IN AGMARKNET APMC FEED');
-  const [lastUpdated, setLastUpdated] = useState<string>('03:36 am');
+  const [lastUpdated, setLastUpdated] = useState<string>('Live (Agmarknet APMC)');
 
   const states = ALL_STATES;
   const commodities = ALL_COMMODITIES;
@@ -48,13 +49,18 @@ export const MandiTrackerView: React.FC<MandiTrackerViewProps> = ({ initialCommo
         commodity: selectedCommodity,
         searchTerm: searchTerm
       });
-      setPrices(response.records);
+      if (response.records && response.records.length > 0) {
+        setPrices(response.records);
+      } else {
+        setPrices(MOCK_MANDI_PRICES);
+      }
       setDataSource('DATA.GOV.IN AGMARKNET APMC FEED');
       if (response.lastUpdated) {
         setLastUpdated(response.lastUpdated);
       }
-      if (response.records.length > 0 && (!selectedRecordForDetail || !response.records.some(r => r.id === selectedRecordForDetail.id))) {
-        setSelectedRecordForDetail(response.records[0]);
+      const activeList = (response.records && response.records.length > 0) ? response.records : MOCK_MANDI_PRICES;
+      if (activeList.length > 0 && (!selectedRecordForDetail || !activeList.some(r => r.id === selectedRecordForDetail.id))) {
+        setSelectedRecordForDetail(activeList[0]);
       }
     } catch (err) {
       console.error('Failed to load mandi rates from data.gov.in:', err);

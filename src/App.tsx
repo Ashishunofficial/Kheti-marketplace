@@ -35,9 +35,119 @@ const PageTransition: React.FC<{ tabKey: string; children: React.ReactNode }> = 
   </AnimatePresence>
 );
 
+// ─── Canonical Permalink & Route Maps ─────────────────────────────────────────
+export const TAB_ROUTE_MAP: Record<string, string> = {
+  home: '/',
+  'ai-advisor': '/ai-advisor',
+  mandi: '/mandi-bhav',
+  weather: '/weather-advisory',
+  marketplace: '/marketplace',
+  services: '/storage-machinery',
+  university: '/university-connect',
+  schemes: '/farmer-schemes',
+  farm: '/my-farm',
+  business: '/business-portal',
+  admin: '/admin',
+  'legal-about': '/about-us',
+  'legal-privacy': '/privacy-policy',
+  'legal-terms': '/terms-of-service',
+  'legal-copyright': '/copyright-policy',
+  'legal-disclaimer': '/disclaimer',
+  'legal-grievance': '/grievance-redressal',
+};
+
+export const ROUTE_TAB_MAP: Record<string, string> = {
+  '/': 'home',
+  '/home': 'home',
+  '/ai-advisor': 'ai-advisor',
+  '/ai': 'ai-advisor',
+  '/advisor': 'ai-advisor',
+  '/mandi-bhav': 'mandi',
+  '/mandi': 'mandi',
+  '/bhav': 'mandi',
+  '/weather-advisory': 'weather',
+  '/weather': 'weather',
+  '/mausam': 'weather',
+  '/marketplace': 'marketplace',
+  '/kheti-ai-marketplace': 'marketplace',
+  '/buy-and-sell': 'marketplace',
+  '/storage-machinery': 'services',
+  '/services': 'services',
+  '/godowns': 'services',
+  '/godown': 'services',
+  '/machinery': 'services',
+  '/university-connect': 'university',
+  '/university': 'university',
+  '/scientists': 'university',
+  '/farmer-schemes': 'schemes',
+  '/schemes': 'schemes',
+  '/yojana': 'schemes',
+  '/my-farm': 'farm',
+  '/farm': 'farm',
+  '/business-portal': 'business',
+  '/business': 'business',
+  '/admin': 'admin',
+  '/admin-portal': 'admin',
+  '/about-us': 'legal-about',
+  '/about': 'legal-about',
+  '/privacy-policy': 'legal-privacy',
+  '/privacy': 'legal-privacy',
+  '/terms-of-service': 'legal-terms',
+  '/terms': 'legal-terms',
+  '/copyright-policy': 'legal-copyright',
+  '/copyright': 'legal-copyright',
+  '/disclaimer': 'legal-disclaimer',
+  '/grievance-redressal': 'legal-grievance',
+  '/grievance': 'legal-grievance',
+};
+
+export const TAB_SEO_TITLES: Record<string, string> = {
+  home: 'Kheti AI — National Agriculture Intelligence, Mandi Bhav & Marketplace',
+  'ai-advisor': 'AI Crop Doctor & Advisor — Kheti AI (खेती एआई)',
+  mandi: 'Daily APMC Mandi Bhav & Modal Rates — Kheti AI',
+  weather: 'Hyperlocal Weather Forecast & Spray Window — Kheti AI',
+  marketplace: "Kheti AI's Marketplace — Buy & Sell Agricultural Produce",
+  services: 'Storage, Godowns & Farm Machinery Services — Kheti AI',
+  university: 'University Scientists & Research Connect — Kheti AI',
+  schemes: 'Central & State Government Farmer Schemes — Kheti AI',
+  farm: 'Farm Management & Crop Records — Kheti AI',
+  business: 'Agribusiness & Procurement Portal — Kheti AI',
+  admin: 'Platform Oversight & Moderation Console — Kheti AI',
+  'legal-about': 'About Us — Kheti AI National Agriculture Platform',
+  'legal-privacy': 'Privacy Policy — Kheti AI',
+  'legal-terms': 'Terms of Service — Kheti AI',
+  'legal-copyright': 'Copyright Policy — Kheti AI',
+  'legal-disclaimer': 'Legal Disclaimer — Kheti AI',
+  'legal-grievance': 'Grievance Redressal Mechanism — Kheti AI',
+};
+
+function getInitialTab(): string {
+  if (typeof window === 'undefined') return 'home';
+
+  // 1. Check pathname first (e.g. /marketplace, /ai-advisor, /mandi-bhav)
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (ROUTE_TAB_MAP[path]) {
+    return ROUTE_TAB_MAP[path];
+  }
+
+  // 2. Check hash as fallback (e.g. /#marketplace, /#mandi)
+  const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  if (hash) {
+    const cleanHash = '/' + hash;
+    if (ROUTE_TAB_MAP[cleanHash]) {
+      return ROUTE_TAB_MAP[cleanHash];
+    }
+    if (TAB_ROUTE_MAP[hash]) {
+      return hash;
+    }
+  }
+
+  return 'home';
+}
+
 function AppContent() {
   const { isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [activeRole, setActiveRole] = useState<UserRole>('farmer');
   const [isMobilePreview, setIsMobilePreview] = useState<boolean>(false);
   const [lang, setLang] = useState<LanguageCode>('hi');
@@ -45,11 +155,53 @@ function AppContent() {
   const [mandiFilterCommodity, setMandiFilterCommodity] = useState<string | undefined>(undefined);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // Sync route and title on browser Back / Forward buttons (popstate)
+  React.useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.tab) {
+        setActiveTab(event.state.tab);
+        const title = TAB_SEO_TITLES[event.state.tab] || TAB_SEO_TITLES.home;
+        document.title = title;
+      } else {
+        const tab = getInitialTab();
+        setActiveTab(tab);
+        const title = TAB_SEO_TITLES[tab] || TAB_SEO_TITLES.home;
+        document.title = title;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Set initial title and ensure URL has the clean permalink
+    const currentTab = getInitialTab();
+    const title = TAB_SEO_TITLES[currentTab] || TAB_SEO_TITLES.home;
+    document.title = title;
+
+    const initialPath = TAB_ROUTE_MAP[currentTab] || '/';
+    if (window.location.pathname !== initialPath && initialPath !== '/') {
+      window.history.replaceState({ tab: currentTab }, '', initialPath);
+    } else if (!window.history.state) {
+      window.history.replaceState({ tab: currentTab }, '', window.location.pathname + window.location.search);
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const handleNavigateTab = (tab: string, filter?: string) => {
     setActiveTab(tab);
     if (filter) {
       setMandiFilterCommodity(filter);
     }
+
+    // Update browser URL permalink & history dynamically
+    const targetPath = TAB_ROUTE_MAP[tab] || '/';
+    const targetTitle = TAB_SEO_TITLES[tab] || TAB_SEO_TITLES.home;
+    document.title = targetTitle;
+
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ tab }, '', targetPath);
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -67,7 +219,7 @@ function AppContent() {
           <AIAdvisor
             onNavigateTab={handleNavigateTab}
             onOpenNegotiation={() => {
-              setActiveTab('marketplace');
+              handleNavigateTab('marketplace');
             }}
           />
         );
@@ -76,7 +228,7 @@ function AppContent() {
           <MandiTrackerView
             initialCommodity={mandiFilterCommodity}
             onSelectCommodityForAI={() => {
-              setActiveTab('ai-advisor');
+              handleNavigateTab('ai-advisor');
             }}
           />
         );
@@ -84,7 +236,7 @@ function AppContent() {
         return (
           <WeatherAdvisoryView
             onAskAI={() => {
-              setActiveTab('ai-advisor');
+              handleNavigateTab('ai-advisor');
             }}
           />
         );
@@ -92,7 +244,7 @@ function AppContent() {
         return (
           <MarketplaceView
             onOpenAIQuery={() => {
-              setActiveTab('ai-advisor');
+              handleNavigateTab('ai-advisor');
             }}
           />
         );
@@ -100,7 +252,7 @@ function AppContent() {
         return (
           <ServicesView
             onAskAI={() => {
-              setActiveTab('ai-advisor');
+              handleNavigateTab('ai-advisor');
             }}
           />
         );
@@ -108,7 +260,7 @@ function AppContent() {
         return (
           <SchemesView
             onAskAI={() => {
-              setActiveTab('ai-advisor');
+              handleNavigateTab('ai-advisor');
             }}
           />
         );
@@ -116,7 +268,7 @@ function AppContent() {
         return (
           <UniversityConnectView
             onAskAI={() => {
-              setActiveTab('ai-advisor');
+              handleNavigateTab('ai-advisor');
             }}
             lang={lang}
           />
@@ -129,7 +281,7 @@ function AppContent() {
             onNavigateTab={handleNavigateTab}
             onSwitchRole={(role) => {
               setActiveRole(role);
-              setActiveTab(role === 'farmer' ? 'farm' : 'business');
+              handleNavigateTab(role === 'farmer' ? 'farm' : 'business');
             }}
           />
         );
@@ -169,7 +321,7 @@ function AppContent() {
       <Navbar
         activeTab={activeTab}
         onTabChange={(tab) => {
-          setActiveTab(tab);
+          handleNavigateTab(tab);
           setMandiFilterCommodity(undefined);
         }}
         activeRole={activeRole}
@@ -190,7 +342,7 @@ function AppContent() {
           <MobileFrame
             activeTab={activeTab}
             onTabChange={(t) => {
-              setActiveTab(t);
+              handleNavigateTab(t);
               setMandiFilterCommodity(undefined);
             }}
             onCloseMobileMode={() => setIsMobilePreview(false)}
@@ -238,7 +390,7 @@ function AppContent() {
                   <button
                     onClick={() => {
                       setActiveRole('admin');
-                      setActiveTab('admin');
+                      handleNavigateTab('admin');
                     }}
                     className="hover:text-emerald-800 hover:underline"
                   >
