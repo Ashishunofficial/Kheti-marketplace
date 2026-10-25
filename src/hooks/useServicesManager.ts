@@ -337,6 +337,7 @@ export function useServicesManager() {
       try {
         const dbRow = {
           id: newFacility.id,
+          owner_id: currentUserId,
           name: newFacility.name,
           owner_name: newFacility.ownerName,
           type: newFacility.type,
@@ -395,6 +396,7 @@ export function useServicesManager() {
       try {
         const dbRow = {
           id: newEquipment.id,
+          owner_id: currentUserId,
           title: newEquipment.title,
           category: newEquipment.category,
           owner_name: newEquipment.ownerName,

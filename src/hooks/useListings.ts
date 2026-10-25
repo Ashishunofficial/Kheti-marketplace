@@ -244,6 +244,7 @@ export function useListings(): UseListingsReturn {
       try {
         const dbRow: Record<string, any> = {
           id: listingId,
+          seller_id: listing.sellerId || '',
           seller_name: listing.sellerName,
           seller_type: listing.sellerType,
           is_verified: listing.isVerified ?? true,

@@ -64,6 +64,7 @@ export const AdminPortalView: React.FC = () => {
     revokeAdminAccess, 
     banUser, 
     unbanUser,
+    updateUserRecord,
     refreshManagedUsers
   } = useAuth();
 
@@ -73,48 +74,42 @@ export const AdminPortalView: React.FC = () => {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Strictly filter real listings from live users
+  // Local state for inline user record editing
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingEmail, setEditingEmail] = useState<string>('');
+  const [editingPhone, setEditingPhone] = useState<string>('');
+
+  const handleStartEditUser = (u: ManagedUserRecord) => {
+    setEditingUserId(u.id);
+    setEditingEmail(u.email);
+    setEditingPhone(u.phone || '');
+  };
+
+  const handleSaveUserEdit = (userId: string) => {
+    if (editingEmail.trim()) {
+      updateUserRecord(userId, {
+        email: editingEmail.trim(),
+        phone: editingPhone.trim()
+      });
+      showNotice(`Updated contact email for user to ${editingEmail.trim()}`);
+    }
+    setEditingUserId(null);
+  };
+
+  // Strictly filter real listings from live users (only exclude static guest demo items)
   const realCommodityListings = listings.filter(l => {
     const id = (l.id || '').toLowerCase();
-    const seller = (l.sellerName || '').toLowerCase();
-    return (
-      !id.startsWith('lst_10') &&
-      !id.startsWith('lst_real_baldev') &&
-      !id.startsWith('lst_real_shriram') &&
-      !seller.includes('baldev') &&
-      !seller.includes('shriram') &&
-      !seller.includes('rameshwar')
-    );
+    return !id.startsWith('lst_10') && id !== 'lst_101' && id !== 'lst_102' && id !== 'lst_103';
   });
 
   const realWarehouses = allRawWarehouses.filter(w => {
     const id = (w.id || '').toLowerCase();
-    const name = (w.name || '').toLowerCase();
-    const owner = (w.ownerName || '').toLowerCase();
-    return (
-      !id.startsWith('wh_krn') &&
-      !id.startsWith('wh_ldh') &&
-      !id.startsWith('wh_my') &&
-      !id.startsWith('wh_real_shriram') &&
-      !id.startsWith('wh_real_narmada') &&
-      !name.includes('shriram') &&
-      !name.includes('narmada') &&
-      !owner.includes('shriram') &&
-      !owner.includes('narmada')
-    );
+    return !id.startsWith('wh_krn') && !id.startsWith('wh_ldh') && id !== 'wh_my_01';
   });
 
   const realEquipment = allRawEquipment.filter(e => {
     const id = (e.id || '').toLowerCase();
-    const title = (e.title || '').toLowerCase();
-    const owner = (e.ownerName || '').toLowerCase();
-    return (
-      !id.startsWith('eq_50') &&
-      !id.startsWith('eq_my') &&
-      !id.startsWith('eq_real_baldev') &&
-      !title.includes('baldev') &&
-      !owner.includes('baldev')
-    );
+    return !id.startsWith('eq_50') && id !== 'eq_my_01';
   });
 
   const totalRealListingsCount = realCommodityListings.length + realWarehouses.length + realEquipment.length;
@@ -494,9 +489,58 @@ export const AdminPortalView: React.FC = () => {
                           </div>
                         </td>
 
-                        <td className="py-3 px-3">
-                          <span className="font-mono text-stone-900 font-semibold block">{u.email}</span>
-                          <span className="text-stone-600 text-[11px] block">{u.phone || 'No phone set'}</span>
+                        <td className="py-3 px-3 min-w-[200px]">
+                          {editingUserId === u.id ? (
+                            <div className="space-y-1.5 p-1 bg-stone-100 rounded-lg border border-stone-300">
+                              <input
+                                type="email"
+                                value={editingEmail}
+                                onChange={(e) => setEditingEmail(e.target.value)}
+                                className="w-full px-2 py-1 text-xs font-mono bg-white border border-stone-300 rounded focus:outline-hidden focus:border-emerald-700"
+                                placeholder="Enter email address"
+                                autoFocus
+                              />
+                              <input
+                                type="text"
+                                value={editingPhone}
+                                onChange={(e) => setEditingPhone(e.target.value)}
+                                className="w-full px-2 py-1 text-xs font-mono bg-white border border-stone-300 rounded focus:outline-hidden focus:border-emerald-700"
+                                placeholder="Enter phone number"
+                              />
+                              <div className="flex items-center gap-1.5 pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveUserEdit(u.id)}
+                                  className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-[10px] rounded transition-colors shadow-xs"
+                                >
+                                  Save Email
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingUserId(null)}
+                                  className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold text-[10px] rounded transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="group flex items-start justify-between gap-1">
+                              <div>
+                                <span className="font-mono text-stone-900 font-semibold block">{u.email}</span>
+                                <span className="text-stone-600 text-[11px] block">{u.phone || '+91 98124 00000'}</span>
+                              </div>
+                              {!isMasterAdmin && (
+                                <button
+                                  onClick={() => handleStartEditUser(u)}
+                                  className="p-1 text-stone-400 hover:text-stone-800 transition-colors opacity-80 group-hover:opacity-100"
+                                  title="Edit user email or phone"
+                                >
+                                  <Edit2 className="w-3 h-3 text-stone-500" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         <td className="py-3 px-3">

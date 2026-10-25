@@ -87,6 +87,7 @@ interface AuthContextType {
   loginAsManagedUser: (userRecord: ManagedUserRecord) => void;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateUserRecord: (userId: string, updates: Partial<ManagedUserRecord>) => void;
   refreshManagedUsers?: () => Promise<void>;
 }
 
@@ -397,14 +398,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             p.id === '0dd8be9d-0d8d-46d0-bd3a-46f393d1fd0b' ||
             adminEmails.some(e => e.toLowerCase() === (p.email || '').toLowerCase());
 
-          let userEmail = p.email;
+          let userEmail = p.email || p.contact_email || p.user_email;
           if (!userEmail) {
             if (isMaster) {
               userEmail = MASTER_ADMIN_EMAIL;
+            } else if (p.name && p.name.toLowerCase().includes('ashish')) {
+              userEmail = 'ashish.kisan@gmail.com';
+            } else if (p.name && p.name.toLowerCase().includes('wrobr')) {
+              userEmail = 'wrobr27@gmail.com';
             } else if (p.name) {
-              userEmail = `${p.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@khetiai.in`;
+              const cleanName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+              userEmail = `${cleanName}@gmail.com`;
             } else {
-              userEmail = `user-${p.id.slice(0, 8)}@khetiai.in`;
+              userEmail = `user.${p.id.slice(0, 8)}@gmail.com`;
             }
           }
 
@@ -689,6 +695,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const updateUserRecord = (userId: string, updates: Partial<ManagedUserRecord>) => {
+    setManagedUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const updated = { ...u, ...updates };
+        if (isSupabaseConfigured) {
+          void supabase.from('profiles').update({
+            ...(updates.email ? { email: updates.email } : {}),
+            ...(updates.phone ? { phone: updates.phone } : {}),
+            ...(updates.name ? { name: updates.name } : {})
+          }).eq('id', userId);
+        }
+        return updated;
+      }
+      return u;
+    }));
+  };
+
   // Computed all managed users strictly from real logins with up to date admin and ban states
   const computedManagedUsers = managedUsers
     .filter(u => !isFakeMockUser(u))
@@ -723,6 +746,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginAsManagedUser,
         signOut,
         updateProfile,
+        updateUserRecord,
         refreshManagedUsers: fetchRealProfilesFromSupabase,
       }}
     >
