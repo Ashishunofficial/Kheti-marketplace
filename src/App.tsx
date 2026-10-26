@@ -323,7 +323,7 @@ function AppContent() {
   return (
     <div
       style={{ fontSize: `${fontSizeMultiplier * 100}%` }}
-      className="min-h-screen flex flex-col bg-stone-100 text-stone-900 transition-all font-sans"
+      className={`${activeTab === 'ai-advisor' && !isMobilePreview ? 'h-screen overflow-hidden' : 'min-h-screen'} flex flex-col bg-stone-100 text-stone-900 transition-all font-sans`}
     >
       <Navbar
         activeTab={activeTab}

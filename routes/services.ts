@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { addServerNotification } from './notifications';
 
 // ─── File-Based Shared Persistence for Storage & Machinery ─────────────────
 const DATA_DIR = path.resolve(process.cwd(), 'data');
@@ -217,11 +218,56 @@ export function createServicesRouter() {
     const newBooking = {
       ...booking,
       id: booking.id || `bk_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-      status: 'pending',
-      createdAt: new Date().toISOString()
+      status: booking.status || 'pending',
+      createdAt: booking.createdAt || new Date().toISOString()
     };
     store.bookings = [newBooking, ...store.bookings];
     saveServicesStore(store);
+
+    // 1. Dispatch notification to Owner of the facility/machinery
+    if (newBooking.ownerId) {
+      addServerNotification({
+        recipientUserId: newBooking.ownerId,
+        senderUserId: newBooking.renterId,
+        type: 'offer_received',
+        title: `📦 New Service Offer: ${newBooking.serviceTitle}`,
+        titleHi: `📦 नया स्पेस/मशीन ऑफर प्राप्त हुआ: ${newBooking.serviceTitle}`,
+        message: `${newBooking.renterName || 'A farmer'} submitted a booking offer of ₹${Number(newBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} for ${newBooking.quantityRequested} ${newBooking.unit} of "${newBooking.serviceTitle}". Review and accept.`,
+        messageHi: `${newBooking.renterName || 'किसान'} ने आपके "${newBooking.serviceTitle}" के लिए ₹${Number(newBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} (${newBooking.quantityRequested} ${newBooking.unit}) का ऑफर भेजा है। समीक्षा करें व स्वीकारें।`,
+        commodity: newBooking.serviceTitle,
+        price: Number(newBooking.totalEstimatedAmount || 0),
+        quantity: Number(newBooking.quantityRequested || 1),
+        unit: newBooking.unit || 'units',
+        counterPartyName: newBooking.renterName || 'Farmer Client',
+        offerId: newBooking.id,
+        listingId: newBooking.serviceId,
+        timestamp: 'Just now',
+        linkTab: 'services'
+      });
+    }
+
+    // 2. Dispatch submission confirmation to Renter
+    if (newBooking.renterId) {
+      addServerNotification({
+        recipientUserId: newBooking.renterId,
+        senderUserId: newBooking.ownerId,
+        type: 'offer_received',
+        title: `📤 Booking Request Sent: ${newBooking.serviceTitle}`,
+        titleHi: `📤 बुकिंग अनुरोध भेजा गया: ${newBooking.serviceTitle}`,
+        message: `Your booking request of ₹${Number(newBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} for ${newBooking.quantityRequested} ${newBooking.unit} was sent to ${newBooking.ownerName}.`,
+        messageHi: `आपका ₹${Number(newBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} का बुकिंग अनुरोध (${newBooking.quantityRequested} ${newBooking.unit}) ${newBooking.ownerName} को भेज दिया गया है।`,
+        commodity: newBooking.serviceTitle,
+        price: Number(newBooking.totalEstimatedAmount || 0),
+        quantity: Number(newBooking.quantityRequested || 1),
+        unit: newBooking.unit || 'units',
+        counterPartyName: newBooking.ownerName || 'Space Owner',
+        offerId: newBooking.id,
+        listingId: newBooking.serviceId,
+        timestamp: 'Just now',
+        linkTab: 'services'
+      });
+    }
+
     res.status(201).json({ success: true, booking: newBooking });
   });
 
@@ -229,14 +275,104 @@ export function createServicesRouter() {
     const { id } = req.params;
     const updates = req.body;
     const store = loadServicesStore();
-    const idx = store.bookings.findIndex(b => b.id === id);
+    let idx = store.bookings.findIndex(b => b.id === id);
 
+    // If booking not found in file store (e.g. came directly from Supabase), insert it from updates
     if (idx === -1) {
-      return res.status(404).json({ error: 'Booking not found' });
+      if (updates.bookingData || updates.serviceTitle) {
+        const fallbackBooking = {
+          ...(updates.bookingData || updates),
+          id,
+          status: updates.status || 'confirmed',
+          updatedAt: new Date().toISOString()
+        };
+        store.bookings.unshift(fallbackBooking);
+        idx = 0;
+      } else {
+        // Create an entry with updates
+        const fallbackBooking = {
+          ...updates,
+          id,
+          status: updates.status || 'confirmed',
+          updatedAt: new Date().toISOString()
+        };
+        store.bookings.unshift(fallbackBooking);
+        idx = 0;
+      }
     }
 
-    store.bookings[idx] = { ...store.bookings[idx], ...updates, updatedAt: new Date().toISOString() };
+    const previousStatus = store.bookings[idx].status;
+    const updatedBooking = { ...store.bookings[idx], ...updates, updatedAt: new Date().toISOString() };
+    delete (updatedBooking as any).bookingData;
+    store.bookings[idx] = updatedBooking;
     saveServicesStore(store);
+
+    // When an offer is ACCEPTED / CONFIRMED:
+    if (updatedBooking.status === 'confirmed' && previousStatus !== 'confirmed') {
+      console.log(`[Services API] 🤝 Booking offer confirmed: ${id} by owner ${updatedBooking.ownerName}`);
+
+      // 1. Notify Renter (The user who made the offer)
+      if (updatedBooking.renterId) {
+        addServerNotification({
+          recipientUserId: updatedBooking.renterId,
+          senderUserId: updatedBooking.ownerId,
+          type: 'offer_accepted',
+          title: `🎉 Offer Accepted! Deal Confirmed: ${updatedBooking.serviceTitle}`,
+          titleHi: `🎉 ऑफर स्वीकार हुआ! सौदा पक्का: ${updatedBooking.serviceTitle}`,
+          message: `${updatedBooking.ownerName || 'The owner'} accepted your booking offer of ₹${Number(updatedBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} for ${updatedBooking.quantityRequested} ${updatedBooking.unit} of "${updatedBooking.serviceTitle}". Deal confirmed!`,
+          messageHi: `${updatedBooking.ownerName || 'मालिक'} ने आपके "${updatedBooking.serviceTitle}" के लिए ₹${Number(updatedBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} (${updatedBooking.quantityRequested} ${updatedBooking.unit}) का ऑफर स्वीकार कर लिया है। सौदा पक्का!`,
+          commodity: updatedBooking.serviceTitle,
+          price: Number(updatedBooking.totalEstimatedAmount || 0),
+          quantity: Number(updatedBooking.quantityRequested || 1),
+          unit: updatedBooking.unit || 'units',
+          counterPartyName: updatedBooking.ownerName || 'Owner',
+          offerId: updatedBooking.id,
+          listingId: updatedBooking.serviceId,
+          timestamp: 'Just now',
+          linkTab: 'services'
+        });
+      }
+
+      // 2. Notify Owner (Confirmation record)
+      if (updatedBooking.ownerId) {
+        addServerNotification({
+          recipientUserId: updatedBooking.ownerId,
+          senderUserId: updatedBooking.renterId,
+          type: 'offer_accepted',
+          title: `✅ You Accepted Offer: ${updatedBooking.serviceTitle}`,
+          titleHi: `✅ आपने ऑफर स्वीकार किया: ${updatedBooking.serviceTitle}`,
+          message: `You confirmed the booking of ${updatedBooking.quantityRequested} ${updatedBooking.unit} with ${updatedBooking.renterName} for ₹${Number(updatedBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')}.`,
+          messageHi: `आपने ${updatedBooking.renterName} के साथ ₹${Number(updatedBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} पर ${updatedBooking.quantityRequested} ${updatedBooking.unit} का सौदा पक्का किया।`,
+          commodity: updatedBooking.serviceTitle,
+          price: Number(updatedBooking.totalEstimatedAmount || 0),
+          quantity: Number(updatedBooking.quantityRequested || 1),
+          unit: updatedBooking.unit || 'units',
+          counterPartyName: updatedBooking.renterName || 'Farmer Client',
+          offerId: updatedBooking.id,
+          listingId: updatedBooking.serviceId,
+          timestamp: 'Just now',
+          linkTab: 'services'
+        });
+      }
+
+      // 3. Automatically append a confirmed notification message into store.messages
+      const confirmMsg = {
+        id: `msg_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        bookingId: id,
+        serviceId: updatedBooking.serviceId,
+        serviceTitle: updatedBooking.serviceTitle,
+        senderId: updatedBooking.ownerId,
+        senderName: updatedBooking.ownerName,
+        recipientId: updatedBooking.renterId,
+        recipientName: updatedBooking.renterName,
+        text: `✅ [BOOKING_ACCEPTED] Offer of ₹${Number(updatedBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} for ${updatedBooking.quantityRequested} ${updatedBooking.unit} has been accepted and confirmed by ${updatedBooking.ownerName}. Deal locked!`,
+        timestamp: new Date().toISOString(),
+        isRead: false
+      };
+      store.messages = [confirmMsg, ...store.messages];
+      saveServicesStore(store);
+    }
+
     res.json({ success: true, booking: store.bookings[idx] });
   });
 
@@ -252,7 +388,7 @@ export function createServicesRouter() {
     const newMsg = {
       ...message,
       id: message.id || `msg_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-      timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: message.timestamp || new Date().toISOString(),
       isRead: false
     };
     store.messages = [newMsg, ...store.messages];

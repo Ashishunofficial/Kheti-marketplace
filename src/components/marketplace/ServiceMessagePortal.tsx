@@ -14,6 +14,32 @@ import {
 } from 'lucide-react';
 import { ServiceMessage, ServiceBooking } from '../../types';
 
+function parseTimestamp(ts?: string | number): number {
+  if (!ts) return 0;
+  if (typeof ts === 'number') return ts;
+  const d = new Date(ts);
+  if (!isNaN(d.getTime())) return d.getTime();
+  return 0;
+}
+
+function formatMessageTime(ts?: string | number): string {
+  if (!ts) return 'Just now';
+  if (typeof ts === 'string') {
+    const trimmed = ts.trim();
+    if (/^\d{1,2}:\d{2}(\s*(AM|PM|am|pm))?$/i.test(trimmed)) {
+      return trimmed;
+    }
+  }
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) {
+    if (typeof ts === 'string' && (ts.includes(':') || ts.includes('ago') || ts.includes('Just'))) {
+      return ts;
+    }
+    return 'Just now';
+  }
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 interface ServiceMessagePortalProps {
   currentUserId: string;
   currentUserName: string;
@@ -63,8 +89,8 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
 
   const conversationMap = new Map<string, ConversationSummary>();
 
-  // Process all messages in reverse order to find newest per thread
-  [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).forEach(m => {
+  // Process all messages in order to find newest per thread
+  [...messages].sort((a, b) => parseTimestamp(a.timestamp) - parseTimestamp(b.timestamp)).forEach(m => {
     const isSender = m.senderId === currentUserId;
     const otherUserId = isSender ? m.recipientId : m.senderId;
     const otherUserName = isSender ? m.recipientName : m.senderName;
@@ -99,7 +125,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
   });
 
   const conversations = Array.from(conversationMap.values()).sort(
-    (a, b) => new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime()
+    (a, b) => parseTimestamp(b.lastMessage.timestamp) - parseTimestamp(a.lastMessage.timestamp)
   );
 
   // Active Selected Conversation
@@ -142,8 +168,13 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
           ((m.senderId === currentUserId && m.recipientId === activeConversation.otherUserId) ||
            (m.senderId === activeConversation.otherUserId && m.recipientId === currentUserId))
         )
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        .sort((a, b) => parseTimestamp(a.timestamp) - parseTimestamp(b.timestamp))
     : [];
+
+  // Check if this thread has an accepted offer
+  const isThreadConfirmed = 
+    activeConversation?.associatedBooking?.status === 'confirmed' ||
+    activeMessages.some(m => m.text.includes('[BOOKING_ACCEPTED]') || m.text.includes('[OFFER_ACCEPTED]'));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -199,7 +230,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
         <div className="flex items-center gap-1 bg-stone-200/80 p-1 rounded-lg text-xs">
           <button
             onClick={() => setFilterMode('all')}
-            className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+            className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
               filterMode === 'all' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
@@ -207,7 +238,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
           </button>
           <button
             onClick={() => setFilterMode('owner')}
-            className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+            className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
               filterMode === 'owner' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
@@ -215,7 +246,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
           </button>
           <button
             onClick={() => setFilterMode('renter')}
-            className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+            className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
               filterMode === 'renter' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
@@ -234,18 +265,23 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-12 min-h-[560px] max-h-[700px]">
+        <div className="grid grid-cols-1 md:grid-cols-12 min-h-[580px] lg:h-[calc(100vh-230px)] max-h-[850px]">
           {/* Left Column: Conversations List */}
           <div className="md:col-span-4 border-r border-stone-200 overflow-y-auto divide-y divide-stone-100 bg-stone-50/50">
             {filteredConversations.map(conv => {
               const isSelected = conv.key === activeConversation?.key;
               const booking = conv.associatedBooking;
+              const hasConfirmedMsg = messages.some(
+                m => m.serviceId === conv.serviceId && (m.senderId === conv.otherUserId || m.recipientId === conv.otherUserId) &&
+                (m.text.includes('[BOOKING_ACCEPTED]') || m.text.includes('[OFFER_ACCEPTED]'))
+              );
+              const isConfirmed = booking?.status === 'confirmed' || hasConfirmedMsg;
 
               return (
                 <button
                   key={conv.key}
                   onClick={() => setSelectedKey(conv.key)}
-                  className={`w-full text-left p-4 transition-colors relative flex flex-col gap-1.5 ${
+                  className={`w-full text-left p-4 transition-colors relative flex flex-col gap-1.5 cursor-pointer ${
                     isSelected ? 'bg-emerald-50/80 border-l-4 border-emerald-800' : 'hover:bg-stone-100/80'
                   }`}
                 >
@@ -255,7 +291,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                       <span className="truncate max-w-[160px]">{conv.otherUserName}</span>
                     </div>
                     <span className="text-[10px] text-stone-400 font-mono">
-                      {new Date(conv.lastMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatMessageTime(conv.lastMessage.timestamp)}
                     </span>
                   </div>
 
@@ -264,7 +300,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                   </div>
 
                   <p className="text-xs text-stone-500 line-clamp-1">
-                    {conv.lastMessage.text}
+                    {conv.lastMessage.text.replace(/\[BOOKING_ACCEPTED\]|\[OFFER_ACCEPTED\]/g, '')}
                   </p>
 
                   <div className="flex items-center justify-between pt-1">
@@ -274,11 +310,11 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                       {conv.isAsOwner ? 'Role: You are Owner' : 'Role: You are Renter'}
                     </span>
 
-                    {booking && (
+                    {(booking || isConfirmed) && (
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'
+                        isConfirmed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                       }`}>
-                        {booking.status}
+                        {isConfirmed ? 'confirmed' : 'pending'}
                       </span>
                     )}
 
@@ -294,11 +330,11 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
           </div>
 
           {/* Right Column: Active Conversation Stream */}
-          <div className="md:col-span-8 flex flex-col bg-white">
+          <div className="md:col-span-8 flex flex-col bg-white h-full overflow-hidden">
             {activeConversation ? (
               <>
                 {/* Chat Header */}
-                <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-bold text-stone-900">{activeConversation.otherUserName}</h4>
@@ -325,22 +361,29 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                         </div>
                       </div>
 
-                      {activeConversation.isAsOwner && activeConversation.associatedBooking.status === 'pending' && (
+                      {activeConversation.isAsOwner && !isThreadConfirmed && (
                         <button
                           onClick={() => onUpdateBookingStatus(activeConversation.associatedBooking!.id, 'confirmed')}
-                          className="px-2.5 py-1 text-xs font-semibold bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg flex items-center gap-1 shadow-2xs"
+                          className="px-2.5 py-1 text-xs font-semibold bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
                         >
                           <CheckCircle2 className="w-3 h-3" />
                           <span>Accept</span>
                         </button>
                       )}
 
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                        activeConversation.associatedBooking.status === 'confirmed'
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded flex items-center gap-1 ${
+                        isThreadConfirmed
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-amber-100 text-amber-800'
                       }`}>
-                        {activeConversation.associatedBooking.status}
+                        {isThreadConfirmed ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                            <span>CONFIRMED</span>
+                          </>
+                        ) : (
+                          'PENDING'
+                        )}
                       </span>
                     </div>
                   )}
@@ -350,6 +393,26 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                 <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-stone-50/20">
                   {activeMessages.map(m => {
                     const isMe = m.senderId === currentUserId;
+                    const isConfirmedAnnouncement = m.text.includes('[BOOKING_ACCEPTED]') || m.text.includes('[OFFER_ACCEPTED]');
+
+                    if (isConfirmedAnnouncement) {
+                      return (
+                        <div key={m.id} className="w-full my-2 flex justify-center">
+                          <div className="max-w-md w-full bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 rounded-2xl p-3.5 shadow-xs text-center space-y-1">
+                            <div className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-900 uppercase tracking-wider bg-emerald-100/90 px-2.5 py-0.5 rounded-full">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>ऑफर स्वीकार - सौदा पक्का (Deal Confirmed)</span>
+                            </div>
+                            <p className="text-xs font-medium text-emerald-950 leading-relaxed">
+                              {m.text.replace(/\[BOOKING_ACCEPTED\]|\[OFFER_ACCEPTED\]/g, '').trim()}
+                            </p>
+                            <div className="text-[10px] text-emerald-700/80 font-mono">
+                              {formatMessageTime(m.timestamp)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div
@@ -369,7 +432,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                           {m.text}
                         </div>
                         <div className="text-[9px] text-stone-400 mt-1 font-mono px-1">
-                          {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatMessageTime(m.timestamp)}
                         </div>
                       </div>
                     );
@@ -378,7 +441,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                 </div>
 
                 {/* Quick Reply Chips */}
-                <div className="px-4 py-2 bg-stone-50 border-t border-stone-100 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+                <div className="px-4 py-2 bg-stone-50 border-t border-stone-100 flex items-center gap-1.5 overflow-x-auto text-[11px] shrink-0">
                   <span className="text-stone-400 flex items-center gap-1 shrink-0 font-medium">
                     <Sparkles className="w-3 h-3 text-amber-600" />
                     <span>Quick:</span>
@@ -387,7 +450,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                     <button
                       key={idx}
                       onClick={() => setInputText(qr)}
-                      className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-stone-700 hover:text-emerald-900 border border-stone-200 rounded-full shrink-0 transition-colors"
+                      className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-stone-700 hover:text-emerald-900 border border-stone-200 rounded-full shrink-0 transition-colors cursor-pointer"
                     >
                       {qr}
                     </button>
@@ -395,7 +458,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                 </div>
 
                 {/* Message Input Bar */}
-                <form onSubmit={handleSend} className="p-3 border-t border-stone-200 bg-white flex items-center gap-2">
+                <form onSubmit={handleSend} className="p-3 border-t border-stone-200 bg-white flex items-center gap-2 shrink-0">
                   <input
                     type="text"
                     value={inputText}
@@ -406,7 +469,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                   <button
                     type="submit"
                     disabled={!inputText.trim()}
-                    className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
+                    className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Send</span>
@@ -414,7 +477,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
                 </form>
               </>
             ) : (
-              <div className="p-10 text-center text-stone-400 text-xs">
+              <div className="p-10 text-center text-stone-400 text-xs my-auto">
                 Select a conversation on the left to begin messaging.
               </div>
             )}

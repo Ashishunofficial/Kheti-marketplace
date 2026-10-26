@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
+import { useNotifications } from '../context/NotificationContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { WarehouseFacility, EquipmentRental, ServiceBooking, ServiceMessage } from '../types';
 import { 
@@ -23,6 +24,11 @@ const MOCK_MESSAGE_IDS = new Set(['msg_01', 'msg_02', 'msg_03']);
 
 export function useServicesManager() {
   const { user, profile, isAuthenticated, isDemo } = useAuth();
+  let addNotification: any = null;
+  try {
+    const notifs = useNotifications();
+    addNotification = notifs.addNotification;
+  } catch {}
 
   // Resolved user identity
   const currentUserId = user?.id || profile?.id || (isDemo ? 'usr_rameshwar_99' : 'usr_guest');
@@ -187,7 +193,7 @@ export function useServicesManager() {
                 recipientId: row.recipient_id,
                 recipientName: row.recipient_name,
                 text: row.text,
-                timestamp: row.timestamp ? new Date(row.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '',
+                timestamp: row.timestamp || row.created_at || new Date().toISOString(),
                 isRead: row.is_read ?? false
               });
             });
@@ -226,7 +232,12 @@ export function useServicesManager() {
           const bData = await bRes.json();
           if (bData.bookings && Array.isArray(bData.bookings)) {
             bData.bookings.forEach((item: ServiceBooking) => {
-              if (!serverBk.some(s => s.id === item.id)) serverBk.push(item);
+              const existing = serverBk.find(s => s.id === item.id);
+              if (existing) {
+                if (item.status === 'confirmed') existing.status = 'confirmed';
+              } else {
+                serverBk.push(item);
+              }
             });
           }
         }
@@ -242,6 +253,19 @@ export function useServicesManager() {
         console.warn('Notice: Server API services fetch notice:', err);
       }
 
+      // Check for confirmed offers across messages (deals confirmed via bilateral negotiation)
+      const confirmedBookingIds = new Set(
+        serverMsg
+          .filter(m => m.bookingId && (m.text.includes('[BOOKING_ACCEPTED]') || m.text.includes('[OFFER_ACCEPTED]')))
+          .map(m => m.bookingId!)
+      );
+
+      serverBk.forEach(b => {
+        if (confirmedBookingIds.has(b.id)) {
+          b.status = 'confirmed';
+        }
+      });
+
       // 3. Merge local items created in this browser
       const localWh = getLocalData<WarehouseFacility>(STORAGE_KEYS.WAREHOUSES);
       const localEq = getLocalData<EquipmentRental>(STORAGE_KEYS.EQUIPMENT);
@@ -255,7 +279,12 @@ export function useServicesManager() {
         if (!serverEq.some(s => s.id === item.id)) serverEq.unshift(item);
       });
       localBk.forEach(item => {
-        if (!serverBk.some(s => s.id === item.id)) serverBk.unshift(item);
+        const existing = serverBk.find(s => s.id === item.id);
+        if (existing) {
+          if (item.status === 'confirmed') existing.status = 'confirmed';
+        } else {
+          serverBk.unshift(item);
+        }
       });
       localMsg.forEach(item => {
         if (!serverMsg.some(s => s.id === item.id)) serverMsg.unshift(item);
@@ -299,14 +328,35 @@ export function useServicesManager() {
 
     fetchAllServices();
 
-    // Periodic sync
+    // Fast multi-device polling interval (3.5s) for instant cross-device updates
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 15000);
+    }, 3500);
+
+    // Supabase Realtime channel subscription for instant booking & message sync
+    let rtChannel: any = null;
+    if (isSupabaseConfigured) {
+      try {
+        rtChannel = supabase
+          .channel('kheti_services_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'service_bookings' }, () => {
+            setTick(t => t + 1);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'service_messages' }, () => {
+            setTick(t => t + 1);
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn('Realtime channel error:', err);
+      }
+    }
 
     return () => {
       isCancelled = true;
       clearInterval(interval);
+      if (rtChannel) {
+        try { supabase.removeChannel(rtChannel); } catch (_) {}
+      }
     };
   }, [tick, isAuthenticated, isDemo]);
 
@@ -570,6 +620,7 @@ export function useServicesManager() {
 
     if (initialMessage && initialMessage.trim()) {
       const msgId = `msg_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+      const nowIso = new Date().toISOString();
       const newMsg: ServiceMessage = {
         id: msgId,
         bookingId: bookingId,
@@ -580,7 +631,7 @@ export function useServicesManager() {
         recipientId: data.ownerId,
         recipientName: data.ownerName,
         text: initialMessage.trim(),
-        timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: nowIso,
         isRead: false
       };
       setMessages(prev => [newMsg, ...prev]);
@@ -606,31 +657,149 @@ export function useServicesManager() {
             recipient_id: data.ownerId,
             recipient_name: data.ownerName,
             text: initialMessage.trim(),
+            timestamp: nowIso,
             is_read: false
           }]);
         } catch {}
       }
     }
 
+    if (addNotification && data.ownerId) {
+      addNotification({
+        type: 'offer_received',
+        title: `📦 Booking Request Sent: ${data.serviceTitle}`,
+        titleHi: `📦 बुकिंग अनुरोध भेजा गया: ${data.serviceTitle}`,
+        message: `Your booking request of ₹${data.totalEstimatedAmount.toLocaleString('en-IN')} for ${data.quantityRequested} ${data.unit} was sent to ${data.ownerName}.`,
+        messageHi: `आपका ₹${data.totalEstimatedAmount.toLocaleString('en-IN')} का बुकिंग अनुरोध (${data.quantityRequested} ${data.unit}) ${data.ownerName} को भेज दिया गया है।`,
+        commodity: data.serviceTitle,
+        price: data.totalEstimatedAmount,
+        quantity: data.quantityRequested,
+        unit: data.unit,
+        counterPartyName: data.ownerName,
+        offerId: bookingId,
+        listingId: data.serviceId,
+        timestamp: 'Just now',
+        linkTab: 'services'
+      });
+    }
+
     return newBooking;
-  }, [currentUserId, currentUserName, currentUserPhone]);
+  }, [currentUserId, currentUserName, currentUserPhone, addNotification]);
 
   // Update Booking Status
   const updateBookingStatus = useCallback(async (
     bookingId: string, 
     status: ServiceBooking['status']
   ) => {
+    // 1. Immediately update local state
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status, updatedAt: new Date().toISOString() } : b));
+
+    const targetBooking = bookings.find(b => b.id === bookingId);
+
+    // 2. Local storage
     try {
       const local = getLocalData<ServiceBooking>(STORAGE_KEYS.BOOKINGS);
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(local.map(b => b.id === bookingId ? { ...b, status } : b)));
+    } catch {}
+
+    // 3. Update server API (this broadcasts server notification to renter and owner)
+    try {
       await fetch(`/api/services/bookings/${bookingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ 
+          status,
+          bookingData: targetBooking 
+        })
       });
-    } catch {}
-  }, []);
+    } catch (err) {
+      console.warn('Booking server update error:', err);
+    }
+
+    // 4. Update Supabase
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('service_bookings')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', bookingId);
+      } catch (sbErr) {
+        console.warn('Notice: Supabase booking update notice:', sbErr);
+      }
+
+      // If status is confirmed, write a confirmed bilateral record into service_messages
+      // This guarantees that any client reading from Supabase will detect the confirmed status
+      if (status === 'confirmed' && targetBooking) {
+        const confirmMsgId = `msg_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+        const confirmText = `✅ [BOOKING_ACCEPTED] Offer of ₹${Number(targetBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} for ${targetBooking.quantityRequested} ${targetBooking.unit} has been accepted and confirmed by ${targetBooking.ownerName || currentUserName}. Deal confirmed!`;
+        const nowIso = new Date().toISOString();
+
+        const counterPartyId = targetBooking.renterId === currentUserId ? targetBooking.ownerId : targetBooking.renterId;
+        const counterPartyName = targetBooking.renterId === currentUserId ? targetBooking.ownerName : targetBooking.renterName;
+
+        const newMsg: ServiceMessage = {
+          id: confirmMsgId,
+          bookingId: bookingId,
+          serviceId: targetBooking.serviceId,
+          serviceTitle: targetBooking.serviceTitle,
+          senderId: currentUserId,
+          senderName: currentUserName,
+          recipientId: counterPartyId,
+          recipientName: counterPartyName,
+          text: confirmText,
+          timestamp: nowIso,
+          isRead: false
+        };
+
+        setMessages(prev => [newMsg, ...prev]);
+
+        try {
+          const localM = getLocalData<ServiceMessage>(STORAGE_KEYS.MESSAGES);
+          localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify([newMsg, ...localM]));
+          await fetch('/api/services/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newMsg)
+          });
+          await supabase.from('service_messages').insert([{
+            id: confirmMsgId,
+            booking_id: bookingId,
+            service_id: targetBooking.serviceId,
+            service_title: targetBooking.serviceTitle,
+            sender_id: currentUserId,
+            sender_name: currentUserName,
+            recipient_id: counterPartyId,
+            recipient_name: counterPartyName,
+            text: confirmText,
+            timestamp: nowIso,
+            is_read: false
+          }]);
+        } catch (msgErr) {
+          console.warn('Notice: Confirmation message save notice:', msgErr);
+        }
+
+        // Bell Drawer Notification for local user
+        if (addNotification) {
+          addNotification({
+            type: 'offer_accepted',
+            title: `✅ Offer Accepted! Deal Confirmed: ${targetBooking.serviceTitle}`,
+            titleHi: `✅ ऑफर स्वीकार हुआ! सौदा पक्का: ${targetBooking.serviceTitle}`,
+            message: `Booking deal confirmed for ${targetBooking.quantityRequested} ${targetBooking.unit} of "${targetBooking.serviceTitle}" at ₹${Number(targetBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')}.`,
+            messageHi: `${targetBooking.serviceTitle} के लिए ₹${Number(targetBooking.totalEstimatedAmount || 0).toLocaleString('en-IN')} पर ${targetBooking.quantityRequested} ${targetBooking.unit} का सौदा पक्का हुआ।`,
+            commodity: targetBooking.serviceTitle,
+            price: Number(targetBooking.totalEstimatedAmount || 0),
+            quantity: Number(targetBooking.quantityRequested || 1),
+            unit: targetBooking.unit,
+            counterPartyName: counterPartyName,
+            offerId: bookingId,
+            listingId: targetBooking.serviceId,
+            timestamp: 'Just now',
+            linkTab: 'services'
+          });
+        }
+      }
+    }
+  }, [bookings, currentUserId, currentUserName, addNotification]);
 
   // Send Direct Message
   const sendMessage = useCallback(async (
@@ -642,6 +811,7 @@ export function useServicesManager() {
     bookingId?: string
   ) => {
     const msgId = `msg_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const nowIso = new Date().toISOString();
     const newMsg: ServiceMessage = {
       id: msgId,
       bookingId,
@@ -652,7 +822,7 @@ export function useServicesManager() {
       recipientId,
       recipientName,
       text: text.trim(),
-      timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
       isRead: false
     };
 
@@ -667,6 +837,26 @@ export function useServicesManager() {
         body: JSON.stringify(newMsg)
       });
     } catch {}
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('service_messages').insert([{
+          id: msgId,
+          booking_id: bookingId || null,
+          service_id: serviceId,
+          service_title: serviceTitle,
+          sender_id: currentUserId,
+          sender_name: currentUserName,
+          recipient_id: recipientId,
+          recipient_name: recipientName,
+          text: text.trim(),
+          timestamp: nowIso,
+          is_read: false
+        }]);
+      } catch (err) {
+        console.warn('Notice: Supabase message send notice:', err);
+      }
+    }
 
     return newMsg;
   }, [currentUserId, currentUserName]);

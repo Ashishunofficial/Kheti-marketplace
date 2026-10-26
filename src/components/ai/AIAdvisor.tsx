@@ -488,7 +488,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
       {/* ========================================================================= */}
       {/* 💻 DESKTOP FULL-SCREEN WORKSPACE (>= md) — Edge-to-Edge Modern PC Layout   */}
       {/* ========================================================================= */}
-      <div className={`hidden md:flex flex-row w-full ${isFullscreenMode ? 'fixed inset-0 z-50 bg-stone-100' : 'h-[calc(100vh-178px)] min-h-[580px]'} overflow-hidden border-t border-stone-200`}>
+      <div className={`hidden md:flex flex-row w-full ${isFullscreenMode ? 'fixed inset-0 z-50 bg-stone-100' : 'flex-1 h-full min-h-0'} overflow-hidden border-t border-stone-200`}>
         
         {/* ─── LEFT COLLAPSIBLE CLINIC & QUICK ACTION SIDEBAR ─── */}
         {isSidebarOpen && (
