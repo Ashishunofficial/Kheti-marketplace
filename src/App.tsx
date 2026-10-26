@@ -24,7 +24,7 @@ import { UserRole } from './types';
 import { ExternalLink, ShieldCheck } from 'lucide-react';
 
 // Smooth page transition wrapper
-const PageTransition: React.FC<{ tabKey: string; children: React.ReactNode }> = ({ tabKey, children }) => (
+const PageTransition: React.FC<{ tabKey: string; children: React.ReactNode; className?: string }> = ({ tabKey, children, className }) => (
   <AnimatePresence mode="wait">
     <motion.div
       key={tabKey}
@@ -32,6 +32,7 @@ const PageTransition: React.FC<{ tabKey: string; children: React.ReactNode }> = 
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
+      className={className || ''}
     >
       {children}
     </motion.div>
@@ -343,7 +344,14 @@ function AppContent() {
         onOpenLogin={() => setShowLoginModal(true)}
       />
 
-      <main id="main-content" className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-4 pt-3 pb-6">
+      <main
+        id="main-content"
+        className={
+          activeTab === 'ai-advisor' && !isMobilePreview
+            ? "flex-1 w-full flex flex-col p-0 overflow-hidden"
+            : "flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-4 pt-3 pb-6"
+        }
+      >
         {isMobilePreview ? (
           <MobileFrame
             activeTab={activeTab}
@@ -362,7 +370,10 @@ function AppContent() {
             </div>
           </MobileFrame>
         ) : (
-          <PageTransition tabKey={activeTab}>
+          <PageTransition
+            tabKey={activeTab}
+            className={activeTab === 'ai-advisor' ? "flex-1 w-full flex flex-col h-full overflow-hidden" : undefined}
+          >
             <ErrorBoundary>
               {renderCurrentView()}
             </ErrorBoundary>
