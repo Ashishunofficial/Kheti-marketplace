@@ -249,27 +249,27 @@ export const UniversityConnectView: React.FC<UniversityConnectViewProps> = ({ on
 
       {/* Mode Banner */}
       {isDemo ? (
-        <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 text-amber-950">
-            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              <strong>🎭 Prototype Pitch Demo Active:</strong> Showing sample PAU/HAU masterclasses and model farm internships for pitching. Switch to Live Account to manage your private academic portfolio.
+        <div className="p-2 px-3 bg-amber-50/90 border border-amber-200 rounded-xl flex items-center justify-between gap-2 text-[11px] text-amber-950">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="truncate">
+              <strong>Pitch Demo Mode:</strong> Sample PAU/HAU masterclasses &amp; internships
             </span>
           </div>
         </div>
       ) : (
-        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-950">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
-            <span>
-              <strong>🟢 Live Isolated Academic Network:</strong> Showing courses & internships from verified educators and hosts. Your hosted internships & courses are inside <strong>"My Academic Console"</strong>.
+        <div className="p-2 px-3 bg-emerald-50/90 border border-emerald-200/90 rounded-xl flex items-center justify-between gap-2 text-[11px] text-emerald-950">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+            <span className="truncate">
+              <strong>Academic Network:</strong> Verified courses &amp; farm practicums
             </span>
           </div>
           <button
             onClick={() => setActiveView('console')}
-            className="text-[11px] font-bold text-emerald-900 bg-white border border-emerald-300 hover:bg-emerald-100 px-2.5 py-1 rounded-md shrink-0 transition-colors"
+            className="text-[10px] font-bold text-emerald-900 bg-white border border-emerald-300 hover:bg-emerald-100 px-2 py-0.5 rounded-md shrink-0 transition-colors whitespace-nowrap"
           >
-            Open My Academic Console →
+            Academic Console →
           </button>
         </div>
       )}

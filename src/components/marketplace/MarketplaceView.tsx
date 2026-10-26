@@ -27,6 +27,7 @@ import {
 import { MarketplaceListing, OfferNegotiation, CommodityType, UserProfile } from '../../types';
 import { useListings } from '../../hooks/useListings';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifications } from '../../context/NotificationContext';
 import { MarketplaceDashboard } from './MarketplaceDashboard';
 
 const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'lst_105']);
@@ -37,6 +38,7 @@ interface MarketplaceViewProps {
 
 export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery }) => {
   const { listings, offers, orders, loading, isSyncing, refresh, createListing, updateListing, deleteListing, makeOffer, counterOffer, acceptOffer } = useListings();
+  const { addNotification } = useNotifications();
   const [isSubmittingListing, setIsSubmittingListing] = useState(false);
   const { profile, user, isAuthenticated, isDemo } = useAuth();
 
@@ -148,6 +150,23 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
       await makeOffer(newOffer);
       setShowNegotiationModal(false);
       showNotification(`Offer of ₹${offerPriceInput}/${selectedListingForOffer.unit} submitted to ${selectedListingForOffer.sellerName}!`);
+
+      // Add real notification to Bell & Notification Drawer
+      addNotification({
+        type: 'offer_received',
+        title: `Offer Sent: ${selectedListingForOffer.commodity}`,
+        titleHi: `ऑफर भेजा गया: ${selectedListingForOffer.commodity}`,
+        message: `Your negotiation offer of ₹${offerPriceInput}/${selectedListingForOffer.unit} for ${offerQuantityInput} ${selectedListingForOffer.unit} was submitted to ${selectedListingForOffer.sellerName}. Total deal: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}.`,
+        messageHi: `आपका ₹${offerPriceInput}/${selectedListingForOffer.unit} का ऑफर (${offerQuantityInput} ${selectedListingForOffer.unit}) ${selectedListingForOffer.sellerName} को भेज दिया गया है। कुल मूल्य: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}।`,
+        commodity: selectedListingForOffer.commodity,
+        price: offerPriceInput,
+        quantity: offerQuantityInput,
+        unit: selectedListingForOffer.unit,
+        counterPartyName: selectedListingForOffer.sellerName,
+        listingId: selectedListingForOffer.id,
+        timestamp: 'Just now',
+        linkTab: 'marketplace',
+      });
     } catch (err: any) {
       showNotification(`Error: ${err.message}`);
     }
@@ -157,6 +176,24 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     try {
       await acceptOffer(offer.id);
       showNotification(`Deal agreed! Order confirmed for ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')}. Escrow locked.`);
+
+      // Add real notification to Bell & Notification Drawer
+      addNotification({
+        type: 'offer_accepted',
+        title: `Offer Accepted! Deal Confirmed: ${offer.commodity}`,
+        titleHi: `ऑफर स्वीकार हुआ! सौदा पक्का: ${offer.commodity}`,
+        message: `Deal confirmed with ${offer.buyerName || offer.sellerName} for ${offer.quantity} ${offer.unit} of ${offer.commodity} at ₹${offer.offeredPrice}/${offer.unit}. Total value ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')} locked in escrow.`,
+        messageHi: `${offer.buyerName || offer.sellerName} के साथ ${offer.quantity} ${offer.unit} ${offer.commodity} का सौदा ₹${offer.offeredPrice}/${offer.unit} पर पक्का हुआ। कुल मूल्य ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')} एस्क्रो में सुरक्षित।`,
+        commodity: offer.commodity,
+        price: offer.offeredPrice,
+        quantity: offer.quantity,
+        unit: offer.unit,
+        counterPartyName: offer.buyerName || offer.sellerName,
+        offerId: offer.id,
+        listingId: offer.listingId,
+        timestamp: 'Just now',
+        linkTab: 'marketplace',
+      });
     } catch (err: any) {
       showNotification(`Error: ${err.message}`);
     }
@@ -483,7 +520,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                       {/* Main Content Flex Row */}
                       <div className="flex flex-row items-start gap-3 sm:gap-4">
                         {/* Crop Photo Thumbnail */}
-                        <div className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
                           <img
                             src={cropPhoto}
                             alt={listing.commodity}
@@ -495,74 +532,60 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                         </div>
 
                         {/* Details Area */}
-                        <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex-1 min-w-0 space-y-1">
                           {/* Seller Name & Title */}
-                          <div>
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-xs sm:text-sm font-bold text-stone-900 truncate">{listing.sellerName}</span>
-                              {listing.isVerified && (
-                                <span className="w-4 h-4 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" title="Kheti AI Verified">
-                                  ✓
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight leading-tight mt-0.5 truncate">
-                              {listing.commodity}
-                            </h3>
-                            <p className="text-[11px] sm:text-xs font-semibold text-stone-500 mt-0.5 truncate">
-                              {listing.variety || 'PBW-550'} • {listing.grade || 'Grade A'}
-                            </p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs sm:text-sm font-bold text-stone-900 truncate">{listing.sellerName}</span>
+                            {listing.isVerified && (
+                              <span className="w-4 h-4 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" title="Kheti AI Verified">
+                                ✓
+                              </span>
+                            )}
                           </div>
-
-                          {/* Metric Boxes Row */}
-                          <div className="grid grid-cols-2 gap-2 pt-0.5">
-                            <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-700 text-xs shrink-0 shadow-2xs">
-                                📦
-                              </div>
-                              <div className="min-w-0">
-                                <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Quantity</span>
-                                <span className="font-extrabold text-stone-900 text-xs sm:text-sm font-mono block truncate">
-                                  {listing.quantity} {listing.unit}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center text-xs font-bold shrink-0">
-                                ₹
-                              </div>
-                              <div className="min-w-0">
-                                <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Asking Rate</span>
-                                <span className="font-black text-emerald-900 text-xs sm:text-sm font-mono block truncate" title={`₹${listing.askingPrice.toLocaleString('en-IN')} / ${listing.unit}`}>
-                                  ₹{listing.askingPrice.toLocaleString('en-IN')}/{listing.unit}
-                                </span>
-                              </div>
-                            </div>
+                          <h3 className="text-base sm:text-lg font-black text-stone-900 tracking-tight leading-snug truncate">
+                            {listing.commodity}
+                          </h3>
+                          <p className="text-[11px] sm:text-xs font-semibold text-stone-500 truncate">
+                            {listing.variety || 'PBW-550'} • {listing.grade || 'Grade A'}
+                          </p>
+                          <div className="flex items-center gap-1 text-[11px] text-stone-600 font-medium truncate pt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                            <span className="truncate">
+                              {listing.location.village ? `${listing.location.village}, ` : ''}
+                              {listing.location.district ? `${listing.location.district}, ` : ''}
+                              {listing.location.state || 'Haryana'}
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Location & Logistical Terms */}
-                      <div className="text-xs text-stone-600 font-medium space-y-1 pt-1 border-t border-stone-100">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                          <span className="truncate">
-                            {listing.location.village ? `${listing.location.village}, ` : ''}
-                            {listing.location.district ? `${listing.location.district}, ` : ''}
-                            {listing.location.state || 'Haryana'}
-                          </span>
+                      {/* Full-width Metric Boxes Row - Clean vertical stack, zero overflow */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 text-stone-500 font-bold text-[10px] uppercase tracking-wider truncate">
+                            <span>📦</span>
+                            <span className="truncate">Quantity</span>
+                          </div>
+                          <div className="mt-0.5 font-black text-stone-900 text-sm sm:text-base font-mono truncate">
+                            {listing.quantity} <span className="text-xs font-semibold text-stone-600 font-sans">{listing.unit}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Truck className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                          <span className="truncate">Pickup at farm or delivery available</span>
+
+                        <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[10px] uppercase tracking-wider truncate">
+                            <span>💰</span>
+                            <span className="truncate">Asking Rate</span>
+                          </div>
+                          <div className="mt-0.5 font-black text-emerald-950 text-sm sm:text-base font-mono truncate">
+                            ₹{listing.askingPrice.toLocaleString('en-IN')} <span className="text-xs font-medium text-emerald-800 font-sans">/ {listing.unit === 'Quintal' ? 'qtl' : listing.unit}</span>
+                          </div>
                         </div>
                       </div>
 
                       {/* Verified Quote Callout */}
-                      <div className="bg-emerald-50/70 border border-emerald-150 rounded-xl p-2 flex items-center gap-2 text-[11px] text-emerald-950 italic font-medium">
+                      <div className="bg-emerald-50/70 border border-emerald-150 rounded-xl p-2 px-2.5 flex items-center gap-2 text-[11px] text-emerald-950 italic font-medium">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="line-clamp-2">"{listing.notes || 'Verified farm produce ready for inspection and prompt weighbridge checkout.'}"</span>
+                        <span className="line-clamp-1">"{listing.notes || 'Verified farm produce ready for inspection and prompt weighbridge checkout.'}"</span>
                       </div>
                     </div>
 

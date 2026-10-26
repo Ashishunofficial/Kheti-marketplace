@@ -996,11 +996,12 @@ export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lan
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-3 border-b border-stone-200">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full border-2 border-emerald-700 bg-emerald-50/50 flex flex-col items-center justify-center text-center shrink-0">
-                    <Sprout className="w-4 h-4 text-emerald-800" />
-                    <span className="text-[5.5px] font-extrabold uppercase text-emerald-900 tracking-tighter leading-none mt-0.5">
-                      KHETI AI
-                    </span>
+                  <div className="w-10 h-10 rounded-xl border border-emerald-700 bg-white flex items-center justify-center p-0.5 shrink-0 shadow-xs overflow-hidden">
+                    <img
+                      src="/apple-touch-icon.png"
+                      alt="Kheti AI Logo"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
                   </div>
                   <div>
                     <h2 className="font-extrabold text-stone-900 text-xs leading-tight">

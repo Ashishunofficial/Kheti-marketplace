@@ -389,3 +389,24 @@ export interface ChatMessage {
   };
   toolCallsExecuted?: string[];
 }
+
+export interface AppNotification {
+  id: string;
+  type: 'offer_received' | 'offer_accepted' | 'offer_countered' | 'service_booking' | 'system_alert';
+  title: string;
+  titleHi: string;
+  message: string;
+  messageHi: string;
+  commodity?: string;
+  price?: number;
+  quantity?: number;
+  unit?: string;
+  counterPartyName?: string;
+  offerId?: string;
+  listingId?: string;
+  timestamp: string;
+  createdAt: string;
+  isRead: boolean;
+  linkTab?: string;
+}
+

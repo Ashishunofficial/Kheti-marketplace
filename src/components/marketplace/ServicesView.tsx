@@ -528,7 +528,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
                       {/* Main Content Flex Row */}
                       <div className="flex flex-row items-start gap-3 sm:gap-4">
                         {/* Warehouse Photo Thumbnail */}
-                        <div className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
                           <img
                             src={wh.imageUrl || (isCold ? 'https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&w=600&q=80' : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80')}
                             alt={wh.name}
@@ -537,55 +537,39 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
                         </div>
 
                         {/* Details Area */}
-                        <div className="flex-1 min-w-0 space-y-2">
-                          <div>
-                            <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight leading-snug truncate">
-                              {wh.name}
-                            </h3>
-                            <p className="text-xs font-bold text-stone-600 mt-0.5 truncate">
-                              Operator: <span className="text-stone-800">{wh.ownerName}</span>
-                            </p>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h3 className="text-base sm:text-lg font-black text-stone-900 tracking-tight leading-snug truncate">
+                            {wh.name}
+                          </h3>
+                          <p className="text-xs font-bold text-stone-600 truncate">
+                            Operator: <span className="text-stone-800">{wh.ownerName}</span>
+                          </p>
+                          <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium truncate pt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                            <span className="truncate">{wh.address || `${wh.district}, ${wh.state}`}</span>
                           </div>
+                        </div>
+                      </div>
 
-                          {/* Metric Boxes Row */}
-                          <div className="grid grid-cols-2 gap-2 pt-0.5">
-                            <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-700 text-xs shrink-0 shadow-2xs">
-                                📦
-                              </div>
-                              <div className="min-w-0">
-                                <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Available</span>
-                                <span className="font-extrabold text-emerald-900 text-xs sm:text-sm font-mono block truncate">
-                                  {wh.availableCapacityMT.toLocaleString('en-IN')} MT
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center text-xs font-bold shrink-0">
-                                💰
-                              </div>
-                              <div className="min-w-0">
-                                <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Rate / Bag</span>
-                                <span className="font-extrabold text-stone-900 text-xs sm:text-sm font-mono block truncate">
-                                  ₹{wh.ratePerBagPerMonth}/mo
-                                </span>
-                              </div>
-                            </div>
+                      {/* Full-width Metric Boxes Row - Clean vertical stack, zero overflow */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 text-stone-500 font-bold text-[10px] uppercase tracking-wider truncate">
+                            <span>📦</span>
+                            <span className="truncate">Available Space</span>
                           </div>
+                          <div className="mt-0.5 font-black text-emerald-900 text-sm sm:text-base font-mono truncate">
+                            {wh.availableCapacityMT.toLocaleString('en-IN')} <span className="text-xs font-semibold text-stone-600 font-sans">MT</span>
+                          </div>
+                        </div>
 
-                          {/* Location & Terms */}
-                          <div className="text-xs text-stone-600 font-medium space-y-1 pt-0.5">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                              <span className="truncate">{wh.address || `${wh.district}, ${wh.state}`}</span>
-                            </div>
-                            {wh.isWdrcRegistered && (
-                              <div className="flex items-center gap-1.5 text-emerald-800 font-semibold min-w-0">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                <span className="truncate">e-NWR Verified Facility</span>
-                              </div>
-                            )}
+                        <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[10px] uppercase tracking-wider truncate">
+                            <span>💰</span>
+                            <span className="truncate">Storage Tariff</span>
+                          </div>
+                          <div className="mt-0.5 font-black text-stone-950 text-sm sm:text-base font-mono truncate">
+                            ₹{wh.ratePerBagPerMonth} <span className="text-xs font-medium text-amber-900 font-sans">/ bag / mo</span>
                           </div>
                         </div>
                       </div>
@@ -707,7 +691,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
                     </div>
 
                     <div className="flex flex-row items-start gap-3 sm:gap-4">
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
                         <img
                           src={eq.imageUrl || 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=600&q=80'}
                           alt={eq.title}
@@ -715,40 +699,39 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
                         />
                       </div>
 
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight leading-snug truncate">
-                            {eq.title}
-                          </h3>
-                          <p className="text-xs font-bold text-stone-600 mt-0.5 truncate">
-                            Provider: <span className="text-stone-800">{eq.ownerName}</span>
-                          </p>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <h3 className="text-base sm:text-lg font-black text-stone-900 tracking-tight leading-snug truncate">
+                          {eq.title}
+                        </h3>
+                        <p className="text-xs font-bold text-stone-600 truncate">
+                          Provider: <span className="text-stone-800">{eq.ownerName}</span>
+                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium truncate pt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="truncate">{eq.district}, {eq.state}</span>
                         </div>
+                      </div>
+                    </div>
 
-                        <div className="grid grid-cols-2 gap-2 pt-0.5">
-                          <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center text-xs font-bold shrink-0">
-                              💰
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Rental Rate</span>
-                              <span className="font-extrabold text-emerald-900 text-xs sm:text-sm font-mono block truncate">
-                                ₹{eq.ratePerAcre ? `${eq.ratePerAcre}/acre` : `${eq.ratePerHour}/hr`}
-                              </span>
-                            </div>
-                          </div>
+                    {/* Full-width Metric Boxes Row - Clean vertical stack, zero overflow */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[10px] uppercase tracking-wider truncate">
+                          <span>💰</span>
+                          <span className="truncate">Rental Rate</span>
+                        </div>
+                        <div className="mt-0.5 font-black text-emerald-950 text-sm sm:text-base font-mono truncate">
+                          ₹{eq.ratePerAcre || eq.ratePerHour} <span className="text-xs font-medium text-emerald-800 font-sans">/ {eq.ratePerAcre ? 'acre' : 'hr'}</span>
+                        </div>
+                      </div>
 
-                          <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-700 text-xs shrink-0 shadow-2xs">
-                              📍
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Location</span>
-                              <span className="font-extrabold text-stone-900 text-xs sm:text-sm block truncate">
-                                {eq.district}, {eq.state}
-                              </span>
-                            </div>
-                          </div>
+                      <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 text-stone-500 font-bold text-[10px] uppercase tracking-wider truncate">
+                          <span>📍</span>
+                          <span className="truncate">Location</span>
+                        </div>
+                        <div className="mt-0.5 font-extrabold text-stone-900 text-xs sm:text-sm truncate">
+                          {eq.district}, {eq.state}
                         </div>
                       </div>
                     </div>

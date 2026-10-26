@@ -18,6 +18,8 @@ import LoginModal from './components/auth/LoginModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { NotificationProvider } from './context/NotificationContext';
+import { NotificationModal } from './components/notifications/NotificationModal';
 import { UserRole } from './types';
 import { ExternalLink, ShieldCheck } from 'lucide-react';
 
@@ -549,6 +551,12 @@ function AppContent() {
         lang={lang}
       />
 
+      {/* Trade & Offer Notifications Modal */}
+      <NotificationModal
+        onNavigateTab={handleNavigateTab}
+        lang={lang}
+      />
+
       {/* Offline Connectivity Toast */}
       <OfflineIndicator />
     </div>
@@ -558,7 +566,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
     </AuthProvider>
   );
 }

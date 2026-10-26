@@ -38,6 +38,7 @@ import {
   Scale
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifications } from '../../context/NotificationContext';
 import { UserRole } from '../../types';
 import { CURRENT_USER } from '../../data/mockData';
 
@@ -71,6 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLogin
 }) => {
   const { user, profile, signOut, isPitchDemo, togglePitchDemo, isAuthenticated, isAdmin } = useAuth();
+  const { unreadCount, setIsNotificationOpen } = useNotifications();
   
   // Mobile & Dropdown States
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -147,9 +149,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Logo Circle */}
             <button
               onClick={() => handleMobileNavClick('home')}
-              className="w-9 h-9 rounded-full bg-amber-50 text-emerald-900 font-extrabold flex items-center justify-center border border-amber-300 shadow-xs shrink-0"
+              className="w-9 h-9 rounded-full bg-white flex items-center justify-center border border-amber-300 shadow-xs shrink-0 overflow-hidden p-0.5"
+              aria-label="Kheti AI Home"
             >
-              <Sprout className="w-5 h-5 text-emerald-800" />
+              <img
+                src="/apple-touch-icon.png"
+                alt="Kheti AI Logo"
+                className="w-full h-full object-cover rounded-full"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
             </button>
 
             <div className="min-w-0 flex-1">
@@ -165,12 +175,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
             {/* Notification Bell */}
             <button
-              onClick={() => onTabChange('schemes')}
-              className="relative p-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-200 rounded-lg transition-colors"
-              title="Notifications"
+              onClick={() => setIsNotificationOpen(true)}
+              className="relative p-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-200 rounded-lg transition-colors cursor-pointer"
+              title="Notifications & Trade Alerts"
             >
               <Bell className="w-4 h-4 text-amber-300" />
-              <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-emerald-900 shadow-sm animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
 
             {/* Mobile Header Login Button */}
@@ -279,6 +293,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Desktop Notification Bell Button */}
+            <button
+              onClick={() => setIsNotificationOpen(true)}
+              className="relative flex items-center gap-1.5 text-[11px] font-bold text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded transition-colors cursor-pointer shadow-2xs"
+              title="Notifications & Trade Alerts"
+            >
+              <Bell className="w-3.5 h-3.5 text-emerald-800" />
+              <span>{lang === 'hi' ? 'सूचनाएं' : 'Notifications'}</span>
+              {unreadCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
             {/* Account Button */}
             {user ? (
               <button
@@ -309,14 +338,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-3.5 text-center md:text-left">
             <button
               onClick={() => onTabChange('home')}
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-emerald-800 bg-linear-to-b from-amber-50 to-emerald-50 flex items-center justify-center p-1 shadow-xs shrink-0 hover:scale-105 transition-transform"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-emerald-800 bg-white flex items-center justify-center p-1 shadow-xs shrink-0 hover:scale-105 transition-transform overflow-hidden"
+              aria-label="Kheti AI Home"
             >
-              <div className="w-full h-full rounded-full border border-emerald-700 flex flex-col items-center justify-center text-center">
-                <Sprout className="w-6 h-6 text-emerald-800" />
-                <span className="text-[7px] font-extrabold tracking-tighter uppercase text-amber-800 mt-0.5 leading-none">
-                  KHETI AI
-                </span>
-              </div>
+              <img
+                src="/logo.png"
+                alt="Kheti AI Logo"
+                className="w-full h-full object-contain rounded-xl"
+              />
             </button>
 
             <div>
@@ -361,6 +390,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 🌾
               </div>
             </div>
+
+            {/* Desktop Notification Bell in Main Header */}
+            <button
+              onClick={() => setIsNotificationOpen(true)}
+              className="relative flex items-center gap-1.5 py-1.5 px-3 text-xs font-bold bg-white text-emerald-950 border border-emerald-300 rounded-md hover:bg-emerald-50 transition-colors shadow-2xs cursor-pointer"
+              title="Notifications & Trade Alerts"
+            >
+              <Bell className="w-4 h-4 text-emerald-800" />
+              <span>{lang === 'hi' ? 'सूचनाएं' : 'Notifications'}</span>
+              {unreadCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-black animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
 
             {/* Desktop Role Selector */}
             <div className="relative">
@@ -494,11 +538,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-3 border-b border-stone-200">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full border-2 border-emerald-700 bg-emerald-50 flex flex-col items-center justify-center text-center shrink-0 shadow-xs">
-                    <Sprout className="w-4 h-4 text-emerald-800" />
-                    <span className="text-[5.5px] font-extrabold uppercase text-emerald-950 tracking-tighter leading-none mt-0.5">
-                      KHETI AI
-                    </span>
+                  <div className="w-10 h-10 rounded-xl border border-emerald-700 bg-white flex items-center justify-center p-0.5 shrink-0 shadow-xs overflow-hidden">
+                    <img
+                      src="/apple-touch-icon.png"
+                      alt="Kheti AI Logo"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
                   </div>
                   <div>
                     <h2 className="font-extrabold text-stone-900 text-xs leading-snug">
