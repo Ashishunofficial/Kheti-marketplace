@@ -29,12 +29,41 @@ export function useServicesManager() {
   const currentUserName = profile?.name || user?.user_metadata?.full_name || (isDemo ? 'Rameshwar Singh' : 'Kisan Provider');
   const currentUserPhone = profile?.phone || user?.phone || '+91 98124 55432';
 
+  const getInitialWarehouses = (): WarehouseFacility[] => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.WAREHOUSES);
+      const local = saved ? JSON.parse(saved) : [];
+      const combined = [...local];
+      MOCK_WAREHOUSES.forEach(m => {
+        if (!combined.some(c => c.id === m.id)) combined.push(m);
+      });
+      return combined;
+    } catch {
+      return MOCK_WAREHOUSES;
+    }
+  };
+
+  const getInitialEquipment = (): EquipmentRental[] => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.EQUIPMENT);
+      const local = saved ? JSON.parse(saved) : [];
+      const combined = [...local];
+      MOCK_EQUIPMENTS.forEach(m => {
+        if (!combined.some(c => c.id === m.id)) combined.push(m);
+      });
+      return combined;
+    } catch {
+      return MOCK_EQUIPMENTS;
+    }
+  };
+
   // State
-  const [warehouses, setWarehouses] = useState<WarehouseFacility[]>([]);
-  const [equipment, setEquipment] = useState<EquipmentRental[]>([]);
-  const [bookings, setBookings] = useState<ServiceBooking[]>([]);
-  const [messages, setMessages] = useState<ServiceMessage[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [warehouses, setWarehouses] = useState<WarehouseFacility[]>(getInitialWarehouses);
+  const [equipment, setEquipment] = useState<EquipmentRental[]>(getInitialEquipment);
+  const [bookings, setBookings] = useState<ServiceBooking[]>(MOCK_SERVICE_BOOKINGS);
+  const [messages, setMessages] = useState<ServiceMessage[]>(MOCK_SERVICE_MESSAGES);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [tick, setTick] = useState<number>(0);
 
   // Helper to read local cache
@@ -51,7 +80,7 @@ export function useServicesManager() {
     let isCancelled = false;
 
     async function fetchAllServices() {
-      setLoading(true);
+      setIsSyncing(true);
 
       let serverWh: WarehouseFacility[] = [];
       let serverEq: EquipmentRental[] = [];
@@ -265,6 +294,7 @@ export function useServicesManager() {
       }
 
       setLoading(false);
+      setIsSyncing(false);
     }
 
     fetchAllServices();
@@ -657,6 +687,7 @@ export function useServicesManager() {
     currentUserPhone,
     isDemo,
     loading,
+    isSyncing,
     warehouses,
     equipment,
     allRawWarehouses: warehouses,

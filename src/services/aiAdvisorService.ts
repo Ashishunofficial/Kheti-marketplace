@@ -35,7 +35,8 @@ export async function fetchGeminiTTSAudio(text: string): Promise<string | null> 
 export async function processUserMessage(
   userPrompt: string,
   _conversationId: string,
-  imagePayload?: string
+  imagePayload?: string,
+  targetLang: 'hi' | 'en' | 'hinglish' = 'hi'
 ): Promise<ChatResponse> {
   const lower = userPrompt.toLowerCase().trim();
 
@@ -96,7 +97,7 @@ export async function processUserMessage(
     toolLabel = 'Direct Agro-Commerce Network';
   }
 
-  // 1. Primary: Server-Side AI Doctor Endpoint (Pl@ntNet + Gemini 3.8 Flash)
+  // 1. Primary: Server-Side AI Doctor Endpoint (Kheti AI Vision & Kheti AI Intelligence)
   try {
     const endpoint = imagePayload ? '/api/gemini/ai-doctor' : '/api/gemini/chat';
     const res = await fetch(endpoint, {
@@ -105,7 +106,8 @@ export async function processUserMessage(
       body: JSON.stringify({
         prompt: userPrompt,
         imageData: imagePayload,
-        conversationId: _conversationId
+        conversationId: _conversationId,
+        targetLang
       })
     });
     const contentType = res.headers.get('content-type');
@@ -126,7 +128,7 @@ export async function processUserMessage(
     console.debug('Switching to local conversational response:', err);
   }
 
-  // 2. Greetings in any language (Warm, conversational, never lengthy!)
+  // 2. Greetings in selected language
   if (
     lower === 'hello' || lower === 'hi' || lower === 'hey' || lower === 'हेलो' || 
     lower === 'हाय' || lower === 'नमस्ते' || lower === 'राम राम' || lower === 'ram ram' ||
@@ -134,7 +136,13 @@ export async function processUserMessage(
     lower.includes('namaste') || lower.includes('ram ram') || lower.includes('राम-राम') ||
     lower.includes('kaise ho') || lower.includes('kya haal')
   ) {
-    const greetingReply = `नमस्ते जी! राम-राम! 🙏 मैं आपकी डिजिटल कृषि सखी Kheti AI। बताइए, आज आपकी खेती-बाड़ी, फसल या मंडी भाव से जुड़ी क्या सहायता करूँ?`;
+    let greetingReply = `नमस्ते जी! राम-राम! 🙏 मैं आपकी डिजिटल कृषि सखी Kheti AI। बताइए, आज आपकी खेती-बाड़ी, फसल या मंडी भाव से जुड़ी क्या सहायता करूँ?`;
+    if (targetLang === 'en') {
+      greetingReply = `Hello! Welcome! 🙏 I am your digital agriculture advisor Kheti AI Doctor. How can I assist you with your crops, mandi rates, or farming queries today?`;
+    } else if (targetLang === 'hinglish') {
+      greetingReply = `Namaste ji! Ram-ram! 🙏 Main aapki digital krishi sathi Kheti AI Doctor hoon. Bataiye, aaj aapki fasal, mandi bhav ya kheti-badi se judi kya sahayata karoon?`;
+    }
+
     return {
       message: greetingReply,
       audioPlaybackText: greetingReply,
@@ -154,7 +162,7 @@ export async function processUserMessage(
       actionCard: matchedCard,
       audioPlaybackText: `किसान भाई, ${top.mandiName} में ${top.commodity} का आज का भाव ₹${top.modalPrice} प्रति क्विंटल है। कल से भाव में सुधार है।`,
       detectedToolName: toolLabel,
-      model: 'Gemini 1.5 Flash'
+      model: 'Kheti AI Intelligence'
     };
   }
 
@@ -168,7 +176,7 @@ export async function processUserMessage(
       actionCard: matchedCard,
       audioPlaybackText: `आज मौसम साफ है, तापमान 27 डिग्री है। हवा शांत है और स्प्रे के लिए सुबह का समय सुरक्षित है।`,
       detectedToolName: toolLabel,
-      model: 'Gemini 1.5 Flash'
+      model: 'Kheti AI Intelligence'
     };
   }
 
@@ -182,7 +190,7 @@ export async function processUserMessage(
       actionCard: matchedCard,
       audioPlaybackText: `फसल में ${diag.diseaseHindi} के लक्षण हैं। आप प्रोपिकोनाजोल 25 ईसी का 1 मिली प्रति लीटर पानी में तुरंत छिड़काव करें।`,
       detectedToolName: toolLabel,
-      model: 'Gemini 1.5 Flash'
+      model: 'Kheti AI Intelligence'
     };
   }
 
@@ -196,14 +204,18 @@ export async function processUserMessage(
       actionCard: matchedCard,
       audioPlaybackText: `${s.nameHindi} में किसानों को ${s.benefitAmount} की प्रत्यक्ष सहायता मिलती है। आधार व खतौनी द्वारा ऑनलाइन आवेदन करें।`,
       detectedToolName: toolLabel,
-      model: 'Gemini 1.5 Flash'
+      model: 'Kheti AI Intelligence'
     };
   }
 
   return {
-    message: `नमस्ते! मैं Kheti AI (Gemini 1.5 Flash)। आप मुझसे बोलकर या लिखकर गेहूं, धान, सरसों के मंडी भाव, मौसम पूर्वानुमान, फसल रोग और सरकारी योजनाओं के बारे में पूछ सकते हैं।`,
-    audioPlaybackText: `नमस्ते! मैं Kheti AI। आप मुझसे बोलकर गेहूं, धान, सरसों के मंडी भाव, मौसम और सरकारी योजनाओं के बारे में पूछ सकते हैं।`,
-    detectedToolName: 'Gemini 1.5 Flash Voice Assistant',
-    model: 'Gemini 1.5 Flash'
+    message: targetLang === 'en'
+      ? `Hello! I am Kheti AI Doctor. You can ask me about crop diseases, mandi rates, weather, and agricultural schemes.`
+      : targetLang === 'hinglish'
+      ? `Namaste! Main Kheti AI Doctor hoon. Aap mujhse fasal rogbimari, mandi bhav, mausam aur government schemes ke bare mein pooch sakte hain.`
+      : `नमस्ते! मैं Kheti AI Doctor हूँ। आप मुझसे बोलकर या लिखकर गेहूं, धान, सरसों के मंडी भाव, मौसम पूर्वानुमान, फसल रोग और सरकारी योजनाओं के बारे में पूछ सकते हैं।`,
+    audioPlaybackText: `नमस्ते! मैं Kheti AI Doctor हूँ। आप मुझसे फसल रोग, मंडी भाव और मौसम के बारे में पूछ सकते हैं।`,
+    detectedToolName: 'Kheti AI Voice Assistant',
+    model: 'Kheti AI Intelligence'
   };
 }

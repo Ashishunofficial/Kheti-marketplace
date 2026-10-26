@@ -32,7 +32,10 @@ import {
   Settings,
   HelpCircle,
   Info,
-  Bell
+  Bell,
+  BookOpen,
+  Copyright,
+  Scale
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types';
@@ -96,19 +99,22 @@ export const Navbar: React.FC<NavbarProps> = ({
     }])
   ];
 
-  // Drawer Menu Items with Multi-language labels
-  const drawerNavItems = [
-    { id: 'home', labelHi: 'मुख्य पृष्ठ', labelEn: 'Home', labelHinglish: 'Home', icon: '🟢', color: 'text-emerald-700' },
-    { id: 'ai-advisor', labelHi: 'एआई डॉक्टर', labelEn: 'AI Doctor', labelHinglish: 'AI Doctor', icon: '🩺', color: 'text-sky-700' },
-    { id: 'mandi', labelHi: 'मंडी भाव', labelEn: 'Mandi Rates', labelHinglish: 'Mandi Bhav', icon: '📊', color: 'text-amber-700' },
-    { id: 'schemes', labelHi: 'योजनाएँ', labelEn: 'Farmer Schemes', labelHinglish: 'Kisan Yojana', icon: '📜', color: 'text-orange-700' },
-    { id: 'university', labelHi: 'वैज्ञानिक संवाद', labelEn: 'Scientist Connect', labelHinglish: 'Scientist Connect', icon: '🧪', color: 'text-purple-700' },
-    { id: 'farm', labelHi: 'मेरा खेत', labelEn: 'My Farm', labelHinglish: 'Mera Khet', icon: '🌱', color: 'text-lime-700' },
-    { id: 'marketplace', labelHi: 'खरीद-बिक्री', labelEn: 'Buy & Sell', labelHinglish: 'Buy & Sell', icon: '🏬', color: 'text-amber-800' },
-    { id: 'university', labelHi: 'विश्वविद्यालय कनेक्ट', labelEn: 'University Connect', labelHinglish: 'University Connect', icon: '🎓', color: 'text-emerald-800' },
-    { id: 'services', labelHi: 'सेवाएं एवं मानचित्र', labelEn: 'Services & Map', labelHinglish: 'Services & Map', icon: '📍', color: 'text-teal-700' },
-    { id: 'business', labelHi: 'व्यापार पोर्टल', labelEn: 'Business Portal', labelHinglish: 'Business Portal', icon: '💼', color: 'text-stone-700' },
-    { id: 'admin', labelHi: 'प्रशासन / लॉगिन', labelEn: 'Admin / Login', labelHinglish: 'Admin / Login', icon: '⚙️', color: 'text-amber-900' }
+  // Drawer Menu Items with exact mockup order and pastel icon containers
+  const primaryDrawerItems = [
+    { id: 'home', labelHi: 'मुख्य पृष्ठ (Home)', icon: <Home className="w-4 h-4 text-emerald-700" />, iconBg: 'bg-emerald-100' },
+    { id: 'ai-advisor', labelHi: 'एआई डॉक्टर (AI Doctor)', icon: <Bot className="w-4 h-4 text-sky-700" />, iconBg: 'bg-sky-100' },
+    { id: 'mandi', labelHi: 'मंडी भाव (Mandi Rate)', icon: <TrendingUp className="w-4 h-4 text-amber-700" />, iconBg: 'bg-amber-100' },
+    { id: 'marketplace', labelHi: 'मार्केटप्लेस (Marketplace)', icon: <Store className="w-4 h-4 text-rose-700" />, iconBg: 'bg-rose-100' },
+    { id: 'services', labelHi: 'स्टोरेज और मशीनरी (Storage & Machinery)', icon: <Building2 className="w-4 h-4 text-teal-700" />, iconBg: 'bg-teal-100' },
+    { id: 'university', labelHi: 'यूनिवर्सिटी कनेक्ट (University Connect)', icon: <GraduationCap className="w-4 h-4 text-purple-700" />, iconBg: 'bg-purple-100' },
+    { id: 'schemes', labelHi: 'सरकारी योजनाएँ (Govt Schemes)', icon: <FileText className="w-4 h-4 text-blue-700" />, iconBg: 'bg-blue-100' },
+    { id: 'farm', labelHi: 'मेरा खेत (My Farm)', icon: <Sprout className="w-4 h-4 text-lime-700" />, iconBg: 'bg-lime-100' },
+  ];
+
+  const secondaryDrawerItems = [
+    { id: 'services', labelHi: 'सेवाएं एवं मानचित्र', icon: <MapPin className="w-4 h-4 text-stone-700" />, iconBg: 'bg-stone-100' },
+    { id: 'business', labelHi: 'व्यापार पोर्टल', icon: <Briefcase className="w-4 h-4 text-amber-800" />, iconBg: 'bg-amber-100' },
+    { id: 'admin', labelHi: 'प्रशासन / लॉगिन', icon: <Settings className="w-4 h-4 text-slate-800" />, iconBg: 'bg-slate-100' },
   ];
 
   const getNavLabel = (item: typeof navItems[0]) => {
@@ -481,24 +487,24 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-white w-[82%] max-w-xs h-full overflow-y-auto shadow-2xl p-4 space-y-4 text-stone-900 flex flex-col justify-between"
+            className="bg-white w-[85%] max-w-sm h-full overflow-y-auto shadow-2xl p-4 text-stone-900 flex flex-col justify-between space-y-4"
           >
             
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-3 border-b border-stone-200">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full border-2 border-emerald-700 bg-emerald-50/50 flex flex-col items-center justify-center text-center shrink-0">
+                  <div className="w-10 h-10 rounded-full border-2 border-emerald-700 bg-emerald-50 flex flex-col items-center justify-center text-center shrink-0 shadow-xs">
                     <Sprout className="w-4 h-4 text-emerald-800" />
-                    <span className="text-[5.5px] font-extrabold uppercase text-emerald-900 tracking-tighter leading-none mt-0.5">
+                    <span className="text-[5.5px] font-extrabold uppercase text-emerald-950 tracking-tighter leading-none mt-0.5">
                       KHETI AI
                     </span>
                   </div>
                   <div>
-                    <h2 className="font-extrabold text-stone-900 text-xs leading-tight">
+                    <h2 className="font-extrabold text-stone-900 text-xs leading-snug">
                       राष्ट्रीय कृषि सूचना एवं किसान मंच
                     </h2>
-                    <p className="text-[8px] font-bold text-stone-600 uppercase tracking-tight mt-0.5">
+                    <p className="text-[8px] font-bold text-stone-500 uppercase tracking-tight mt-0.5">
                       NATIONAL AGRICULTURE INTELLIGENCE PLATFORM
                     </p>
                   </div>
@@ -506,116 +512,181 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-1.5 text-stone-600 hover:bg-stone-100 rounded-lg shrink-0"
+                  className="p-1.5 text-stone-500 hover:bg-stone-100 rounded-xl transition-colors shrink-0"
+                  aria-label="Close menu"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Mobile Login / User Profile Card */}
-              <div className="pt-2">
-                {user ? (
-                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <UserCircle className="w-5 h-5 text-emerald-700 shrink-0" />
-                      <div className="truncate">
-                        <div className="text-xs font-bold text-emerald-900 truncate">{profile?.name || user.email}</div>
-                        <div className="text-[10px] text-emerald-700">Online Account</div>
+              {/* User Profile Card */}
+              {user ? (
+                <div className="bg-emerald-50/90 border border-emerald-200/90 p-3 rounded-2xl flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <div className="w-9 h-9 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
+                      {profile?.name?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                    <div className="truncate min-w-0">
+                      <div className="text-xs font-bold text-emerald-950 truncate">
+                        {profile?.name || user.email?.split('@')[0]}
+                      </div>
+                      <div className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Online Account</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => { signOut(); setMobileMenuOpen(false); }}
-                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition shrink-0"
-                    >
-                      Logout
-                    </button>
                   </div>
-                ) : (
+
                   <button
-                    onClick={() => {
+                    onClick={() => { signOut(); setMobileMenuOpen(false); }}
+                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (onOpenLogin) onOpenLogin();
+                  }}
+                  className="bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200/90 p-3 rounded-2xl flex items-center justify-between shadow-2xs cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center shrink-0">
+                      <UserCircle className="w-5 h-5 text-amber-800" />
+                    </div>
+                    <div className="truncate min-w-0">
+                      <div className="text-xs font-bold text-stone-900 truncate">
+                        User Login / Signup
+                      </div>
+                      <div className="text-[10px] font-semibold text-amber-800 truncate">
+                        KHETI AI Authentication
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setMobileMenuOpen(false);
                       if (onOpenLogin) onOpenLogin();
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs"
                   >
-                    <LogIn className="w-4 h-4" />
-                    <span>{lang === 'hi' ? 'खेती खाते में लॉगिन (Login / Google)' : 'Login / Continue with Google'}</span>
+                    Login / Signup
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Drawer Menu Items List */}
-              <div className="space-y-1 pt-1">
-                {drawerNavItems.map((item, idx) => {
+              {/* Primary Navigation Items List */}
+              <div className="space-y-1">
+                {primaryDrawerItems.map((item) => {
                   const isActive = activeTab === item.id;
-                  const itemLabel = lang === 'hi' ? item.labelHi : lang === 'hinglish' ? item.labelHinglish : item.labelEn;
                   return (
                     <button
-                      key={item.id + '_' + idx}
+                      key={item.id}
                       onClick={() => handleMobileNavClick(item.id)}
-                      className={`w-full p-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-3 transition-colors ${
+                      className={`w-full px-2.5 py-2 rounded-xl text-left text-xs font-bold flex items-center justify-between transition-all ${
                         isActive
-                          ? 'bg-emerald-50 text-emerald-950 border border-emerald-200'
-                          : 'text-stone-800 hover:bg-stone-50'
+                          ? 'bg-emerald-100/80 border border-emerald-200 text-emerald-950 shadow-2xs'
+                          : 'bg-white hover:bg-stone-50 text-stone-800 border border-transparent'
                       }`}
                     >
-                      <span className="text-base">{item.icon}</span>
-                      <span>{itemLabel}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg ${item.iconBg} flex items-center justify-center shrink-0`}>
+                          {item.icon}
+                        </div>
+                        <span className="truncate">{item.labelHi}</span>
+                      </div>
+                      <ChevronRight className={`w-4 h-4 shrink-0 ${isActive ? 'text-emerald-700' : 'text-stone-400'}`} />
                     </button>
                   );
                 })}
               </div>
-            </div>
 
-            {/* Bottom Utilities */}
-            <div className="pt-3 border-t border-stone-200 space-y-1">
-              <button
-                onClick={() => {
-                  const nextLang = lang === 'hi' ? 'en' : lang === 'en' ? 'hinglish' : 'hi';
-                  onSelectLang(nextLang);
-                }}
-                className="w-full p-2.5 rounded-xl text-left text-xs font-bold text-stone-800 hover:bg-amber-50 border border-stone-200 flex items-center justify-between transition-colors shadow-2xs"
-              >
+              {/* Secondary Portals Section */}
+              <div className="pt-2 border-t border-stone-200/80 space-y-1">
+                {secondaryDrawerItems.map((item) => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleMobileNavClick(item.id)}
+                      className={`w-full px-2.5 py-2 rounded-xl text-left text-xs font-bold flex items-center justify-between transition-all ${
+                        isActive
+                          ? 'bg-amber-100/80 border border-amber-200 text-stone-900 shadow-2xs'
+                          : 'bg-white hover:bg-stone-50 text-stone-800 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg ${item.iconBg} flex items-center justify-center shrink-0`}>
+                          {item.icon}
+                        </div>
+                        <span className="truncate">{item.labelHi}</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Language Switcher Card */}
+              <div className="bg-amber-50/80 border border-amber-200/80 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-emerald-800" />
-                  <span>
-                    {lang === 'hi' ? 'भाषा बदलें (हिन्दी)' : lang === 'hinglish' ? 'Change Language (Hinglish)' : 'Change Language (English)'}
-                  </span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <Globe className="w-4 h-4 text-amber-800" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-stone-900">
+                      {lang === 'hi' ? 'भाषा बदलें (हिन्दी)' : lang === 'hinglish' ? 'Language (Hinglish)' : 'Language (English)'}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-[10px] font-extrabold bg-amber-100 text-amber-950 border border-amber-300 px-2 py-0.5 rounded-full">
-                  {lang === 'hi' ? 'HI' : lang === 'hinglish' ? 'HING' : 'EN'}
-                </span>
-              </button>
 
-              {/* Legal Pages Listed Below Language Section */}
-              <div className="pt-2 border-t border-stone-200 space-y-1">
-                <div className="text-[10px] font-extrabold text-stone-500 uppercase px-1 tracking-wider">
+                <div className="flex items-center gap-1">
+                  {(['hi', 'en', 'hinglish'] as LanguageCode[]).map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => onSelectLang(l)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-extrabold uppercase transition-colors ${
+                        lang === l 
+                          ? 'bg-amber-600 text-white shadow-xs' 
+                          : 'bg-white text-stone-700 border border-stone-200 hover:bg-amber-100'
+                      }`}
+                    >
+                      {l === 'hi' ? 'HI' : l === 'en' ? 'EN' : 'HING'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Legal Footer Section */}
+              <div className="pt-2 border-t border-stone-200/80 space-y-1">
+                <div className="text-[10px] font-extrabold text-stone-500 uppercase px-1 tracking-wider mb-1">
                   {lang === 'hi' ? 'कानूनी एवं नीतियां' : 'Legal & Policies'}
                 </div>
-                <button onClick={() => handleMobileNavClick('legal-about')} className="w-full p-2 rounded-lg text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between">
-                  <span>{lang === 'hi' ? 'हमारे बारे में (About Us)' : 'About Us'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-                <button onClick={() => handleMobileNavClick('legal-privacy')} className="w-full p-2 rounded-lg text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between">
-                  <span>{lang === 'hi' ? 'गोपनीयता नीति (Privacy Policy)' : 'Privacy Policy'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-                <button onClick={() => handleMobileNavClick('legal-terms')} className="w-full p-2 rounded-lg text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between">
-                  <span>{lang === 'hi' ? 'सेवा की शर्तें (Terms of Service)' : 'Terms of Service'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-                <button onClick={() => handleMobileNavClick('legal-copyright')} className="w-full p-2 rounded-lg text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between">
-                  <span>{lang === 'hi' ? 'कॉपीराइट नीति (Copyright)' : 'Copyright Policy'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-                <button onClick={() => handleMobileNavClick('legal-disclaimer')} className="w-full p-2 rounded-lg text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between">
-                  <span>{lang === 'hi' ? 'अस्वीकरण (Disclaimer)' : 'Legal Disclaimer'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-                <button onClick={() => handleMobileNavClick('legal-grievance')} className="w-full p-2 rounded-lg text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between">
-                  <span>{lang === 'hi' ? 'शिकायत निवारण (Grievance Redressal)' : 'Grievance Redressal'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
+
+                {[
+                  { id: 'legal-about', labelHi: 'हमारे बारे में (About Us)', icon: <Info className="w-3.5 h-3.5 text-stone-500" /> },
+                  { id: 'legal-privacy', labelHi: 'गोपनीयता नीति (Privacy Policy)', icon: <ShieldCheck className="w-3.5 h-3.5 text-stone-500" /> },
+                  { id: 'legal-terms', labelHi: 'सेवा की शर्तें (Terms of Service)', icon: <BookOpen className="w-3.5 h-3.5 text-stone-500" /> },
+                  { id: 'legal-copyright', labelHi: 'कॉपीराइट नीति (Copyright)', icon: <Copyright className="w-3.5 h-3.5 text-stone-500" /> },
+                  { id: 'legal-disclaimer', labelHi: 'अस्वीकरण (Disclaimer)', icon: <HelpCircle className="w-3.5 h-3.5 text-stone-500" /> },
+                  { id: 'legal-grievance', labelHi: 'शिकायत निवारण (Grievance Redressal)', icon: <Scale className="w-3.5 h-3.5 text-stone-500" /> },
+                ].map((legal) => (
+                  <button
+                    key={legal.id}
+                    onClick={() => handleMobileNavClick(legal.id)}
+                    className="w-full p-2 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      {legal.icon}
+                      <span>{legal.labelHi}</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                  </button>
+                ))}
               </div>
             </div>
 

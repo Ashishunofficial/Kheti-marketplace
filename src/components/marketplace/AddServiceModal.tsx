@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Building2, 
   Tractor, 
@@ -7,9 +7,14 @@ import {
   ShieldCheck, 
   MapPin, 
   Phone, 
-  CheckCircle2 
+  CheckCircle2,
+  Camera,
+  Loader2,
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 import { WarehouseFacility, EquipmentRental } from '../../types';
+import { compressImageFile } from '../../utils/imageCompressor';
 
 interface AddServiceModalProps {
   onClose: () => void;
@@ -57,6 +62,37 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
   const [eqPhone, setEqPhone] = useState(currentUserPhone);
   const [eqModelYear, setEqModelYear] = useState('2024');
 
+  // Image Upload & Auto-compression State
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
+  const [compressionStats, setCompressionStats] = useState<{ originalKb: number; compressedKb: number } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressing(true);
+    try {
+      // Automatically compress client-side without bothering the user
+      const result = await compressImageFile(file, 900, 0.75);
+      setImagePreviewUrl(result.dataUrl);
+      setCompressionStats({
+        originalKb: result.originalSizeKb,
+        compressedKb: result.compressedSizeKb
+      });
+    } catch (err) {
+      console.error('Auto image compression error:', err);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setImagePreviewUrl(evt.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
   const handleWarehouseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!whName.trim()) return;
@@ -71,7 +107,8 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
       ratePerBagPerMonth: Number(whRatePerBag) || 8,
       isWdrcRegistered: whIsWdrc,
       contactPhone: whPhone.trim() || currentUserPhone,
-      address: whAddress.trim() || undefined
+      address: whAddress.trim() || undefined,
+      imageUrl: imagePreviewUrl || undefined
     });
 
     setSuccess(true);
@@ -94,7 +131,8 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
       operatorIncluded: eqOperatorIncluded,
       isAvailableNow: eqIsAvailableNow,
       contactPhone: eqPhone.trim() || currentUserPhone,
-      modelYear: eqModelYear.trim() || undefined
+      modelYear: eqModelYear.trim() || undefined,
+      imageUrl: imagePreviewUrl || undefined
     });
 
     setSuccess(true);
@@ -299,6 +337,70 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
               </div>
             </div>
 
+            {/* Image Upload Field */}
+            <div>
+              <label className="block font-semibold text-stone-700 mb-1">
+                Facility / Godown Photo (फोटो अपलोड - ऑटो कम्प्रेस)
+              </label>
+              <input
+                type="file"
+                ref={imageInputRef}
+                onChange={handleImageFileSelect}
+                accept="image/*"
+                className="hidden"
+              />
+
+              {imagePreviewUrl ? (
+                <div className="relative p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <img src={imagePreviewUrl} alt="Compressed preview" className="w-14 h-14 object-cover rounded-lg border border-emerald-400 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span>Photo Attached (कम्प्रेस फोटो तैयार)</span>
+                      </div>
+                      {compressionStats && (
+                        <div className="text-[10px] text-emerald-800 font-mono font-medium mt-0.5">
+                          Original: {compressionStats.originalKb} KB → <strong className="text-emerald-950 font-bold">{compressionStats.compressedKb} KB</strong> (Saved {Math.max(0, Math.round((1 - compressionStats.compressedKb / compressionStats.originalKb) * 100))}%)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImagePreviewUrl(null);
+                      setCompressionStats(null);
+                      if (imageInputRef.current) imageInputRef.current.value = '';
+                    }}
+                    className="p-1.5 hover:bg-rose-100 text-rose-700 rounded-lg transition-colors shrink-0"
+                    title="Remove photo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isCompressing}
+                  className="w-full py-3 px-4 border-2 border-dashed border-stone-300 hover:border-emerald-600 bg-stone-50 hover:bg-emerald-50/50 rounded-xl text-stone-600 hover:text-emerald-900 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  {isCompressing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
+                      <span className="text-xs font-bold text-emerald-800">Auto-compressing photo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4 text-emerald-700" />
+                      <span className="text-xs font-bold">+ Attach Godown Photo (Auto-Compressed)</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
             <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-600 text-[11px] flex items-center justify-between">
               <span>Listing Owner: <strong>{currentUserName}</strong></span>
               <span className="text-emerald-800 font-semibold">100% User-Isolated Data</span>
@@ -437,6 +539,70 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
                 />
                 <span className="font-semibold text-stone-800">Available Immediately</span>
               </label>
+            </div>
+
+            {/* Image Upload Field */}
+            <div>
+              <label className="block font-semibold text-stone-700 mb-1">
+                Equipment / Vehicle Photo (फोटो अपलोड - ऑटो कम्प्रेस)
+              </label>
+              <input
+                type="file"
+                ref={imageInputRef}
+                onChange={handleImageFileSelect}
+                accept="image/*"
+                className="hidden"
+              />
+
+              {imagePreviewUrl ? (
+                <div className="relative p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <img src={imagePreviewUrl} alt="Compressed preview" className="w-14 h-14 object-cover rounded-lg border border-emerald-400 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span>Photo Attached (कम्प्रेस फोटो तैयार)</span>
+                      </div>
+                      {compressionStats && (
+                        <div className="text-[10px] text-emerald-800 font-mono font-medium mt-0.5">
+                          Original: {compressionStats.originalKb} KB → <strong className="text-emerald-950 font-bold">{compressionStats.compressedKb} KB</strong> (Saved {Math.max(0, Math.round((1 - compressionStats.compressedKb / compressionStats.originalKb) * 100))}%)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImagePreviewUrl(null);
+                      setCompressionStats(null);
+                      if (imageInputRef.current) imageInputRef.current.value = '';
+                    }}
+                    className="p-1.5 hover:bg-rose-100 text-rose-700 rounded-lg transition-colors shrink-0"
+                    title="Remove photo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isCompressing}
+                  className="w-full py-3 px-4 border-2 border-dashed border-stone-300 hover:border-emerald-600 bg-stone-50 hover:bg-emerald-50/50 rounded-xl text-stone-600 hover:text-emerald-900 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  {isCompressing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
+                      <span className="text-xs font-bold text-emerald-800">Auto-compressing photo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4 text-emerald-700" />
+                      <span className="text-xs font-bold">+ Attach Machinery Photo (Auto-Compressed)</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-600 text-[11px] flex items-center justify-between">

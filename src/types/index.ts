@@ -319,6 +319,7 @@ export interface WarehouseFacility {
   isWdrcRegistered: boolean;
   contactPhone: string;
   address?: string;
+  imageUrl?: string;
   createdAt?: string;
 }
 
@@ -336,6 +337,7 @@ export interface EquipmentRental {
   isAvailableNow: boolean;
   contactPhone?: string;
   modelYear?: string;
+  imageUrl?: string;
   createdAt?: string;
 }
 

@@ -39,7 +39,7 @@ const PageTransition: React.FC<{ tabKey: string; children: React.ReactNode }> = 
 // ─── Canonical Permalink & Route Maps ─────────────────────────────────────────
 export const TAB_ROUTE_MAP: Record<string, string> = {
   home: '/',
-  'ai-advisor': '/ai-advisor',
+  'ai-advisor': '/ai-doctor',
   mandi: '/mandi-bhav',
   weather: '/weather-advisory',
   marketplace: '/marketplace',
@@ -60,9 +60,12 @@ export const TAB_ROUTE_MAP: Record<string, string> = {
 export const ROUTE_TAB_MAP: Record<string, string> = {
   '/': 'home',
   '/home': 'home',
+  '/ai-doctor': 'ai-advisor',
   '/ai-advisor': 'ai-advisor',
+  '/ai-adviser': 'ai-advisor',
   '/ai': 'ai-advisor',
   '/advisor': 'ai-advisor',
+  '/doctor': 'ai-advisor',
   '/mandi-bhav': 'mandi',
   '/mandi': 'mandi',
   '/bhav': 'mandi',
@@ -365,9 +368,13 @@ function AppContent() {
         )}
       </main>
 
-      {/* Footer (Hidden on AI Advisor page per user request) */}
+      {/* Footer (On mobile, only shown on Homepage; hidden on all other pages on mobile) */}
       {activeTab !== 'ai-advisor' && (
-        <footer className="bg-white border-t border-stone-200 mt-10 py-7 text-xs text-stone-600">
+        <footer
+          className={`bg-white border-t border-stone-200 mt-10 py-7 text-xs text-stone-600 ${
+            activeTab !== 'home' ? (isMobilePreview ? 'hidden' : 'hidden sm:block') : ''
+          }`}
+        >
           <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
             {/* Primary Modules Row */}
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 font-semibold text-stone-700">

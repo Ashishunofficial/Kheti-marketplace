@@ -55,6 +55,7 @@ interface UseListingsReturn {
   offers: OfferNegotiation[];
   orders: OrderRecord[];
   loading: boolean;
+  isSyncing: boolean;
   error: string | null;
   createListing: (listing: Omit<MarketplaceListing, 'id'>) => Promise<void>;
   updateListing: (id: string, data: Partial<MarketplaceListing>) => Promise<void>;
@@ -67,10 +68,27 @@ interface UseListingsReturn {
 
 export function useListings(): UseListingsReturn {
   const { isAuthenticated, isDemo } = useAuth();
-  const [listings, setListings] = useState<MarketplaceListing[]>([]);
-  const [offers, setOffers] = useState<OfferNegotiation[]>([]);
-  const [orders, setOrders] = useState<OrderRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialListings = (): MarketplaceListing[] => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.LISTINGS);
+      const local = saved ? JSON.parse(saved) : [];
+      const combined = [...local];
+      MOCK_LISTINGS.forEach(mockItem => {
+        if (!combined.some(c => c.id === mockItem.id)) {
+          combined.push(mockItem);
+        }
+      });
+      return combined;
+    } catch {
+      return MOCK_LISTINGS;
+    }
+  };
+
+  const [listings, setListings] = useState<MarketplaceListing[]>(getInitialListings);
+  const [offers, setOffers] = useState<OfferNegotiation[]>(MOCK_OFFERS);
+  const [orders, setOrders] = useState<OrderRecord[]>(MOCK_ORDERS);
+  const [loading, setLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
@@ -88,63 +106,63 @@ export function useListings(): UseListingsReturn {
     let isCancelled = false;
 
     async function fetchAll() {
-      setLoading(true);
+      setIsSyncing(true);
       setError(null);
 
       let serverListings: MarketplaceListing[] = [];
       let serverOffers: OfferNegotiation[] = [];
       let serverOrders: OrderRecord[] = [];
 
-      // 1. Fetch from Express persistent shared server API
-      try {
-        const [lRes, oRes, ordRes] = await Promise.all([
-          fetch('/api/marketplace/listings'),
-          fetch('/api/marketplace/offers'),
-          fetch('/api/marketplace/orders')
-        ]);
-
-        if (lRes.ok) {
-          const lData = await lRes.json();
-          if (lData.listings && Array.isArray(lData.listings)) {
-            serverListings = lData.listings;
-          }
-        }
-        if (oRes.ok) {
-          const oData = await oRes.json();
-          if (oData.offers && Array.isArray(oData.offers)) {
-            serverOffers = oData.offers;
-          }
-        }
-        if (ordRes.ok) {
-          const ordData = await ordRes.json();
-          if (ordData.orders && Array.isArray(ordData.orders)) {
-            serverOrders = ordData.orders;
-          }
-        }
-      } catch (e) {
-        console.warn('Notice: Server API fetch error, falling back to local store:', e);
-      }
-
-      // 2. Fetch from Supabase as secondary sync if configured
-      if (isSupabaseConfigured) {
+      // 1. Fetch directly from Supabase in parallel with Express server API
+      const supabasePromise = (async () => {
+        if (!isSupabaseConfigured) return [];
         try {
           const { data: dbRows } = await supabase
             .from('marketplace_listings')
             .select('*')
             .eq('status', 'active')
             .order('created_at', { ascending: false });
-
-          if (dbRows && Array.isArray(dbRows)) {
-            const mappedDb = dbRows.map(mapDbToListing);
-            mappedDb.forEach(ml => {
-              if (!serverListings.some(sl => sl.id === ml.id)) {
-                serverListings.push(ml);
-              }
-            });
-          }
-        } catch (e) {
-          // Supabase sync silent catch
+          return dbRows && Array.isArray(dbRows) ? dbRows.map(mapDbToListing) : [];
+        } catch {
+          return [];
         }
+      })();
+
+      const apiPromise = Promise.all([
+        fetch('/api/marketplace/listings').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/marketplace/offers').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/marketplace/orders').then(r => r.ok ? r.json() : null).catch(() => null)
+      ]);
+
+      try {
+        const [sbMapped, [lData, oData, ordData]] = await Promise.all([
+          supabasePromise,
+          apiPromise
+        ]);
+
+        if (Array.isArray(sbMapped)) {
+          sbMapped.forEach(ml => {
+            if (!serverListings.some(sl => sl.id === ml.id)) {
+              serverListings.push(ml);
+            }
+          });
+        }
+
+        if (lData?.listings && Array.isArray(lData.listings)) {
+          lData.listings.forEach((sl: MarketplaceListing) => {
+            if (!serverListings.some(x => x.id === sl.id)) {
+              serverListings.push(sl);
+            }
+          });
+        }
+        if (oData?.offers && Array.isArray(oData.offers)) {
+          serverOffers = oData.offers;
+        }
+        if (ordData?.orders && Array.isArray(ordData.orders)) {
+          serverOrders = ordData.orders;
+        }
+      } catch (e) {
+        console.warn('Notice: Server API or Supabase fetch notice:', e);
       }
 
       // Merge local listings created in this browser
@@ -157,7 +175,7 @@ export function useListings(): UseListingsReturn {
 
       if (isCancelled) return;
 
-      // 3. PRE-LOGIN vs POST-LOGIN FILTERING
+      // PRE-LOGIN vs POST-LOGIN FILTERING
       if (isDemo || !isAuthenticated) {
         // Pre-login: Show mock demo listings to showcase features to guests
         const combined = [...serverListings];
@@ -191,6 +209,7 @@ export function useListings(): UseListingsReturn {
       }
 
       setLoading(false);
+      setIsSyncing(false);
     }
 
     fetchAll();
@@ -361,6 +380,7 @@ export function useListings(): UseListingsReturn {
     offers,
     orders,
     loading,
+    isSyncing,
     error,
     createListing,
     updateListing,

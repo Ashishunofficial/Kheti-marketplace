@@ -39,14 +39,25 @@ interface AIAdvisorProps {
   onOpenNegotiation?: (listing: any) => void;
 }
 
+const getWelcomeMessage = (lang: 'hi' | 'en' | 'hinglish') => {
+  if (lang === 'en') {
+    return `Hello! Welcome! 🙏 I am your **AI Doctor & Crop Clinic** (Powered by Kheti AI Vision & Kheti AI Intelligence).\n\n🩺 **Kheti AI Vision + Kheti AI Intelligence Crop Pathology Clinic:**\n• Scan or upload a photo of any crop leaf — **Kheti AI Vision** instantly identifies the exact botanical species\n• **Kheti AI Intelligence** diagnoses diseases or insect pests and provides a scientific Doctor Prescription (chemical spray dosage & organic remedy)\n• Ask about today's Mandi Rates, weather forecast, or government schemes via voice or text`;
+  }
+  if (lang === 'hinglish') {
+    return `Namaste ji! Ram-ram! 🙏 Main aapki **AI Doctor & Crop Clinic** (Powered by Kheti AI Vision & Kheti AI Intelligence) hoon.\n\n🩺 **Kheti AI Vision + Kheti AI Intelligence Crop Clinic:**\n• Apni kisi bhi fasal/patti ki photo scan ya upload karein — **Kheti AI Vision** turant botanical species pehchanege\n• **Kheti AI Intelligence** bimari/keede ki pehchan karke scientific doctor prescription (chemical dosage & organic remedy) dega\n• Aaj ka mandi bhav, mausam aur govt schemes ke bare mein bolkar ya likhkar salah lein`;
+  }
+  return `नमस्ते जी! राम-राम! 🙏 मैं आपकी **AI Doctor & Crop Clinic (एआई डॉक्टर)** हूँ (Powered by Kheti AI Vision & Kheti AI Intelligence).\n\n🩺 **Kheti AI Vision + Kheti AI Intelligence** द्वारा संचालित फसल रोग क्लीनिक:\n• अपनी किसी भी फसल/पत्ती की फोटो स्कैन या अपलोड करें — **Kheti AI Vision** तुरंत सटीक प्रजाति (Botanical Species) पहचानेगा\n• **Kheti AI Intelligence** रोग/कीट की पहचान कर वैज्ञानिक डॉक्टर का पर्चा (Prescription), रासायनिक खुराक व जैविक उपचार देगा\n• आज का मंडी भाव, मौसम व सरकारी योजनाओं के बारे में बोलकर या लिखकर सलाह लें`;
+};
+
 export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegotiation }) => {
+  const [chatLanguage, setChatLanguage] = useState<'hi' | 'en' | 'hinglish'>('hi');
   const [messages, setMessages] = useState<ExtendedChatMessage[]>([
     {
       id: 'msg_welcome',
       sender: 'assistant',
-      content: `नमस्ते जी! राम-राम! 🙏 मैं आपकी **AI Doctor & Crop Clinic (एआई डॉक्टर)** हूँ (Powered by Pl@ntNet & Gemini 3.8 Flash)।\n\n🩺 **Pl@ntNet + Gemini AI** द्वारा संचालित फसल रोग क्लीनिक:\n• अपनी किसी भी फसल/पत्ती की फोटो स्कैन या अपलोड करें — **Pl@ntNet** तुरंत सटीक प्रजाति (Botanical Species) पहचानेगा\n• **Gemini 3.8 Flash** रोग/कीट की पहचान कर वैज्ञानिक डॉक्टर का पर्चा (Prescription), रासायनिक खुराक व जैविक उपचार देगा\n• आज का मंडी भाव, मौसम व सरकारी योजनाओं के बारे में बोलकर या लिखकर सलाह लें`,
+      content: getWelcomeMessage('hi'),
       timestamp: 'Just now',
-      toolCallsExecuted: ['Pl@ntNet API', 'Gemini 3.8 Flash']
+      toolCallsExecuted: ['Kheti AI Vision', 'Kheti AI Intelligence']
     }
   ]);
 
@@ -65,6 +76,14 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
   const [voiceLang, setVoiceLang] = useState<'hi-IN' | 'en-IN'>('hi-IN');
   const [leafImagePreview, setLeafImagePreview] = useState<string | null>(null);
   const [conversationId] = useState(`conv_${Date.now().toString(36)}`);
+
+  const handleSetChatLanguage = (lang: 'hi' | 'en' | 'hinglish') => {
+    setChatLanguage(lang);
+    setVoiceLang(lang === 'en' ? 'en-IN' : 'hi-IN');
+    setMessages(prev =>
+      prev.map(msg => (msg.id === 'msg_welcome' ? { ...msg, content: getWelcomeMessage(lang) } : msg))
+    );
+  };
 
   const [processingStep, setProcessingStep] = useState<number>(0);
   const [isProcessingImage, setIsProcessingImage] = useState<boolean>(false);
@@ -213,7 +232,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
     setProcessingStep(0);
     setAgentState('processing');
     setInterimTranscript('');
-    setActiveToolName(hasImage ? 'AI Doctor (Pl@ntNet + Gemini)' : 'AI Doctor Assistant');
+    setActiveToolName(hasImage ? 'AI Doctor (Kheti AI Vision & Intelligence)' : 'AI Doctor Assistant');
 
     // Live progress stepper interval (advances every 1.1s)
     let stepCount = 0;
@@ -238,11 +257,11 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
     setLeafImagePreview(null);
 
     try {
-      const response = await processUserMessage(trimmed, conversationId, imagePayload || undefined);
+      const response = await processUserMessage(trimmed, conversationId, imagePayload || undefined, chatLanguage);
       clearInterval(stepInterval);
       setProcessingStep(maxSteps - 1); // Set to final completed step
 
-      setActiveToolName(response.detectedToolName || 'AI Doctor (Pl@ntNet + Gemini)');
+      setActiveToolName(response.detectedToolName || 'AI Doctor (Kheti AI Vision & Intelligence)');
 
       const asstMsgId = `asst_${Date.now()}`;
       const speechToPlay = response.audioPlaybackText || response.message.substring(0, 180);
@@ -253,7 +272,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
         content: response.message,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         actionCard: response.actionCard,
-        toolCallsExecuted: ['Pl@ntNet API', 'Gemini 3.8 Flash']
+        toolCallsExecuted: ['Kheti AI Vision', 'Kheti AI Intelligence']
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -279,7 +298,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
           sender: 'assistant',
           content: 'किसान भाई, जानकारी प्राप्त करने में क्षणिक बाधा आई। कृपया पुनः प्रयास करें।',
           timestamp: 'Just now',
-          toolCallsExecuted: ['Gemini 1.5 Flash']
+          toolCallsExecuted: ['Kheti AI Intelligence']
         }
       ]);
       setAgentState('idle');
@@ -444,12 +463,52 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
           onChangeVoiceLang={(l) => setVoiceLang(l as 'hi-IN' | 'en-IN')}
         />
 
-        {/* 2-Column Desktop Grid */}
-        <div className="grid grid-cols-12 gap-5 items-start">
-          
-          {/* Left Column (8 cols): Main Chat Stream */}
-          <div className="col-span-8 bg-white border border-stone-200 rounded-2xl shadow-2xs overflow-hidden flex flex-col h-[650px] justify-between">
+        {/* Desktop Full-Width Chat Container */}
+        <div className="w-full bg-white border border-stone-200 rounded-2xl shadow-2xs overflow-hidden flex flex-col h-[680px] justify-between">
             
+            {/* Top Language Selector Banner */}
+            <div className="bg-emerald-900 text-white px-4 py-2.5 border-b border-emerald-800 flex items-center justify-between gap-3 shrink-0 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-amber-300 shrink-0" />
+                <span className="text-xs font-bold text-white">AI Doctor Chat & PDF Language (चैट व रिपोर्ट की भाषा):</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSetChatLanguage('hi')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all border cursor-pointer ${
+                    chatLanguage === 'hi'
+                      ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-xs'
+                      : 'bg-emerald-950 text-emerald-100 border-emerald-700 hover:bg-emerald-800'
+                  }`}
+                >
+                  🇮🇳 हिंदी
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetChatLanguage('en')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all border cursor-pointer ${
+                    chatLanguage === 'en'
+                      ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-xs'
+                      : 'bg-emerald-950 text-emerald-100 border-emerald-700 hover:bg-emerald-800'
+                  }`}
+                >
+                  🇬🇧 English
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetChatLanguage('hinglish')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all border cursor-pointer ${
+                    chatLanguage === 'hinglish'
+                      ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-xs'
+                      : 'bg-emerald-950 text-emerald-100 border-emerald-700 hover:bg-emerald-800'
+                  }`}
+                >
+                  🌾 Hinglish
+                </button>
+              </div>
+            </div>
+
             {/* Chat Messages Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((msg) => {
@@ -484,7 +543,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
 
                       {/* Text Content */}
                       <div className="font-medium leading-relaxed">
-                        <FormattedMessageContent content={msg.content} isAssistant={isAssistant} />
+                        <FormattedMessageContent content={msg.content} isAssistant={isAssistant} chatLanguage={chatLanguage} />
                       </div>
 
                       {/* Leaf Image Upload Preview */}
@@ -643,155 +702,56 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
               </form>
             </div>
 
-          </div>
-
-          {/* Right Column (4 cols): Quick Hero Banner & Suggested Prompts */}
-          <div className="col-span-4 space-y-4">
-            
-            {/* Desktop Hero Assistant Banner */}
-            <div className="bg-gradient-to-r from-amber-100/90 via-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200/90 shadow-2xs space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-800 text-amber-300 flex items-center justify-center font-bold shadow-xs">
-                  <Sparkles className="w-5 h-5 fill-amber-300" />
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-stone-900 leading-none">
-                    Kheti AI सहायता
-                  </h2>
-                  <p className="text-[11px] font-bold text-amber-900 leading-none mt-1">
-                    आपका डिजिटल कृषि सलाहकार
-                  </p>
-                </div>
-              </div>
-
-              {/* Large Voice Button for Desktop */}
-              <div className="p-3 bg-white/80 rounded-xl border border-amber-200 flex items-center justify-between gap-2">
-                <div className="text-xs">
-                  <span className="font-extrabold text-stone-900 block">वॉइस सलाहकार</span>
-                  <span className="text-[11px] text-stone-600 font-medium">हिंदी में बोलकर सवाल पूछें</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (agentState === 'listening') stopVoiceRecording();
-                    else startVoiceRecording();
-                  }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-xs ${
-                    agentState === 'listening' ? 'bg-rose-600 animate-pulse' : 'bg-emerald-800 hover:bg-emerald-900'
-                  }`}
-                >
-                  <Mic className="w-4 h-4" />
-                  <span>{agentState === 'listening' ? 'सुन रहा है...' : 'बोलकर पूछें'}</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 📱 MOBILE VIEW (< md) — Strictly Matching Reference Mockup Image          */}
+      {/* 📱 MOBILE VIEW (< md) — Clean Streamlined Layout                          */}
       {/* ========================================================================= */}
       <div className="md:hidden max-w-md mx-auto min-h-screen bg-stone-50 pb-20 flex flex-col justify-between">
         
         <div className="space-y-3.5 p-3 sm:p-4">
 
-          {/* 1. TOP HERO ASSISTANT BANNER CARD */}
-          <div className="relative bg-gradient-to-r from-amber-100/90 via-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200/90 shadow-2xs space-y-3 overflow-hidden">
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 pointer-events-none bg-cover bg-center" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80')` }} />
-
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-800 text-amber-300 flex items-center justify-center font-bold shadow-xs">
-                  <Sparkles className="w-5 h-5 fill-amber-300" />
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-stone-900 leading-none">
-                    Kheti AI सहायता
-                  </h2>
-                  <p className="text-[11px] font-bold text-amber-900 leading-none mt-1">
-                    आपका डिजिटल कृषि सलाहकार
-                  </p>
-                </div>
-              </div>
+          {/* 2. CHAT & REPORT LANGUAGE SELECTOR STRIP (MOBILE) */}
+          <div className="bg-emerald-950 text-white rounded-xl p-2.5 border border-emerald-800 shadow-2xs space-y-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-200">
+              <Globe className="w-3.5 h-3.5 text-amber-300" />
+              <span>AI Doctor Language (भाषा का चयन करें):</span>
             </div>
-
-            <div className="relative z-10 grid grid-cols-12 gap-2 items-center">
-              <div className="col-span-8 bg-white border border-amber-200 rounded-full px-3.5 py-2.5 shadow-2xs flex items-center gap-2">
-                <MessageSquareText className="w-4 h-4 text-amber-700 shrink-0" />
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      executeQuery(inputText, leafImagePreview);
-                    }
-                  }}
-                  placeholder="आज मैं आपकी कैसे मदद करूँ?"
-                  className="w-full text-xs font-bold text-stone-900 bg-transparent focus:outline-none placeholder:text-stone-500"
-                />
-              </div>
-
-              <div className="col-span-4 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (agentState === 'listening') stopVoiceRecording();
-                    else startVoiceRecording();
-                  }}
-                  className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center shadow-md transition-transform active:scale-95 border-2 border-white ${
-                    agentState === 'listening'
-                      ? 'bg-rose-600 text-white animate-pulse'
-                      : 'bg-emerald-800 hover:bg-emerald-900 text-white'
-                  }`}
-                  title="बोलकर पूछें (Voice Assistant)"
-                >
-                  <Mic className="w-7 h-7 text-white" />
-                </button>
-                <span className="text-[10px] font-extrabold text-stone-800 block mt-1">
-                  {agentState === 'listening' ? 'सुन रहा है...' : 'बोलकर पूछें'}
-                </span>
-              </div>
-            </div>
-
-            <div className="relative z-10 flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
-                onClick={() => executeQuery('आज का मंडी भाव बताओँ')}
-                className="bg-white/90 hover:bg-white border border-amber-200 text-amber-950 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap shadow-2xs transition-colors"
+                type="button"
+                onClick={() => handleSetChatLanguage('hi')}
+                className={`py-1 rounded-lg text-xs font-extrabold border text-center transition-all cursor-pointer ${
+                  chatLanguage === 'hi'
+                    ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-xs'
+                    : 'bg-emerald-900 text-emerald-100 border-emerald-800'
+                }`}
               >
-                आज का मंडी भाव बताओँ
+                🇮🇳 हिंदी
               </button>
               <button
-                onClick={() => executeQuery('मेरी फसल में यह रोग क्यों है?')}
-                className="bg-white/90 hover:bg-white border border-amber-200 text-amber-950 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap shadow-2xs transition-colors"
+                type="button"
+                onClick={() => handleSetChatLanguage('en')}
+                className={`py-1 rounded-lg text-xs font-extrabold border text-center transition-all cursor-pointer ${
+                  chatLanguage === 'en'
+                    ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-xs'
+                    : 'bg-emerald-900 text-emerald-100 border-emerald-800'
+                }`}
               >
-                मेरी फसल में यह रोग क्यों है?
+                🇬🇧 English
               </button>
               <button
-                onClick={() => executeQuery('सरकारी योजना कौन सी हैं?')}
-                className="bg-white/90 hover:bg-white border border-amber-200 text-amber-950 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap shadow-2xs transition-colors"
+                type="button"
+                onClick={() => handleSetChatLanguage('hinglish')}
+                className={`py-1 rounded-lg text-xs font-extrabold border text-center transition-all cursor-pointer ${
+                  chatLanguage === 'hinglish'
+                    ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-xs'
+                    : 'bg-emerald-900 text-emerald-100 border-emerald-800'
+                }`}
               >
-                सरकारी योजना कौन सी हैं?
+                🌾 Hinglish
               </button>
-            </div>
-          </div>
-
-          {/* 2. MODEL STATUS BAR */}
-          <div className="flex items-center justify-between px-1 text-xs font-semibold">
-            <div className="flex items-center gap-2 text-stone-700">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
-              <span className="text-[11px] font-bold text-stone-800">
-                Indian Female Voice Advisor Active · Ready to listen
-              </span>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-300 text-amber-950 px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
-              <Cpu className="w-3 h-3 text-amber-700" />
-              <span>Kheti AI Intelligence</span>
             </div>
           </div>
 
@@ -827,7 +787,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
                     )}
 
                     <div className="font-medium leading-relaxed">
-                      <FormattedMessageContent content={msg.content} isAssistant={isAssistant} />
+                      <FormattedMessageContent content={msg.content} isAssistant={isAssistant} chatLanguage={chatLanguage} />
                     </div>
 
                     {(msg.userImage || msg.actionCard?.data?.image) && (

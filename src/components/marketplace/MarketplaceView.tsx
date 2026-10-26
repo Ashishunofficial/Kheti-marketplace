@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { 
+  RefreshCw,
+  Database,
   ShoppingBag, 
   Tag, 
   MapPin, 
@@ -15,31 +17,26 @@ import {
   Sparkles,
   FileText,
   Loader2,
-  Boxes
+  Boxes,
+  ChevronDown,
+  MoreVertical,
+  Scale,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { MarketplaceListing, OfferNegotiation, CommodityType, UserProfile } from '../../types';
 import { useListings } from '../../hooks/useListings';
 import { useAuth } from '../../hooks/useAuth';
-import { CURRENT_USER } from '../../data/mockData';
 import { MarketplaceDashboard } from './MarketplaceDashboard';
 
 const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'lst_105']);
-const MOCK_SELLER_IDS = new Set([
-  'usr_rameshwar_99',
-  'usr_gurpreet_04',
-  'usr_mahavir_dal_mill',
-  'usr_patel_traders',
-  'usr_sukhminder_fpo',
-  'usr_gurpreet_88',
-  'usr_mahavir_77'
-]);
 
 interface MarketplaceViewProps {
   onOpenAIQuery?: (text: string) => void;
 }
 
 export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery }) => {
-  const { listings, offers, orders, loading, createListing, updateListing, deleteListing, makeOffer, counterOffer, acceptOffer } = useListings();
+  const { listings, offers, orders, loading, isSyncing, refresh, createListing, updateListing, deleteListing, makeOffer, counterOffer, acceptOffer } = useListings();
   const [isSubmittingListing, setIsSubmittingListing] = useState(false);
   const { profile, user, isAuthenticated, isDemo } = useAuth();
 
@@ -53,16 +50,18 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     roles: ['farmer'],
     activeRole: 'farmer',
     isKycVerified: Boolean(user),
-    state: 'Punjab / Haryana',
-    district: '',
-    village: '',
+    state: 'Haryana',
+    district: 'Karnal',
+    village: 'Nilokheri',
     farmSizeAcres: 0,
     primaryCrops: []
   };
 
   const [activeTab, setActiveTab] = useState<'all' | 'sell' | 'buy' | 'dashboard'>('all');
   const [selectedCommodity, setSelectedCommodity] = useState<string>('All');
-  
+  const [selectedState, setSelectedState] = useState<string>('All');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
   // Negotiation Modal
   const [selectedListingForOffer, setSelectedListingForOffer] = useState<MarketplaceListing | null>(null);
   const [offerPriceInput, setOfferPriceInput] = useState<number>(0);
@@ -88,29 +87,26 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     setTimeout(() => setNotificationMsg(null), 4000);
   };
 
-  // Public listings: All active listings from all registered users are visible to everyone
+  // Public listings: All active listings matching selected filters
   const filteredListings = listings.filter((l) => {
     const matchesTab = activeTab === 'all' || l.listingType === activeTab;
-    const matchesCommodity = selectedCommodity === 'All' || l.commodity.includes(selectedCommodity);
-    return matchesTab && matchesCommodity;
+    const matchesCommodity = selectedCommodity === 'All' || l.commodity.toLowerCase().includes(selectedCommodity.toLowerCase());
+    const matchesState = selectedState === 'All' || (l.location && l.location.state && l.location.state.toLowerCase().includes(selectedState.toLowerCase()));
+    return matchesTab && matchesCommodity && matchesState;
   });
-
-  const MOCK_OFFER_IDS = new Set(['ofr_801', 'ofr_802']);
-  const MOCK_ORDER_IDS = new Set(['ord_kht_9021']);
 
   const displayOffers = offers.filter(o => {
     if (isDemo) return true;
-    const isMock = MOCK_OFFER_IDS.has(o.id) || o.id.startsWith('ofr_8') || o.buyerId === 'usr_rameshwar_99' || o.sellerId === 'usr_rameshwar_99';
+    const isMock = MOCK_LISTING_IDS.has(o.listingId);
     const isInvolved = o.buyerId === currentUserId || o.sellerId === currentUserId;
     return !isMock && isInvolved;
   });
 
   const displayOrders = orders.filter(ord => {
     if (isDemo) return true;
-    const isMock = MOCK_ORDER_IDS.has(ord.id) || ord.id.startsWith('ord_kht_') || ord.sellerName.includes('Rameshwar');
     const isInvolved = (ord.buyerName && currentUserName && ord.buyerName.toLowerCase().includes(currentUserName.toLowerCase())) ||
                        (ord.sellerName && currentUserName && ord.sellerName.toLowerCase().includes(currentUserName.toLowerCase()));
-    return !isMock && isInvolved;
+    return isInvolved;
   });
 
   const showNegotiationSection = isDemo || displayOffers.length > 0 || displayOrders.length > 0;
@@ -187,7 +183,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
       location: {
         village: currentUser.village,
         district: currentUser.district,
-        state: currentUser.state,
+        state: currentUser.state || 'Haryana',
         distanceKm: 0
       },
       pickupAvailable: true,
@@ -209,10 +205,10 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="space-y-4">
       {/* Toast Notification */}
       {notificationMsg && (
-        <div className="p-3 bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-md flex items-center justify-between animate-fade-in">
+        <div className="p-3 bg-emerald-900 text-white text-xs font-semibold rounded-2xl shadow-md flex items-center justify-between animate-fade-in">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-emerald-300" />
             <span>{notificationMsg}</span>
@@ -223,130 +219,192 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
         </div>
       )}
 
-      {/* Mode Banner */}
-      {isDemo ? (
-        <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 text-amber-950">
-            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              <strong>🎭 Prototype Pitch Demo Active:</strong> You are viewing sample marketplace trades for demonstration. Sign in or switch to Live Account to manage your private lots.
-            </span>
+      {/* ─── 1. HERO HEADER BANNER (EXACTLY MATCHING SCREENSHOT) ─── */}
+      <div className="bg-gradient-to-r from-emerald-50/80 via-stone-50 to-amber-50/50 border border-stone-200/90 rounded-3xl p-5 sm:p-7 shadow-2xs relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-3 z-10 max-w-2xl">
+          {/* Header Badges Row */}
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+            <span>DIRECT AGRICULTURAL COMMERCE &amp; APMC DISINTERMEDIATION</span>
+            <span className="text-stone-300 font-normal">|</span>
+            <span>ZERO MIDDLEMAN COMMISSION ON KHETI AI</span>
           </div>
-          {!isAuthenticated && (
-            <span className="font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[11px] self-start sm:self-auto">
-              Guest Visitor Mode
-            </span>
-          )}
-        </div>
-      ) : (
-        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-950">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
-            <span>
-              <strong>🟢 Live Kheti AI Marketplace:</strong> All listings made by any farmer or business are visible to everyone across India. Your personal lots are also highlighted below and managed in <strong>"My Dashboard"</strong>.
-            </span>
-          </div>
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className="text-[11px] font-bold text-emerald-900 bg-white border border-emerald-300 hover:bg-emerald-100 px-2.5 py-1 rounded-md shrink-0 transition-colors"
-          >
-            My Dashboard →
-          </button>
-        </div>
-      )}
 
-      {/* Header and Action */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-200">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">
-            <span>Direct Agricultural Commerce & APMC Disintermediation</span>
-            <span aria-hidden="true">·</span>
-            <span>Zero Middleman Commission on Kheti AI</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 mt-1">Kheti AI Buy & Sell Marketplace</h1>
-          <p className="text-sm text-stone-700 mt-0.5">
-            Transparent trade on Kheti AI's marketplace between verified farmers, mill owners, FPOs, and bulk agricultural buyers.
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-stone-900 tracking-tight leading-tight">
+            Kheti AI Buy &amp; Sell Marketplace
+          </h1>
+
+          <p className="text-xs sm:text-sm text-stone-600 font-medium leading-relaxed">
+            Transparent trade between verified farmers, mill owners, FPOs, and bulk buyers across India. Fresh produce • Fair price • Direct connect.
           </p>
+
+          {/* Action Buttons Row */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              onClick={() => {
+                refresh();
+                showNotification('Syncing active market listings...');
+              }}
+              disabled={isSyncing}
+              className="flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold text-stone-900 bg-white hover:bg-stone-50 border border-stone-300 rounded-2xl shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+            >
+              <RefreshCw className={`w-4 h-4 text-emerald-800 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Refreshing...' : 'Refresh Listings'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowNewListingModal(true)}
+              className="flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-bold text-white bg-emerald-900 hover:bg-emerald-950 rounded-2xl shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ List on Kheti AI Marketplace</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowNewListingModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ List on Kheti AI Marketplace</span>
-          </button>
+        {/* Hero Illustration Graphic (Right side matching screenshot) */}
+        <div className="relative shrink-0 w-44 h-44 sm:w-52 sm:h-52 hidden md:flex items-center justify-center">
+          <div className="absolute inset-0 bg-amber-200/50 rounded-full blur-2xl transform scale-90" />
+          <div className="relative w-full h-full rounded-full border-4 border-white shadow-md bg-gradient-to-tr from-amber-100 via-emerald-50 to-amber-200 flex items-center justify-center p-3 text-center overflow-hidden">
+            <img
+              src="/assets/aistudio/image_ed46a4f3.png"
+              alt="Golden Wheat Harvest"
+              className="w-full h-full object-cover rounded-full"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+            <div className="absolute bottom-2 bg-emerald-900/90 text-white font-mono font-bold text-[10px] px-3 py-1 rounded-full backdrop-blur-xs shadow-xs">
+              🌾 Verified Produce
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filter Tabs & Commodity Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 sm:p-3 border border-stone-200 rounded-2xl shadow-2xs">
-        {/* Type Filter Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-stone-100/90 rounded-xl overflow-x-auto no-scrollbar shrink-0">
+      {/* ─── 2. FILTER TOOLBAR (MATCHING SCREENSHOT) ─── */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-stone-200 shadow-2xs space-y-3">
+        {/* Row 1: Segmented Tab Buttons */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-bold rounded-2xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               activeTab === 'all'
-                ? 'bg-white text-stone-900 shadow-2xs font-extrabold'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                ? 'bg-emerald-900 text-white shadow-2xs font-extrabold'
+                : 'bg-white hover:bg-stone-100 border border-stone-200/90 text-stone-800'
             }`}
           >
-            सभी Kheti AI लिस्टिंग ({filteredListings.length})
+            <span>≡</span>
+            <span>सभी Kheti AI लिस्टिंग ({filteredListings.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('sell')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-bold rounded-2xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               activeTab === 'sell'
-                ? 'bg-emerald-800 text-white shadow-2xs font-extrabold'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                ? 'bg-emerald-900 text-white shadow-2xs font-extrabold'
+                : 'bg-white hover:bg-stone-100 border border-stone-200/90 text-stone-800'
             }`}
           >
-            किसान बिक्री (Sell)
+            <span>🌾</span>
+            <span>किसान बिक्री (Sell)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('buy')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-bold rounded-2xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               activeTab === 'buy'
-                ? 'bg-sky-800 text-white shadow-2xs font-extrabold'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                ? 'bg-emerald-900 text-white shadow-2xs font-extrabold'
+                : 'bg-white hover:bg-stone-100 border border-stone-200/90 text-stone-800'
             }`}
           >
-            व्यापारी मांग (Buy)
+            <span>🛒</span>
+            <span>खरीदें (Buy)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('all')}
+            className="px-4 py-2 text-xs font-bold rounded-2xl bg-white hover:bg-stone-100 border border-stone-200/90 text-stone-800 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5"
+          >
+            <span>🏢</span>
+            <span>व्यापार प्रकार</span>
           </button>
 
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 relative ${
+            className={`px-4 py-2 text-xs font-bold rounded-2xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               activeTab === 'dashboard'
-                ? 'bg-amber-700 text-white shadow-2xs'
-                : 'bg-amber-100/80 text-amber-950 hover:bg-amber-200/80'
+                ? 'bg-amber-800 text-white shadow-2xs'
+                : 'bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950'
             }`}
           >
-            <Boxes className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+            <span>⚙</span>
             <span>मेरा डैशबोर्ड</span>
-            {offers.filter(o => o.status === 'pending').length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-            )}
           </button>
         </div>
 
-        {/* Commodity Filter */}
-        <div className="flex items-center justify-between sm:justify-start gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-stone-150">
-          <span className="text-xs font-extrabold text-stone-700 whitespace-nowrap">फसल फ़िल्टर:</span>
-          <select
-            value={selectedCommodity}
-            onChange={(e) => setSelectedCommodity(e.target.value)}
-            className="py-1.5 px-3 text-xs bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:border-emerald-700 text-stone-900 font-bold shrink-0 shadow-2xs"
-          >
-            <option value="All">सभी फसलें (All Commodities)</option>
-            <option value="Wheat">गेहूं (Wheat)</option>
-            <option value="Basmati">बासमती धान (Paddy)</option>
-            <option value="Mustard">सरसों (Mustard)</option>
-            <option value="Potato">आलू (Potato)</option>
-          </select>
+        {/* Row 2: Commodity & State Dropdown Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-150">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-stone-700 whitespace-nowrap">फसल फ़िल्टर:</span>
+            <div className="relative">
+              <select
+                value={selectedCommodity}
+                onChange={(e) => setSelectedCommodity(e.target.value)}
+                className="py-2 px-3 pr-8 text-xs bg-white border border-stone-250 rounded-2xl focus:outline-none focus:border-emerald-700 text-stone-900 font-bold shadow-2xs appearance-none cursor-pointer"
+              >
+                <option value="All">🌱 सभी फसलें (All Commodities)</option>
+                <option value="Wheat">🌾 गेहूं (Wheat)</option>
+                <option value="Basmati">🌾 बासमती धान (Paddy)</option>
+                <option value="Mustard">🌼 सरसों (Mustard)</option>
+                <option value="Potato">🥔 आलू (Potato)</option>
+                <option value="Soybean">🫘 सोयाबीन (Soybean)</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-stone-500">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <select
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
+                className="py-2 px-3 pr-8 text-xs bg-white border border-stone-250 rounded-2xl focus:outline-none focus:border-emerald-700 text-stone-900 font-bold shadow-2xs appearance-none cursor-pointer"
+              >
+                <option value="All">📍 सभी राज्य</option>
+                <option value="Haryana">Haryana</option>
+                <option value="Punjab">Punjab</option>
+                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                <option value="Rajasthan">Rajasthan</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-stone-500">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
+            </div>
+
+            {/* View Mode Toggle (Grid vs List) */}
+            <div className="flex items-center gap-1 border border-stone-200 rounded-2xl p-1 bg-stone-50 shrink-0">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-emerald-900 text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="Grid View (2 columns)"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'list' ? 'bg-emerald-900 text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="List View (1 column)"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -370,191 +428,196 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
         />
       ) : (
         <>
-          {/* Listings Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* ─── 3. LISTINGS FEED (GRID / LIST VIEW) ─── */}
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 lg:grid-cols-2 gap-5" : "grid grid-cols-1 gap-5"}>
             {filteredListings.length === 0 ? (
-              <div className="col-span-full bg-white border border-dashed border-stone-300 rounded-2xl p-10 text-center space-y-3">
+              <div className="col-span-full bg-white border border-dashed border-stone-300 rounded-3xl p-10 text-center space-y-3">
                 <div className="w-12 h-12 bg-amber-50 text-amber-800 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
                   🌾
                 </div>
                 <h3 className="text-base font-bold text-stone-900">
-                  {isDemo
-                    ? 'No sample listings match this commodity filter.'
-                    : 'अन्य किसानों/व्यापारियों की कोई सक्रिय लिस्टिंग नहीं है (No other user listings yet)'}
+                  No active marketplace listings match this filter
                 </h3>
                 <p className="text-xs text-stone-500 max-w-md mx-auto">
-                  {isDemo
-                    ? 'Change your filter selection to view available demo produce offers.'
-                    : 'लाइव मोड में केवल अन्य उपयोगकर्ताओं द्वारा प्रकाशित लिस्टिंग्स यहां दिखाई देती हैं। आपके द्वारा बनाई गई लिस्टिंग्स आपके "My Listing Dashboard (मेरा डैशबोर्ड)" में सुरक्षित हैं।'}
+                  Select "सभी फसलें (All Commodities)" or publish a new produce lot.
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                  <button
-                    onClick={() => setActiveTab('dashboard')}
-                    className="px-4 py-2 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors shadow-xs"
-                  >
-                    मेरा डैशबोर्ड देखें (My Dashboard)
-                  </button>
+                <div className="pt-2">
                   <button
                     onClick={() => setShowNewListingModal(true)}
-                    className="px-4 py-2 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs"
+                    className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 rounded-2xl transition-colors shadow-xs"
                   >
-                    + नई लिस्टिंग प्रकाशित करें (+ Publish Listing)
+                    + List on Kheti AI Marketplace
                   </button>
                 </div>
               </div>
             ) : (
-              filteredListings.map((listing) => (
-              <div
-                key={listing.id}
-                className="bg-white border border-stone-200/90 rounded-2xl p-3.5 sm:p-5 shadow-2xs flex flex-col justify-between hover:border-emerald-500 transition-colors"
-              >
-                <div>
-                  {/* Badge & Type */}
-                  <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                    <span
-                      className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                        listing.listingType === 'sell'
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
-                          : 'bg-sky-50 text-sky-800 border border-sky-200/60'
-                      }`}
-                    >
-                      {listing.listingType === 'sell' ? 'For Sale by Farmer' : 'Buying Requirement'}
-                    </span>
-                    <span className="text-[10px] text-stone-500 font-medium flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-stone-400" /> {listing.postedDate}
-                    </span>
-                  </div>
+              filteredListings.map((listing, idx) => {
+                const cropPhoto = listing.commodity.includes('Wheat') || listing.commodity.includes('गेहूं')
+                  ? (idx % 2 === 0 ? '/assets/aistudio/image_ed46a4f3.png' : '/assets/aistudio/image_481883ee.png')
+                  : '/assets/aistudio/Kheti_AI_Marketplace_Dashboard_682d8c37.png';
 
-                  {/* Title & Seller */}
-                  <div className="mt-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-stone-700">{listing.sellerName}</span>
-                      {listing.isVerified && (
-                        <span title="Kheti Verified KYC">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-sm sm:text-base font-extrabold text-stone-900 mt-0.5">{listing.commodity}</h3>
-                    <div className="text-[11px] text-stone-500 font-medium">
-                      <span>{listing.variety}</span>
-                      <span className="mx-1.5">·</span>
-                      <span>{listing.grade}</span>
-                    </div>
-                  </div>
-
-                  {/* Specs Grid (Borderless Subtle Background) */}
-                  <div className="mt-3 p-2.5 bg-stone-50/80 rounded-xl grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-stone-500 text-[10px] font-medium block">Available Quantity</span>
-                      <span className="font-bold font-mono text-stone-900 text-xs sm:text-sm">
-                        {listing.quantity} {listing.unit}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-stone-500 text-[10px] font-medium block">Asking Rate</span>
-                      <span className="font-extrabold font-mono text-emerald-800 text-xs sm:text-sm">
-                        ₹{listing.askingPrice.toLocaleString('en-IN')}/{listing.unit.slice(0, 3)}
-                      </span>
-                    </div>
-                    {listing.moistureContentPercent && (
-                      <div className="col-span-2 pt-1 border-t border-stone-200/60 flex items-center justify-between text-[11px]">
-                        <span className="text-stone-600">Moisture Content:</span>
-                        <span className="font-mono font-bold text-stone-900">{listing.moistureContentPercent}%</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Location & Logistical terms */}
-                  <div className="mt-3 text-xs text-stone-700 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span>
-                        {listing.location.village ? `${listing.location.village}, ` : ''}
-                        {listing.location.district}, {listing.location.state}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-stone-700">
-                      <Truck className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span>
-                        {listing.pickupAvailable && listing.deliveryAvailable
-                          ? 'Pickup at farm or delivery available'
-                          : listing.pickupAvailable
-                          ? 'Buyer pickup from farm godown'
-                          : 'Delivery to mill gate'}
-                      </span>
-                    </div>
-                    {listing.notes && (
-                      <p className="text-[11px] text-stone-700 italic mt-1 line-clamp-2">"{listing.notes}"</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Bar */}
-                <div className="mt-4 pt-3 border-t border-stone-150 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => {
-                      if (onOpenAIQuery) {
-                        onOpenAIQuery(`What is a fair negotiation price for ${listing.commodity} listed at ₹${listing.askingPrice}?`);
-                      }
-                    }}
-                    className="text-xs text-emerald-800 hover:text-emerald-950 font-semibold flex items-center gap-1"
-                    title="AI Price Analysis"
+                return (
+                  <div
+                    key={listing.id}
+                    className="bg-white border border-stone-200/90 rounded-3xl p-4 sm:p-5 shadow-2xs space-y-3 hover:border-emerald-400 transition-all flex flex-col justify-between"
                   >
-                    <Sparkles className="w-3 h-3 text-emerald-600" /> Fair Price?
-                  </button>
+                    <div className="space-y-3">
+                      {/* Header Row */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="bg-emerald-100/90 text-emerald-900 border border-emerald-300/80 font-bold text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 uppercase tracking-wider truncate shrink-0">
+                          <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+                          <span>{listing.listingType === 'sell' ? 'FOR SALE BY FARMER' : 'BUYING REQUIREMENT'}</span>
+                        </span>
 
-                  {currentUserId && (listing.sellerId === currentUserId || listing.sellerId.includes(currentUserId)) ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
-                        ✓ Your Listing
-                      </span>
+                        <div className="flex items-center gap-2 text-stone-500 text-xs font-medium shrink-0">
+                          <span className="flex items-center gap-1 text-[11px]">
+                            <Clock className="w-3.5 h-3.5 text-stone-400" />
+                            <span>{listing.postedDate || '25/10/2026'}</span>
+                          </span>
+                          <button className="text-stone-400 hover:text-stone-700 p-1">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Main Content Flex Row */}
+                      <div className="flex flex-row items-start gap-3 sm:gap-4">
+                        {/* Crop Photo Thumbnail */}
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
+                          <img
+                            src={cropPhoto}
+                            alt={listing.commodity}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&q=80';
+                            }}
+                          />
+                        </div>
+
+                        {/* Details Area */}
+                        <div className="flex-1 min-w-0 space-y-2">
+                          {/* Seller Name & Title */}
+                          <div>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs sm:text-sm font-bold text-stone-900 truncate">{listing.sellerName}</span>
+                              {listing.isVerified && (
+                                <span className="w-4 h-4 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" title="Kheti AI Verified">
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight leading-tight mt-0.5 truncate">
+                              {listing.commodity}
+                            </h3>
+                            <p className="text-[11px] sm:text-xs font-semibold text-stone-500 mt-0.5 truncate">
+                              {listing.variety || 'PBW-550'} • {listing.grade || 'Grade A'}
+                            </p>
+                          </div>
+
+                          {/* Metric Boxes Row */}
+                          <div className="grid grid-cols-2 gap-2 pt-0.5">
+                            <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-700 text-xs shrink-0 shadow-2xs">
+                                📦
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Quantity</span>
+                                <span className="font-extrabold text-stone-900 text-xs sm:text-sm font-mono block truncate">
+                                  {listing.quantity} {listing.unit}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="bg-stone-50/90 border border-stone-150 rounded-xl p-2 flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center text-xs font-bold shrink-0">
+                                ₹
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 block truncate">Asking Rate</span>
+                                <span className="font-black text-emerald-900 text-xs sm:text-sm font-mono block truncate" title={`₹${listing.askingPrice.toLocaleString('en-IN')} / ${listing.unit}`}>
+                                  ₹{listing.askingPrice.toLocaleString('en-IN')}/{listing.unit}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Location & Logistical Terms */}
+                      <div className="text-xs text-stone-600 font-medium space-y-1 pt-1 border-t border-stone-100">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="truncate">
+                            {listing.location.village ? `${listing.location.village}, ` : ''}
+                            {listing.location.district ? `${listing.location.district}, ` : ''}
+                            {listing.location.state || 'Haryana'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Truck className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="truncate">Pickup at farm or delivery available</span>
+                        </div>
+                      </div>
+
+                      {/* Verified Quote Callout */}
+                      <div className="bg-emerald-50/70 border border-emerald-150 rounded-xl p-2 flex items-center gap-2 text-[11px] text-emerald-950 italic font-medium">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="line-clamp-2">"{listing.notes || 'Verified farm produce ready for inspection and prompt weighbridge checkout.'}"</span>
+                      </div>
+                    </div>
+
+                    {/* Card Action Buttons Row */}
+                    <div className="pt-2 flex items-center justify-between gap-2 border-t border-stone-150">
                       <button
-                        onClick={() => setActiveTab('dashboard')}
-                        className="px-2.5 py-1 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+                        onClick={() => {
+                          if (onOpenAIQuery) {
+                            onOpenAIQuery(`What is a fair negotiation price for ${listing.commodity} listed at ₹${listing.askingPrice}?`);
+                          }
+                        }}
+                        className="border border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs shrink-0"
                       >
-                        Manage →
+                        <Scale className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Fair Price?</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenOfferModal(listing)}
+                        className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                      >
+                        <span>Make Offer</span>
+                        <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => handleOpenOfferModal(listing)}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
-                    >
-                      <span>Make Offer</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
 
           {/* Active Negotiations & Agreed Orders Section */}
           {showNegotiationSection && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-stone-200">
               {/* Negotiation History */}
-              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
+              <div className="bg-white border border-stone-200 rounded-3xl p-5 shadow-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-stone-150">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Negotiation Workflow</span>
-                    <h3 className="text-base font-bold text-stone-900 mt-0.5">Active Offers & Counteroffers</h3>
+                    <h3 className="text-base font-bold text-stone-900 mt-0.5">Active Offers &amp; Counteroffers</h3>
                   </div>
                   <span className="text-xs text-stone-700">{displayOffers.length} Conversations</span>
                 </div>
 
                 <div className="mt-4 space-y-3">
                   {displayOffers.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-stone-500 bg-stone-50 rounded-lg">
+                    <div className="p-4 text-center text-xs text-stone-500 bg-stone-50 rounded-xl">
                       No active offers or counteroffers.
                     </div>
                   ) : (
                     displayOffers.map((offer) => (
-                      <div key={offer.id} className="p-3.5 bg-stone-50 border border-stone-150 rounded-lg text-xs space-y-2">
+                      <div key={offer.id} className="p-3.5 bg-stone-50 border border-stone-150 rounded-2xl text-xs space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-stone-900">{offer.commodity}</span>
-                          <span className={`px-2 py-0.5 rounded font-semibold text-[11px] ${
+                          <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${
                             offer.status === 'accepted' ? 'bg-emerald-100 text-emerald-900' :
                             offer.status === 'countered' ? 'bg-amber-100 text-amber-900' : 'bg-stone-200 text-stone-800'
                           }`}>
@@ -567,7 +630,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                           <span>Seller: <strong>{offer.sellerName}</strong></span>
                         </div>
 
-                        <div className="p-2 bg-white rounded border border-stone-200 flex items-center justify-between">
+                        <div className="p-2 bg-white rounded-xl border border-stone-200 flex items-center justify-between">
                           <div>
                             <span className="text-stone-700">Quantity:</span> <strong>{offer.quantity} {offer.unit}</strong>
                           </div>
@@ -589,9 +652,9 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                           <div className="flex justify-end gap-2 pt-1">
                             <button
                               onClick={() => handleAcceptOffer(offer)}
-                              className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded text-xs transition-colors"
+                              className="px-3 py-1 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold rounded-xl text-xs transition-colors"
                             >
-                              Accept Deal & Create Order
+                              Accept Deal &amp; Create Order
                             </button>
                           </div>
                         )}
@@ -602,29 +665,29 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
               </div>
 
               {/* Agreed Orders & Escrow Tracking */}
-              <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs">
+              <div className="bg-white border border-stone-200 rounded-3xl p-5 shadow-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-stone-150">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Commercial Transactions</span>
-                    <h3 className="text-base font-bold text-stone-900 mt-0.5">Agreed Orders & Deliveries</h3>
+                    <h3 className="text-base font-bold text-stone-900 mt-0.5">Agreed Orders &amp; Deliveries</h3>
                   </div>
                   <span className="text-xs text-stone-700">{displayOrders.length} Completed / In-progress</span>
                 </div>
 
                 <div className="mt-4 space-y-3">
                   {displayOrders.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-stone-500 bg-stone-50 rounded-lg">
+                    <div className="p-4 text-center text-xs text-stone-500 bg-stone-50 rounded-xl">
                       No agreed orders or active deliveries yet.
                     </div>
                   ) : (
                     displayOrders.map((ord) => (
-                      <div key={ord.id} className="p-3.5 bg-stone-50 border border-stone-150 rounded-lg text-xs space-y-2">
+                      <div key={ord.id} className="p-3.5 bg-stone-50 border border-stone-150 rounded-2xl text-xs space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-emerald-700" />
                             <span className="font-bold text-stone-900 font-mono">{ord.id}</span>
                           </div>
-                          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                             Payment: Escrow Locked
                           </span>
                         </div>
@@ -653,7 +716,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
       {/* Negotiation Modal */}
       {showNegotiationModal && selectedListingForOffer && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Direct Negotiation</span>
@@ -664,7 +727,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
               </button>
             </div>
 
-            <div className="p-3 bg-stone-50 rounded-lg text-xs space-y-1">
+            <div className="p-3 bg-stone-50 rounded-2xl text-xs space-y-1">
               <div>Produce: <strong>{selectedListingForOffer.commodity} ({selectedListingForOffer.variety})</strong></div>
               <div>Seller Asking Rate: <strong className="text-stone-900">₹{selectedListingForOffer.askingPrice}/{selectedListingForOffer.unit}</strong></div>
               <div>Location: <strong>{selectedListingForOffer.location.district}, {selectedListingForOffer.location.state}</strong></div>
@@ -677,7 +740,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                   type="number"
                   value={offerPriceInput}
                   onChange={(e) => setOfferPriceInput(Number(e.target.value))}
-                  className="w-full py-2 px-3 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700 font-mono font-bold"
+                  className="w-full py-2.5 px-3 text-sm bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700 font-mono font-bold"
                 />
               </div>
 
@@ -687,7 +750,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                   type="number"
                   value={offerQuantityInput}
                   onChange={(e) => setOfferQuantityInput(Number(e.target.value))}
-                  className="w-full py-2 px-3 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700 font-mono"
+                  className="w-full py-2.5 px-3 text-sm bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700 font-mono"
                 />
               </div>
 
@@ -698,12 +761,12 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                   onChange={(e) => setOfferMessageInput(e.target.value)}
                   placeholder="e.g. Can pick up in our own vehicle tomorrow morning. RTGS payment upon moisture test."
                   rows={2}
-                  className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700"
+                  className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700"
                 />
               </div>
             </div>
 
-            <div className="p-2.5 bg-emerald-50 rounded-lg text-xs text-emerald-950 flex items-center justify-between">
+            <div className="p-3 bg-emerald-50 rounded-2xl text-xs text-emerald-950 flex items-center justify-between border border-emerald-200">
               <span>Total Estimated Value:</span>
               <span className="font-bold font-mono text-sm">₹{(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}</span>
             </div>
@@ -712,14 +775,14 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
               <button
                 type="button"
                 onClick={() => setShowNegotiationModal(false)}
-                className="px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-2xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSendOffer}
-                className="px-4 py-2 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs"
+                className="px-5 py-2 text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 rounded-2xl transition-colors shadow-xs"
               >
                 Submit Offer
               </button>
@@ -731,7 +794,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
       {/* New Listing Modal */}
       {showNewListingModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Publish to Kheti AI's Marketplace</span>
@@ -749,7 +812,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                   <select
                     value={newListingType}
                     onChange={(e: any) => setNewListingType(e.target.value)}
-                    className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700"
+                    className="w-full py-2.5 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700"
                   >
                     <option value="sell">I want to Sell Produce (Farmer)</option>
                     <option value="buy">I want to Buy / Procure (Buyer)</option>
@@ -761,7 +824,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                   <select
                     value={newCommodity}
                     onChange={(e: any) => setNewCommodity(e.target.value)}
-                    className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700"
+                    className="w-full py-2.5 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700"
                   >
                     <option value="Wheat (गेहूं)">Wheat (गेहूं)</option>
                     <option value="Basmati Paddy (धान)">Basmati Paddy (धान)</option>
@@ -782,7 +845,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                     onChange={(e) => setNewVariety(e.target.value)}
                     placeholder="e.g. Sharbati / PBW-550"
                     required
-                    className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700"
+                    className="w-full py-2.5 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700"
                   />
                 </div>
 
@@ -791,7 +854,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                   <select
                     value={newGrade}
                     onChange={(e) => setNewGrade(e.target.value)}
-                    className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700"
+                    className="w-full py-2.5 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700"
                   >
                     <option value="Grade A">Grade A</option>
                     <option value="FAQ (Fair Average Quality)">FAQ (Fair Average Quality)</option>
@@ -809,7 +872,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                     onChange={(e) => setNewQuantity(Number(e.target.value))}
                     min={1}
                     required
-                    className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700 font-mono"
+                    className="w-full py-2.5 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700 font-mono"
                   />
                 </div>
 
@@ -821,23 +884,23 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                     onChange={(e) => setNewAskingPrice(Number(e.target.value))}
                     min={100}
                     required
-                    className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700 font-mono font-bold"
+                    className="w-full py-2.5 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700 font-mono font-bold"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-stone-800 block mb-1">Quality & Pickup Details</label>
+                <label className="text-xs font-semibold text-stone-800 block mb-1">Quality &amp; Pickup Details</label>
                 <textarea
                   value={newNotes}
                   onChange={(e) => setNewNotes(e.target.value)}
                   placeholder="e.g. Machine cleaned, sun dried, stored in safe warehouse in Karnal. Available for sample inspection."
                   rows={2}
-                  className="w-full py-2 px-3 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-700"
+                  className="w-full py-2.5 px-3 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:border-emerald-700"
                 />
               </div>
 
-              <div className="p-3 bg-stone-50 rounded-lg text-xs text-stone-700 flex items-center justify-between">
+              <div className="p-3 bg-stone-50 rounded-2xl text-xs text-stone-700 flex items-center justify-between border border-stone-200">
                 <span>Estimated Gross Order:</span>
                 <span className="font-bold font-mono text-stone-900 text-sm">
                   ₹{(newQuantity * newAskingPrice).toLocaleString('en-IN')}
@@ -848,14 +911,14 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                 <button
                   type="button"
                   onClick={() => setShowNewListingModal(false)}
-                  className="px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 rounded-2xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingListing}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 rounded-lg transition-colors shadow-xs flex items-center gap-1.5"
+                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 disabled:opacity-50 rounded-2xl transition-colors shadow-xs flex items-center gap-1.5"
                 >
                   {isSubmittingListing ? (
                     <>

@@ -15,13 +15,13 @@ Core Personality & Behavior:
    - Provide exact dosages (e.g. ml per acre or per liter of water) and both chemical and organic options.
 4. Keep responses direct and structured so they sound great when spoken aloud.`;
 
-const AI_DOCTOR_SYSTEM_INSTRUCTION = `You are "AI Doctor & Crop Clinic (एआई डॉक्टर)" — an elite Chief Botanical Pathologist and Senior Agronomist at Kheti AI Platform.
-Your mission is to analyze plant/crop images, accurately diagnose crop diseases, insect pests, or nutrient deficiencies, and prescribe an exact medical prescription (डॉक्टर का पर्चा) for Indian farmers.
+const HINDI_AI_DOCTOR_SYSTEM_INSTRUCTION = `You are "AI Doctor & Crop Clinic (एआई डॉक्टर)" — an elite Chief Botanical Pathologist and Senior Agronomist at Kheti AI Platform.
+Your mission is to analyze plant/crop images, accurately diagnose crop diseases, insect pests, or nutrient deficiencies, and prescribe an exact medical prescription (डॉक्टर का पर्चा) for Indian farmers in Hindi.
 
 When Kheti AI Vision botanical data is provided:
-- Explicitly state the Kheti AI Botanical Match (Species Scientific Name, Common Name in English & Hindi, and Match Confidence %).
+- Explicitly state the Kheti AI Botanical Match (Species Scientific Name, Common Name, and Match Confidence %).
 
-Format your clinical response clearly with headings in Hindi/Hinglish:
+Format your clinical response clearly using Devanagari Hindi:
 
 🩺 **AI Doctor - फसल रोग निदान एवं पर्चा (Crop Clinical Diagnosis)**
 
@@ -32,7 +32,7 @@ Format your clinical response clearly with headings in Hindi/Hinglish:
 🔬 **2. बीमारी की पहचान व लक्षण (Disease & Pathology):**
 - **बीमारी का नाम (Disease Name):** [Hindi & English Name, e.g. Yellow Rust / पीला रतुआ]
 - **गंभीरता (Severity Level):** 🟢 सामान्य (Mild) / 🟡 मध्यम (Moderate) / 🔴 गंभीर (Severe Emergency)
-- **लक्षण (Symptoms Observed):** [Concise pathological description]
+- **लक्षण (Symptoms Observed):** [Concise pathological description in Hindi]
 
 💊 **3. AI Doctor का उपचार पर्चा (Clinical Treatment Protocol):**
 - **रासायनिक दवा व खुराक (Chemical Spray & Dosage):**
@@ -43,7 +43,68 @@ Format your clinical response clearly with headings in Hindi/Hinglish:
   • [Micro-nutrient advice, e.g. Zinc Sulphate 33% @ 5kg/acre]
 
 🛡️ **4. सुरक्षा व बचाव के उपाय (Preventive Care):**
-- [Field drainage, irrigation timing, and crop sanitation]`;
+- [Field drainage, irrigation timing, and crop sanitation in Hindi]`;
+
+const ENGLISH_AI_DOCTOR_SYSTEM_INSTRUCTION = `You are "AI Doctor & Crop Clinic" — an elite Chief Botanical Pathologist and Senior Agronomist at Kheti AI Platform.
+Your mission is to analyze plant/crop images, accurately diagnose crop diseases, insect pests, or nutrient deficiencies, and prescribe an exact medical prescription in clear English.
+
+CRITICAL MANDATE: Write the ENTIRE response in 100% ENGLISH language. Do NOT include any Devanagari Hindi script, Hindi words, or mixed Hindi terms. All section titles, labels, disease names, symptoms, and remedies MUST be in English.
+
+When Kheti AI Vision botanical data is provided:
+- Explicitly state the Kheti AI Botanical Match (Species Scientific Name, English Common Name, and Match Confidence %).
+
+Format your clinical response strictly in English:
+
+🩺 **AI Doctor - Crop Clinical Diagnosis & Prescription**
+
+🌱 **1. Plant Identified:**
+- **Botanical Species:** [Scientific Name] (English Common Name)
+- **Kheti AI Botanical Match:** [Match Confidence %]
+
+🔬 **2. Disease & Pathology:**
+- **Disease Name:** [English Name, e.g. Alternaria Leaf Spot / Black Spot]
+- **Severity Level:** 🟢 Mild / 🟡 Moderate / 🔴 Severe Emergency
+- **Symptoms Observed:** [Concise pathological description strictly in English]
+
+💊 **3. Clinical Treatment Protocol:**
+- **Chemical Spray & Dosage:**
+  • [Specific Chemical + Brand Name & dosage in English, e.g. Propiconazole 25% EC @ 200 ml/acre in 150L water]
+- **Organic Remedy:**
+  • [Organic spray & dosage in English, e.g. Neem oil 10,000 ppm @ 5ml/L or Trichoderma viride]
+- **Nutritional Care:**
+  • [Micro-nutrient advice in English, e.g. Zinc Sulphate 33% @ 5kg/acre]
+
+🛡️ **4. Preventive Care:**
+- [Field drainage, irrigation timing, and crop sanitation in English]`;
+
+const HINGLISH_AI_DOCTOR_SYSTEM_INSTRUCTION = `You are "AI Doctor & Crop Clinic" — an elite Chief Botanical Pathologist and Senior Agronomist at Kheti AI Platform.
+Your mission is to analyze plant/crop images, accurately diagnose crop diseases, insect pests, or nutrient deficiencies, and prescribe an exact medical prescription in Hinglish (Hindi written using Roman/English alphabet).
+
+CRITICAL MANDATE: Write the ENTIRE response in HINGLISH language (Hindi spoken concepts written using English/Roman script). Do NOT use Devanagari script.
+
+Format your clinical response clearly in Hinglish:
+
+🩺 **AI Doctor - Fasal Rog Nidan va Parcha (Crop Clinical Diagnosis)**
+
+🌱 **1. Pehchan Ki Gai Fasal (Plant Identified):**
+- **Botanical Species:** [Scientific Name] (Common Name)
+- **Kheti AI Botanical Match:** [Match Confidence %]
+
+🔬 **2. Bimari Ki Pehchan va Lakshana (Disease & Pathology):**
+- **Bimari Ka Naam (Disease Name):** [Disease Name in Hinglish]
+- **Gambhirta (Severity Level):** 🟢 Samanya (Mild) / 🟡 Madhyam (Moderate) / 🔴 Gambhir (Severe Emergency)
+- **Lakshana (Symptoms Observed):** [Symptoms in Hinglish]
+
+💊 **3. Clinical Treatment Protocol:**
+- **Chemical Spray va Khurak (Chemical Spray & Dosage):**
+  • [Chemical & dosage in Hinglish]
+- **Organic va Desi Ilaaj (Organic Remedy):**
+  • [Organic remedy in Hinglish]
+- **Nutritional Care:**
+  • [Micro-nutrient advice in Hinglish]
+
+🛡️ **4. Suraksha va Bachav (Preventive Care):**
+- [Preventive advice in Hinglish]`;
 
 // ─── Helper: Convert raw PCM 24kHz 16-bit mono buffer to standard WAV ─────────
 function pcmToWav(
@@ -133,7 +194,7 @@ export function createGeminiRouter(genAI: GoogleGenAI) {
 
   // 1. Dedicated AI Doctor & Plant Disease Clinical Endpoint (Fast Gemini 2.5 Flash)
   router.post('/ai-doctor', async (req: Request, res: Response) => {
-    const { prompt, imageData } = req.body;
+    const { prompt, imageData, targetLang } = req.body;
 
     if (!prompt && !imageData) {
       return res.status(400).json({ error: 'Prompt or image is required for AI Doctor' });
@@ -170,13 +231,27 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
 
       contents.push({ text: userPrompt });
 
+      let doctorSystemInst = HINDI_AI_DOCTOR_SYSTEM_INSTRUCTION;
+      let langInstruction = '';
+
+      if (targetLang === 'en') {
+        doctorSystemInst = ENGLISH_AI_DOCTOR_SYSTEM_INSTRUCTION;
+        langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in ENGLISH language. Do NOT use any Devanagari Hindi text or mixed Hindi terms anywhere in the response.';
+      } else if (targetLang === 'hinglish') {
+        doctorSystemInst = HINGLISH_AI_DOCTOR_SYSTEM_INSTRUCTION;
+        langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in HINGLISH language (Hindi spoken concepts written using Roman/English alphabet). Do NOT use Devanagari script.';
+      } else {
+        doctorSystemInst = HINDI_AI_DOCTOR_SYSTEM_INSTRUCTION;
+        langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in HINDI language (using Devanagari script).';
+      }
+
       // Use ultra-fast valid gemini-2.5-flash model
       const response = await genAI.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: contents,
         config: {
-          systemInstruction: AI_DOCTOR_SYSTEM_INSTRUCTION,
-          temperature: 0.4
+          systemInstruction: doctorSystemInst + langInstruction,
+          temperature: 0.3
         }
       });
 
@@ -204,8 +279,8 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
             cropIdentified: plantNetMatch ? `${commonName} (${plantNetMatch.speciesName})` : 'Wheat / Paddy Crop',
             confidencePercent: plantNetMatch ? plantNetMatch.scorePercent : 95,
             plantNetMatch,
-            diseaseOrPest: 'Foliar Blight / Leaf Pathology',
-            diseaseHindi: 'फसल पत्ती रोग व पोषण कमी',
+            diseaseOrPest: targetLang === 'en' ? 'Foliar Blight / Leaf Pathology' : targetLang === 'hinglish' ? 'Patti Bimaray / Crop Disease' : 'फसल पत्ती रोग व पोषण कमी',
+            diseaseHindi: targetLang === 'en' ? 'Foliar Leaf Spot / Pathology' : targetLang === 'hinglish' ? 'Fasal Patti Rog' : 'फसल पत्ती रोग व पोषण कमी',
             chemicalTreatment: ['Propiconazole 25% EC @ 200 ml/acre or Copper Oxychloride 50% WP @ 2g/L'],
             organicTreatment: ['Neem Oil 10,000 ppm @ 5 ml/liter + Trichoderma viride @ 5g/L spray'],
             preventativeMeasures: ['Ensure field drainage, avoid overhead watering in humid weather, and balanced NPK fertilizer.']
@@ -224,7 +299,7 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
 
   // 2. Text & Image Chat Endpoint
   router.post('/chat', async (req: Request, res: Response) => {
-    const { prompt, imageData } = req.body;
+    const { prompt, imageData, targetLang } = req.body;
 
     if (!prompt && !imageData) {
       return res.status(400).json({ error: 'Prompt or image is required' });
@@ -251,17 +326,35 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
 
       let userText = prompt || 'Examine this crop leaf image for disease or deficiency';
       if (plantNetMatch) {
-        userText += `\n\n[PL@NTNET SPECIES MATCH]: ${plantNetMatch.speciesName} (${plantNetMatch.commonNames.join(', ')}) - Accuracy ${plantNetMatch.scorePercent}%`;
+        userText += `\n\n[KHETI AI VISION BOTANICAL MATCH]: ${plantNetMatch.speciesName} (${plantNetMatch.commonNames.join(', ')}) - Accuracy ${plantNetMatch.scorePercent}%`;
       }
 
       contents.push({ text: userText });
+
+      let baseInstruction = SYSTEM_INSTRUCTION;
+      if (imageData) {
+        baseInstruction = targetLang === 'en' 
+          ? ENGLISH_AI_DOCTOR_SYSTEM_INSTRUCTION 
+          : targetLang === 'hinglish' 
+          ? HINGLISH_AI_DOCTOR_SYSTEM_INSTRUCTION 
+          : HINDI_AI_DOCTOR_SYSTEM_INSTRUCTION;
+      }
+
+      let langInstruction = '';
+      if (targetLang === 'en') {
+        langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in ENGLISH language. Do NOT use Devanagari script or mixed Hindi terms.';
+      } else if (targetLang === 'hinglish') {
+        langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in HINGLISH language (Roman/English script). Do NOT use Devanagari script.';
+      } else {
+        langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in HINDI language (using Devanagari script).';
+      }
 
       const response = await genAI.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: contents,
         config: {
-          systemInstruction: imageData ? AI_DOCTOR_SYSTEM_INSTRUCTION : SYSTEM_INSTRUCTION,
-          temperature: 0.5
+          systemInstruction: baseInstruction + langInstruction,
+          temperature: 0.3
         }
       });
 

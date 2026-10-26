@@ -567,47 +567,52 @@ export const MOCK_GOVT_SCHEMES: GovernmentScheme[] = [
 
 export const MOCK_WAREHOUSES: WarehouseFacility[] = [
   {
+    id: 'wh_krn_silo_01',
+    ownerId: 'usr_shriram_agro',
+    name: 'Shriram WDRA Certified Grain Silo & Godown',
+    ownerName: 'Shriram Agro Logistics',
+    type: 'Dry Godown',
+    district: 'Karnal',
+    state: 'Haryana',
+    totalCapacityMT: 12000,
+    availableCapacityMT: 3800,
+    ratePerBagPerMonth: 7.5,
+    isWdrcRegistered: true,
+    contactPhone: '+91 98960 55441',
+    address: 'GT Road, Karnal Grain Terminal, Haryana',
+    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80'
+  },
+  {
+    id: 'wh_ind_cold_02',
+    ownerId: 'usr_narmada_hub',
+    name: 'Narmada Agri Logistics & Cold Storage Facility',
+    ownerName: 'Narmada Agro Hub',
+    type: 'Cold Storage',
+    district: 'Indore',
+    state: 'Madhya Pradesh',
+    totalCapacityMT: 6000,
+    availableCapacityMT: 2400,
+    ratePerBagPerMonth: 24.0,
+    isWdrcRegistered: true,
+    contactPhone: '+91 94250 88990',
+    address: 'AB Road Industrial Logistic Zone, Indore, MP',
+    imageUrl: 'https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&w=600&q=80'
+  },
+  {
     id: 'wh_my_01',
     ownerId: 'usr_rameshwar_99',
-    name: 'Nilokheri Kisan Grain Storage & Godown',
-    ownerName: 'Rameshwar Singh (You)',
+    name: 'Kheti AI Test Listing 1',
+    ownerName: 'WROBR 36',
     type: 'Dry Godown',
     district: 'Karnal',
     state: 'Haryana',
-    totalCapacityMT: 4500,
-    availableCapacityMT: 1200,
-    ratePerBagPerMonth: 8.0,
+    totalCapacityMT: 3000,
+    availableCapacityMT: 1000,
+    ratePerBagPerMonth: 20.0,
     isWdrcRegistered: true,
     contactPhone: '+91 98124 55432',
-    address: 'Near Old Anaj Mandi, Nilokheri, Karnal'
-  },
-  {
-    id: 'wh_krn_01',
-    ownerId: 'usr_hwc_corp',
-    name: 'Karnal Central Agro Godown & Silos',
-    ownerName: 'Haryana Warehousing Corporation (HWC)',
-    type: 'Dry Godown',
-    district: 'Karnal',
-    state: 'Haryana',
-    totalCapacityMT: 18000,
-    availableCapacityMT: 4200,
-    ratePerBagPerMonth: 6.5,
-    isWdrcRegistered: true,
-    contactPhone: '+91 184 225 8490'
-  },
-  {
-    id: 'wh_krn_02',
-    ownerId: 'usr_balaji_cold',
-    name: 'Golden Harvest Cold Storage & Ripening Unit',
-    ownerName: 'Shri Balaji Cold Logistics',
-    type: 'Cold Storage',
-    district: 'Karnal',
-    state: 'Haryana',
-    totalCapacityMT: 5000,
-    availableCapacityMT: 1100,
-    ratePerBagPerMonth: 22.0,
-    isWdrcRegistered: true,
-    contactPhone: '+91 94161 33290'
+    address: 'Karnal, Haryana',
+    imageUrl: 'https://images.unsplash.com/photo-1590247813693-5541d1c609fd?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'wh_ldh_03',
@@ -621,7 +626,9 @@ export const MOCK_WAREHOUSES: WarehouseFacility[] = [
     availableCapacityMT: 9500,
     ratePerBagPerMonth: 7.0,
     isWdrcRegistered: true,
-    contactPhone: '+91 161 245 9912'
+    contactPhone: '+91 161 245 9912',
+    address: 'Grand Trunk Road, Khanna Mandi Zone, Ludhiana',
+    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80'
   }
 ];
 
@@ -638,7 +645,8 @@ export const MOCK_EQUIPMENTS: EquipmentRental[] = [
     ratePerAcre: 750,
     operatorIncluded: true,
     isAvailableNow: true,
-    contactPhone: '+91 98124 55432'
+    contactPhone: '+91 98124 55432',
+    imageUrl: 'https://images.unsplash.com/photo-1530267981375-f0de937f5f13?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'eq_501',
@@ -651,7 +659,9 @@ export const MOCK_EQUIPMENTS: EquipmentRental[] = [
     ratePerHour: 650,
     ratePerAcre: 850,
     operatorIncluded: true,
-    isAvailableNow: true
+    isAvailableNow: true,
+    contactPhone: '+91 98120 44321',
+    imageUrl: 'https://images.unsplash.com/photo-1530267981375-f0de937f5f13?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'eq_502',
@@ -663,7 +673,9 @@ export const MOCK_EQUIPMENTS: EquipmentRental[] = [
     state: 'Haryana',
     ratePerAcre: 1800,
     operatorIncluded: true,
-    isAvailableNow: true
+    isAvailableNow: true,
+    contactPhone: '+91 94160 22110',
+    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'eq_503',
@@ -675,7 +687,9 @@ export const MOCK_EQUIPMENTS: EquipmentRental[] = [
     state: 'Haryana',
     ratePerAcre: 350,
     operatorIncluded: true,
-    isAvailableNow: true
+    isAvailableNow: true,
+    contactPhone: '+91 98129 11009',
+    imageUrl: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'eq_504',
@@ -688,7 +702,9 @@ export const MOCK_EQUIPMENTS: EquipmentRental[] = [
     ratePerHour: 900,
     ratePerAcre: 1200,
     operatorIncluded: true,
-    isAvailableNow: false
+    isAvailableNow: false,
+    contactPhone: '+91 98130 55431',
+    imageUrl: 'https://images.unsplash.com/photo-1530267981375-f0de937f5f13?auto=format&fit=crop&w=600&q=80'
   }
 ];
 

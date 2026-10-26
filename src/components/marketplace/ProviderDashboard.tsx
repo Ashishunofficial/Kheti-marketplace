@@ -204,10 +204,18 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                         </span>
                       )}
                     </div>
-                    <h4 className="text-sm font-bold text-stone-900 mt-2">{wh.name}</h4>
-                    <div className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-stone-400" />
-                      <span>{wh.district}, {wh.state}</span>
+
+                    <div className="flex gap-3 items-start mt-2">
+                      {wh.imageUrl && (
+                        <img src={wh.imageUrl} alt={wh.name} className="w-12 h-12 rounded-lg object-cover border border-stone-200 shrink-0" />
+                      )}
+                      <div>
+                        <h4 className="text-sm font-bold text-stone-900 leading-snug">{wh.name}</h4>
+                        <div className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-stone-400" />
+                          <span>{wh.district}, {wh.state}</span>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="mt-3 p-2.5 bg-white border border-stone-200 rounded-lg text-xs space-y-1">
@@ -281,10 +289,18 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                         {eq.isAvailableNow ? 'Ready for Work' : 'Busy in Field'}
                       </span>
                     </div>
-                    <h4 className="text-sm font-bold text-stone-900 mt-2">{eq.title}</h4>
-                    <div className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-stone-400" />
-                      <span>{eq.district}, {eq.state}</span>
+
+                    <div className="flex gap-3 items-start mt-2">
+                      {eq.imageUrl && (
+                        <img src={eq.imageUrl} alt={eq.title} className="w-12 h-12 rounded-lg object-cover border border-stone-200 shrink-0" />
+                      )}
+                      <div>
+                        <h4 className="text-sm font-bold text-stone-900 leading-snug">{eq.title}</h4>
+                        <div className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-stone-400" />
+                          <span>{eq.district}, {eq.state}</span>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="mt-3 p-2.5 bg-white border border-stone-200 rounded-lg text-xs space-y-1">

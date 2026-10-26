@@ -14,8 +14,8 @@ interface LoginModalProps {
 
 const labels = {
   hi: {
-    title: 'खेती मार्केटप्लेस में लॉगिन करें',
-    subtitle: 'अपने खाते से जुड़ें और बेहतर कृषि सेवाओं का लाभ उठाएं',
+    title: 'खेती AI ऑथेंटिकेशन सिस्टम',
+    subtitle: 'अपने खाते में सुरक्षित लॉगिन करें और सभी कृषि सेवाओं का लाभ उठाएं',
     emailLabel: 'ईमेल पता',
     emailPlaceholder: 'aapka@email.com',
     passwordLabel: 'पासवर्ड',
@@ -28,13 +28,13 @@ const labels = {
     toggleToSignUp: 'नया खाता बनाएं',
     toggleToSignIn: 'पहले से खाता है? लॉगिन करें',
     or: 'या',
-    mockNotice: 'ऑफलाइन मोड: Supabase सेटअप नहीं है, डेमो अकाउंट से चल रहा है।',
+    mockNotice: 'ऑफलाइन मोड: डेमो खाते से चल रहा है।',
     close: 'बंद करें',
     loading: 'कृपया प्रतीक्षा करें...',
   },
   en: {
-    title: 'Login to Kheti Marketplace',
-    subtitle: 'Connect with your account to access farming services',
+    title: 'KHETI AI Authentication System',
+    subtitle: 'Sign in securely to your account to access all farming services',
     emailLabel: 'Email Address',
     emailPlaceholder: 'you@email.com',
     passwordLabel: 'Password',
@@ -47,13 +47,13 @@ const labels = {
     toggleToSignUp: 'Create new account',
     toggleToSignIn: 'Already have an account? Sign In',
     or: 'OR',
-    mockNotice: 'Offline mode: Supabase not configured. Running with demo account.',
+    mockNotice: 'Running in offline demo mode.',
     close: 'Close',
     loading: 'Please wait...',
   },
   hinglish: {
-    title: 'Kheti Marketplace Login',
-    subtitle: 'Apne account se connect karein aur farming services ka faayda uthayein',
+    title: 'KHETI AI Authentication System',
+    subtitle: 'Apne account me login karein aur sabhi Kheti AI services access karein',
     emailLabel: 'Email Address',
     emailPlaceholder: 'aapka@email.com',
     passwordLabel: 'Password',
@@ -66,7 +66,7 @@ const labels = {
     toggleToSignUp: 'Naya account banayein',
     toggleToSignIn: 'Pehle se account hai? Login karein',
     or: 'YA',
-    mockNotice: 'Offline mode chal raha hai. Supabase set nahi hua. Demo account use ho raha hai.',
+    mockNotice: 'Offline demo mode chal raha hai.',
     close: 'Band Karein',
     loading: 'Please wait...',
   },
@@ -103,8 +103,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
     signUpWithEmail, 
     signInWithGoogle, 
     setSessionFromUrlOrTokens, 
-    allManagedUsers, 
-    loginAsManagedUser, 
     user: currentUser, 
     profile, 
     signOut 
@@ -228,7 +226,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
       aria-label={t.title}
     >
       {/* ── Modal Card ───────────────────────────────────────────────────────── */}
-      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+      <div className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
 
         {/* Top gradient bar */}
         <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-600 flex-shrink-0" />
@@ -236,7 +234,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 z-10"
+          className="absolute top-4 right-4 p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 z-10 cursor-pointer"
           aria-label={t.close}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -256,7 +254,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
 
           {/* Headings */}
           <div className="text-center">
-            <h2 className="text-xl font-bold text-stone-800 leading-tight">
+            <h2 className="text-xl font-extrabold text-stone-800 leading-tight">
               {t.title}
             </h2>
             <p className="text-xs sm:text-sm text-stone-500 mt-1">
@@ -264,7 +262,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
             </p>
           </div>
 
-          {/* ── Offline notice ─────────────────────────────────────────────────── */}
+          {/* Offline notice */}
           {!isSupabaseConfigured && (
             <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-amber-800 text-xs">
               <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -300,7 +298,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
                 type="button"
                 onClick={async () => {
                   await signOut();
-                  setSuccessMsg('Logged out. Switched to Guest Demo preview.');
+                  setSuccessMsg('Logged out successfully.');
                 }}
                 className="px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-white border border-rose-300 hover:bg-rose-50 rounded-lg transition-colors shrink-0 cursor-pointer"
               >
@@ -308,57 +306,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
               </button>
             </div>
           )}
-
-          {/* Quick Login as Registered Platform Users */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-stone-700">
-                👥 Registered Users ({allManagedUsers.length})
-              </span>
-              <span className="text-[10px] text-stone-500 font-medium">Click any profile to test multi-user view</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {allManagedUsers.map((u) => {
-                const isSelected = currentUser?.email?.toLowerCase() === u.email.toLowerCase() || currentUser?.id === u.id;
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => {
-                      loginAsManagedUser(u);
-                      setSuccessMsg(`Signed in as ${u.name}!`);
-                      setTimeout(() => {
-                        handleClose();
-                      }, 400);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
-                      isSelected
-                        ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-500 shadow-2xs'
-                        : 'border-stone-200 bg-stone-50/50 hover:bg-white hover:border-emerald-400'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-stone-900 truncate">{u.name}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
-                        u.isAdmin ? 'bg-amber-100 text-amber-900 border border-amber-300' :
-                        u.activeRole === 'business' ? 'bg-sky-100 text-sky-900 border border-sky-300' :
-                        u.activeRole === 'scientist' ? 'bg-purple-100 text-purple-900 border border-purple-300' :
-                        'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                      }`}>
-                        {u.isAdmin ? 'Admin' : u.activeRole}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-stone-700 truncate mt-0.5">
-                      {u.district ? `${u.district}, ${u.state}` : u.email}
-                    </div>
-                    <div className="text-[9px] text-emerald-800 mt-1 flex items-center justify-between font-medium">
-                      <span>{isSelected ? '✓ Active Session' : 'Sign in as this user →'}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {/* ── Google sign-in button ──────────────────────────────────────────── */}
           <div>
@@ -591,7 +538,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
               type="button"
               onClick={() => { setIsSignUp((v) => !v); setError(null); }}
               disabled={isLoading}
-              className="text-sm text-emerald-700 hover:text-emerald-900 font-medium hover:underline transition disabled:opacity-50"
+              className="text-sm text-emerald-700 hover:text-emerald-900 font-medium hover:underline transition disabled:opacity-50 cursor-pointer"
             >
               {isSignUp ? t.toggleToSignIn : t.toggleToSignUp}
             </button>
@@ -600,11 +547,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
         </div>
 
         {/* Bottom trust bar */}
-        <div className="px-8 py-3 bg-stone-50 border-t border-stone-100 flex items-center justify-center gap-2">
+        <div className="px-8 py-3 bg-stone-50 border-t border-stone-100 flex items-center justify-center gap-2 text-stone-500">
           <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
           </svg>
-          <span className="text-xs text-stone-400">Secured by Supabase Auth · Data stays in India</span>
+          <span className="text-xs font-medium">KHETI AI Authentication System · Secured & Encrypted</span>
         </div>
       </div>
     </div>

@@ -116,14 +116,14 @@ export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lan
 
   const drawerNavItems = [
     { id: 'home', labelHi: 'मुख्य पृष्ठ', labelEn: 'Home', labelHinglish: 'Home', icon: '🟢', color: 'text-emerald-700' },
-    { id: 'ai-advisor', labelHi: 'एआई सलाहकार', labelEn: 'AI Advisor', labelHinglish: 'AI Advisor', icon: '🤖', color: 'text-sky-700' },
+    { id: 'ai-advisor', labelHi: 'एआई डॉक्टर', labelEn: 'AI Doctor', labelHinglish: 'AI Doctor', icon: '🩺', color: 'text-sky-700' },
     { id: 'mandi', labelHi: 'मंडी भाव', labelEn: 'Mandi Rates', labelHinglish: 'Mandi Bhav', icon: '📊', color: 'text-amber-700' },
     { id: 'schemes', labelHi: 'योजनाएँ', labelEn: 'Farmer Schemes', labelHinglish: 'Kisan Yojana', icon: '📜', color: 'text-orange-700' },
     { id: 'university', labelHi: 'वैज्ञानिक संवाद', labelEn: 'Scientist Connect', labelHinglish: 'Scientist Connect', icon: '🧪', color: 'text-purple-700' },
     { id: 'farm', labelHi: 'मेरा खेत', labelEn: 'My Farm', labelHinglish: 'Mera Khet', icon: '🌱', color: 'text-lime-700' },
     { id: 'marketplace', labelHi: 'खरीद-बिक्री', labelEn: 'Buy & Sell', labelHinglish: 'Buy & Sell', icon: '🏬', color: 'text-amber-800' },
     { id: 'university', labelHi: 'विश्वविद्यालय कनेक्ट', labelEn: 'University Connect', labelHinglish: 'University Connect', icon: '🎓', color: 'text-emerald-800' },
-    { id: 'services', labelHi: 'सेवाएं एवं मानचित्र', labelEn: 'Services & Map', labelHinglish: 'Services & Map', icon: '📍', color: 'text-teal-700' },
+    { id: 'services', labelHi: 'गोदाम व मशीनरी', labelEn: 'Storage & Machinery', labelHinglish: 'Storage & Machinery', icon: '🚜', color: 'text-teal-700' },
     { id: 'business', labelHi: 'व्यापार पोर्टल', labelEn: 'Business Portal', labelHinglish: 'Business Portal', icon: '💼', color: 'text-stone-700' },
     { id: 'admin', labelHi: 'प्रशासन / लॉगिन', labelEn: 'Admin / Login', labelHinglish: 'Admin / Login', icon: '⚙️', color: 'text-amber-900' }
   ];
@@ -255,63 +255,125 @@ export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lan
           </button>
         </div>
 
-        {/* 3. 6 TOP CATEGORY NAVIGATION CARDS (2 Rows x 3 Columns) */}
-        <div className="grid grid-cols-3 gap-2">
-          {/* Card 1: Home (Active Green Box) */}
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="bg-emerald-800 text-white rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-xs hover:bg-emerald-900 transition-all h-[68px]"
-          >
-            <Home className="w-5 h-5 text-white mb-1" />
-            <span className="text-[11px] font-bold leading-none">{lang === 'hi' ? 'मुख्य पृष्ठ' : 'Home'}</span>
-          </button>
+        {/* 3. QUICK SERVICES GRID (त्वरित सेवाएं - Placed right below Location & Language tab) */}
+        <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-2.5 space-y-2 shadow-2xs">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-extrabold text-stone-900 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+              <span>{lang === 'hi' ? 'त्वरित सेवाएं' : 'Quick Services'}</span>
+            </h3>
+            <button
+              onClick={() => onNavigateTab('services')}
+              className="text-[11px] font-bold text-emerald-800 hover:text-emerald-900 flex items-center gap-0.5"
+            >
+              <span>{lang === 'hi' ? 'सभी सेवाएं देखें' : 'View All Services'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-          {/* Card 2: AI Advisor */}
-          <button
-            onClick={() => onNavigateTab('ai-advisor')}
-            className="bg-amber-50/90 border border-amber-200/90 text-stone-900 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-2xs hover:bg-amber-100 transition-all h-[68px]"
-          >
-            <Sprout className="w-5 h-5 text-emerald-800 mb-1" />
-            <span className="text-[11px] font-bold leading-none">{lang === 'hi' ? 'एआई सलाहकार' : 'AI Advisor'}</span>
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            {/* Card 1: AI Doctor */}
+            <button
+              onClick={() => onNavigateTab('ai-advisor')}
+              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center font-bold shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'एआई डॉक्टर' : 'AI Doctor'}</div>
+                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'फसल रोग निदान' : 'Plant Diagnosis'}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+            </button>
 
-          {/* Card 3: Mandi Rates */}
-          <button
-            onClick={() => onNavigateTab('mandi')}
-            className="bg-amber-50/90 border border-amber-200/90 text-stone-900 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-2xs hover:bg-amber-100 transition-all h-[68px]"
-          >
-            <Store className="w-5 h-5 text-amber-800 mb-1" />
-            <span className="text-[11px] font-bold leading-none">{lang === 'hi' ? 'मंडी भाव' : lang === 'hinglish' ? 'Mandi Bhav' : 'Mandi Rates'}</span>
-          </button>
+            {/* Card 2: Mandi Rates */}
+            <button
+              onClick={() => onNavigateTab('mandi')}
+              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center font-bold shrink-0">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'मंडी भाव' : 'Mandi Rates'}</div>
+                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'ताजा भाव देखें' : 'Check Prices'}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+            </button>
 
-          {/* Card 4: Schemes */}
-          <button
-            onClick={() => onNavigateTab('schemes')}
-            className="bg-amber-50/90 border border-amber-200/90 text-stone-900 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-2xs hover:bg-amber-100 transition-all h-[68px]"
-          >
-            <FileText className="w-5 h-5 text-orange-800 mb-1" />
-            <span className="text-[11px] font-bold leading-none">{lang === 'hi' ? 'योजनाएँ' : lang === 'hinglish' ? 'Kisan Yojana' : 'Schemes'}</span>
-          </button>
+            {/* Card 3: Marketplace */}
+            <button
+              onClick={() => onNavigateTab('marketplace')}
+              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 flex items-center justify-center font-bold shrink-0">
+                  <Store className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'मार्केटप्लेस' : 'Marketplace'}</div>
+                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'उपज खरीदें / बेचें' : 'Trade Produce'}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+            </button>
 
-          {/* Card 5: Scientist Desk */}
-          <button
-            onClick={() => onNavigateTab('university')}
-            className="bg-amber-50/90 border border-amber-200/90 text-stone-900 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-2xs hover:bg-amber-100 transition-all h-[68px]"
-          >
-            <MessageSquare className="w-5 h-5 text-purple-800 mb-1" />
-            <span className="text-[11px] font-bold leading-none">{lang === 'hi' ? 'वैज्ञानिक संवाद' : 'Scientist Desk'}</span>
-          </button>
+            {/* Card 4: Storage & Machinery */}
+            <button
+              onClick={() => onNavigateTab('services')}
+              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-stone-100 border border-stone-300 text-stone-800 flex items-center justify-center font-bold shrink-0">
+                  <Tractor className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'गोदाम व यंत्र' : 'Storage & Machines'}</div>
+                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'स्टोरेज व किराए पर यंत्र' : 'Godowns & Rental'}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+            </button>
 
-          {/* Card 6: More Menu */}
-          <button
-            onClick={() => setShowMoreMenuModal(true)}
-            className="bg-amber-50/90 border border-amber-200/90 text-stone-900 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-2xs hover:bg-amber-100 transition-all h-[68px]"
-          >
-            <Menu className="w-5 h-5 text-stone-700 mb-1" />
-            <span className="text-[11px] font-bold leading-none">{lang === 'hi' ? 'अधिक' : 'More'}</span>
-          </button>
+            {/* Card 5: University Connect */}
+            <button
+              onClick={() => onNavigateTab('university')}
+              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 flex items-center justify-center font-bold shrink-0">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'यूनिवर्सिटी कनेक्ट' : 'University Connect'}</div>
+                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'वैज्ञानिक सलाह' : 'Scientist Desk'}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+            </button>
+
+            {/* Card 6: Govt Schemes */}
+            <button
+              onClick={() => onNavigateTab('schemes')}
+              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 flex items-center justify-center font-bold shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'सरकारी योजनाएँ' : 'Govt Schemes'}</div>
+                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'योजना सब्सिडी' : 'Kisan Schemes'}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+            </button>
+          </div>
         </div>
 
         {/* 4. FLASH UPDATE NOTICE TICKER BAR */}
@@ -509,123 +571,7 @@ export const GovPortalHome: React.FC<GovPortalHomeProps> = ({ onNavigateTab, lan
           </div>
         </div>
 
-        {/* 8. QUICK SERVICES GRID 2x3 ("त्वरित सेवाएं") */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-0.5">
-            <h3 className="text-xs font-extrabold text-stone-900">{lang === 'hi' ? 'त्वरित सेवाएं' : 'Quick Services'}</h3>
-            <button
-              onClick={() => onNavigateTab('services')}
-              className="text-[11px] font-bold text-emerald-800 hover:text-emerald-900 flex items-center gap-0.5"
-            >
-              <span>{lang === 'hi' ? 'सभी सेवाएं देखें' : 'View All Services'}</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            {/* Card 1: Mandi */}
-            <button
-              onClick={() => onNavigateTab('mandi')}
-              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center font-bold">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'मंडी भाव' : 'Mandi Rates'}</div>
-                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'ताजा भाव देखें' : 'Check latest prices'}</div>
-                </div>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            </button>
-
-            {/* Card 2: Weather */}
-            <button
-              onClick={() => onNavigateTab('weather')}
-              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center font-bold">
-                  <CloudSun className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'मौसम' : 'Weather'}</div>
-                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'अपने क्षेत्र का पूर्वानुमान' : 'Local weather forecast'}</div>
-                </div>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            </button>
-
-            {/* Card 3: Crop Doctor */}
-            <button
-              onClick={() => onNavigateTab('ai-advisor')}
-              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center font-bold">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'फसल डॉक्टर' : 'Crop Doctor'}</div>
-                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'फसल की समस्या पहचानें' : 'Diagnose plant issues'}</div>
-                </div>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            </button>
-
-            {/* Card 4: Govt Schemes */}
-            <button
-              onClick={() => onNavigateTab('schemes')}
-              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 flex items-center justify-center font-bold">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'सरकारी योजनाएँ' : 'Govt Schemes'}</div>
-                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'पात्रता जाँचें और लाभ पाएँ' : 'Check eligibility & apply'}</div>
-                </div>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            </button>
-
-            {/* Card 5: My Farm */}
-            <button
-              onClick={() => onNavigateTab('farm')}
-              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-lime-50 border border-lime-200 text-lime-900 flex items-center justify-center font-bold">
-                  <Tractor className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'मेरा खेत' : 'My Farm'}</div>
-                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'अपनी फसल और रिकॉर्ड' : 'My crop records'}</div>
-                </div>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            </button>
-
-            {/* Card 6: Marketplace */}
-            <button
-              onClick={() => onNavigateTab('marketplace')}
-              className="bg-white border border-stone-200/90 rounded-xl p-2.5 shadow-2xs hover:border-emerald-500 flex items-center justify-between text-left transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-center font-bold">
-                  <Store className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-stone-900">{lang === 'hi' ? 'खरीद-बिक्री' : 'Buy & Sell'}</div>
-                  <div className="text-[9px] text-stone-500 font-medium">{lang === 'hi' ? 'उपज बेचें / खरीदें' : 'Trade farm produce'}</div>
-                </div>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            </button>
-          </div>
-        </div>
 
         {/* 9. FLASH NEWS BULLETIN CARD ("ताजा समाचार / सूचना पटल") */}
         <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-3 shadow-2xs space-y-2">

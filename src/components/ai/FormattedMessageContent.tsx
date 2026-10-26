@@ -17,15 +17,17 @@ import { downloadPrescriptionPDF } from '../../utils/pdfReportGenerator';
 interface FormattedMessageContentProps {
   content: string;
   isAssistant?: boolean;
+  chatLanguage?: 'hi' | 'en' | 'hinglish';
 }
 
-export const FormattedMessageContent: React.FC<FormattedMessageContentProps> = ({ content, isAssistant }) => {
+export const FormattedMessageContent: React.FC<FormattedMessageContentProps> = ({ content, isAssistant, chatLanguage = 'hi' }) => {
   const [displayedLength, setDisplayedLength] = useState<number>(() => {
     // If not assistant message, show full text immediately
     return isAssistant ? 0 : content ? content.length : 0;
   });
   const [isTypingComplete, setIsTypingComplete] = useState<boolean>(!isAssistant);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadingLang, setDownloadingLang] = useState<'hi' | 'en' | 'hinglish' | null>(null);
 
   const animRef = useRef<number | null>(null);
 
@@ -86,10 +88,11 @@ export const FormattedMessageContent: React.FC<FormattedMessageContentProps> = (
     content.includes('2.')
   );
 
-  // Helper to trigger PDF download
-  const handleDownloadPdf = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Helper to trigger PDF download with selected language
+  const handleDownloadPdf = async (targetLang: 'hi' | 'en' | 'hinglish' = 'hi', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setIsDownloading(true);
+    setDownloadingLang(targetLang);
     try {
       let cropName = 'Crop Health Assessment';
       let diseaseName = 'Disease Pathology & Diagnostic';
@@ -109,12 +112,14 @@ export const FormattedMessageContent: React.FC<FormattedMessageContentProps> = (
       await downloadPrescriptionPDF({
         cropName,
         diseaseName,
-        rawContent: content
+        rawContent: content,
+        lang: targetLang
       });
     } catch (err) {
       console.error('PDF Download Error:', err);
     } finally {
       setIsDownloading(false);
+      setDownloadingLang(null);
     }
   };
 
@@ -211,24 +216,25 @@ export const FormattedMessageContent: React.FC<FormattedMessageContentProps> = (
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
             <button
-              onClick={handleDownloadPdf}
+              onClick={(e) => handleDownloadPdf(chatLanguage, e)}
               disabled={isDownloading}
-              className="px-2.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 font-extrabold text-[11px] flex items-center gap-1.5 shadow-xs transition-transform cursor-pointer border border-amber-300"
-              title="Download PDF Prescription Report"
+              className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition-transform cursor-pointer border border-amber-300"
+              title={`Download Prescription Report PDF in ${chatLanguage === 'en' ? 'English' : chatLanguage === 'hinglish' ? 'Hinglish' : 'Hindi'}`}
             >
               {isDownloading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-950" />
-                  <span>डाउनलोड हो रहा है...</span>
-                </>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-950" />
               ) : (
-                <>
-                  <Download className="w-3.5 h-3.5 text-stone-950" />
-                  <span>PDF पर्चा डाउनलोड करें</span>
-                </>
+                <Download className="w-3.5 h-3.5 text-stone-950" />
               )}
+              <span>
+                {chatLanguage === 'en'
+                  ? '🇬🇧 Download Report (PDF)'
+                  : chatLanguage === 'hinglish'
+                  ? '🌾 Download Report (PDF)'
+                  : '🇮🇳 रिपोर्ट डाउनलोड करें (PDF)'}
+              </span>
             </button>
           </div>
         </div>
@@ -350,31 +356,36 @@ export const FormattedMessageContent: React.FC<FormattedMessageContentProps> = (
 
       {/* Action Footer for Reports */}
       {isPrescriptionReport && isTypingComplete && (
-        <div className="mt-3 pt-2.5 border-t border-stone-200 flex items-center justify-between gap-2">
+        <div className="mt-3 pt-2.5 border-t border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
           <div className="text-[11px] font-medium text-stone-600 flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>Kheti AI Clinical Prescriptions are official diagnostic records</span>
           </div>
 
-          <button
-            onClick={handleDownloadPdf}
-            disabled={isDownloading}
-            className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>PDF बन रहा है...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-3.5 h-3.5" />
-                <span>📥 Report PDF डाउनलोड करें</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+            <button
+              onClick={(e) => handleDownloadPdf(chatLanguage, e)}
+              disabled={isDownloading}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0 border border-emerald-700"
+              title={`Download Prescription PDF in ${chatLanguage === 'en' ? 'English' : chatLanguage === 'hinglish' ? 'Hinglish' : 'Hindi'}`}
+            >
+              {isDownloading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-white" />
+              )}
+              <span>
+                {chatLanguage === 'en'
+                  ? '🇬🇧 Download Prescription PDF'
+                  : chatLanguage === 'hinglish'
+                  ? '🌾 Download Prescription PDF'
+                  : '🇮🇳 डॉक्टर पर्चा डाउनलोड करें (PDF)'}
+              </span>
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
+
 };

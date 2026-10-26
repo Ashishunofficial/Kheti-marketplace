@@ -20,6 +20,17 @@ interface QuickLinksGridProps {
 export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ lang, onNavigateTab }) => {
   const quickActions = [
     {
+      id: 'ai-advisor',
+      icon: Sparkles,
+      titleHi: 'एआई डॉक्टर',
+      titleEn: 'AI Doctor',
+      subHi: 'फसल रोग निदान',
+      subEn: 'Disease Diagnosis',
+      bgColor: 'bg-emerald-50',
+      textColor: 'text-emerald-800',
+      borderColor: 'border-emerald-200'
+    },
+    {
       id: 'mandi',
       icon: TrendingUp,
       titleHi: 'दैनिक मंडी भाव',
@@ -31,33 +42,11 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ lang, onNavigate
       borderColor: 'border-amber-200'
     },
     {
-      id: 'ai-advisor',
-      icon: Sparkles,
-      titleHi: 'एआई सलाहकार',
-      titleEn: 'AI Voice',
-      subHi: 'बोलकर पूछें',
-      subEn: 'Voice & Scanner',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-800',
-      borderColor: 'border-emerald-200'
-    },
-    {
-      id: 'weather',
-      icon: CloudSun,
-      titleHi: 'मौसम व स्प्रे',
-      titleEn: 'Weather Radar',
-      subHi: 'स्प्रे खिड़की',
-      subEn: 'IMD Alert',
-      bgColor: 'bg-sky-50',
-      textColor: 'text-sky-800',
-      borderColor: 'border-sky-200'
-    },
-    {
       id: 'marketplace',
       icon: ShoppingBag,
-      titleHi: 'फसल खरीद-बिक्री',
+      titleHi: 'मार्किटप्लेस',
       titleEn: 'Marketplace',
-      subHi: 'सीधी सौदेबाजी',
+      subHi: 'फसल खरीद-बिक्री',
       subEn: 'Direct Trade',
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-800',
@@ -66,24 +55,35 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ lang, onNavigate
     {
       id: 'services',
       icon: Tractor,
-      titleHi: 'गोदाम व यंत्र',
-      titleEn: 'Storage & Rent',
-      subHi: 'सत्यापित किराएदार',
-      subEn: 'Machinery',
+      titleHi: 'गोदाम व मशीनरी',
+      titleEn: 'Storage & Machinery',
+      subHi: 'सत्यापित गोदाम व यंत्र',
+      subEn: 'Godown & Rental',
       bgColor: 'bg-stone-100',
       textColor: 'text-stone-800',
       borderColor: 'border-stone-200'
     },
     {
-      id: 'schemes',
-      icon: BookOpen,
-      titleHi: 'किसान योजनाएं',
-      titleEn: 'Farmer Schemes',
-      subHi: 'पीएम किसान',
-      subEn: 'PM Kisan Subsidy',
+      id: 'university',
+      icon: GraduationCap,
+      titleHi: 'यूनिवर्सिटी कनेक्ट',
+      titleEn: 'University Connect',
+      subHi: 'वैज्ञानिक संवाद',
+      subEn: 'Scientist Consult',
       bgColor: 'bg-purple-50',
       textColor: 'text-purple-800',
       borderColor: 'border-purple-200'
+    },
+    {
+      id: 'schemes',
+      icon: BookOpen,
+      titleHi: 'सरकारी योजनाएं',
+      titleEn: 'Govt Schemes',
+      subHi: 'पीएम किसान सब्सिडी',
+      subEn: 'Farmer Subsidies',
+      bgColor: 'bg-sky-50',
+      textColor: 'text-sky-800',
+      borderColor: 'border-sky-200'
     }
   ];
 
