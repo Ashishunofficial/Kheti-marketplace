@@ -31,6 +31,8 @@ import { useNotifications } from '../../context/NotificationContext';
 import { MarketplaceDashboard } from './MarketplaceDashboard';
 
 const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'lst_105']);
+const MOCK_OFFER_IDS = new Set(['ofr_801', 'ofr_802']);
+const MOCK_ORDER_IDS = new Set(['ord_kht_9021']);
 
 interface MarketplaceViewProps {
   onOpenAIQuery?: (text: string) => void;
@@ -99,16 +101,22 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
 
   const displayOffers = offers.filter(o => {
     if (isDemo) return true;
-    const isMock = MOCK_LISTING_IDS.has(o.listingId);
-    const isInvolved = o.buyerId === currentUserId || o.sellerId === currentUserId;
-    return !isMock && isInvolved;
+    const isMock = MOCK_OFFER_IDS.has(o.id) || MOCK_LISTING_IDS.has(o.listingId);
+    const matchesId = (o.buyerId && currentUserId && o.buyerId === currentUserId) ||
+                      (o.sellerId && currentUserId && o.sellerId === currentUserId);
+    const matchesName = (o.buyerName && currentUserName && o.buyerName.toLowerCase().includes(currentUserName.toLowerCase())) ||
+                        (o.sellerName && currentUserName && o.sellerName.toLowerCase().includes(currentUserName.toLowerCase()));
+    return !isMock && (matchesId || matchesName);
   });
 
   const displayOrders = orders.filter(ord => {
     if (isDemo) return true;
-    const isInvolved = (ord.buyerName && currentUserName && ord.buyerName.toLowerCase().includes(currentUserName.toLowerCase())) ||
-                       (ord.sellerName && currentUserName && ord.sellerName.toLowerCase().includes(currentUserName.toLowerCase()));
-    return isInvolved;
+    const isMock = MOCK_ORDER_IDS.has(ord.id);
+    const matchesId = (ord.buyerId && currentUserId && ord.buyerId === currentUserId) ||
+                      (ord.sellerId && currentUserId && ord.sellerId === currentUserId);
+    const matchesName = (ord.buyerName && currentUserName && ord.buyerName.toLowerCase().includes(currentUserName.toLowerCase())) ||
+                        (ord.sellerName && currentUserName && ord.sellerName.toLowerCase().includes(currentUserName.toLowerCase()));
+    return !isMock && (matchesId || matchesName);
   });
 
   const showNegotiationSection = isDemo || displayOffers.length > 0 || displayOrders.length > 0;
@@ -174,7 +182,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
 
   const handleAcceptOffer = async (offer: OfferNegotiation) => {
     try {
-      await acceptOffer(offer.id);
+      await acceptOffer(offer.id, offer);
       showNotification(`Deal agreed! Order confirmed for ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')}. Escrow locked.`);
 
       // Add real notification to Bell & Notification Drawer
@@ -453,8 +461,8 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
           listings={listings}
           offers={offers}
           onOpenNewListingModal={() => setShowNewListingModal(true)}
-          onAcceptOffer={(offerId) => {
-            const off = offers.find(o => o.id === offerId);
+          onAcceptOffer={(offerId, passedOffer) => {
+            const off = passedOffer || offers.find(o => o.id === offerId);
             if (off) handleAcceptOffer(off);
           }}
           onCounterOffer={(off) => {

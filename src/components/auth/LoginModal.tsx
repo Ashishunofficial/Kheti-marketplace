@@ -247,8 +247,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang = 'hingli
 
           {/* Brand logo / icon */}
           <div className="flex justify-center">
-            <div className="w-14 h-14 rounded-2xl bg-white border border-emerald-300 flex items-center justify-center shadow-md p-1 overflow-hidden">
-              <img src="/apple-touch-icon.png" alt="Kheti AI Logo" className="w-full h-full object-cover rounded-xl" />
+            <div className="w-14 h-14 rounded-full bg-white border border-emerald-300 flex items-center justify-center shadow-md p-0.5 overflow-hidden">
+              <img src="/apple-touch-icon.png" alt="Kheti AI Logo" className="w-full h-full object-cover rounded-full" />
             </div>
           </div>
 

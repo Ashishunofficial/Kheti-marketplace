@@ -233,7 +233,9 @@ export interface OrderRecord {
   id: string;
   listingId: string;
   offerId: string;
+  buyerId?: string;
   buyerName: string;
+  sellerId?: string;
   sellerName: string;
   commodity: CommodityType;
   quantity: number;
@@ -392,6 +394,8 @@ export interface ChatMessage {
 
 export interface AppNotification {
   id: string;
+  recipientUserId?: string;
+  senderUserId?: string;
   type: 'offer_received' | 'offer_accepted' | 'offer_countered' | 'service_booking' | 'system_alert';
   title: string;
   titleHi: string;

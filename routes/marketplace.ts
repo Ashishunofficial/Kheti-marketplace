@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { addServerNotification } from './notifications';
 
 // ─── File-Based Shared Persistence ──────────────────────────────────────────
 const DATA_DIR = path.resolve(process.cwd(), 'data');
@@ -151,35 +152,181 @@ export function createMarketplaceRouter() {
     res.json({ success: true, offers: store.offers });
   });
 
-  // POST /api/marketplace/offers
+  // POST /api/marketplace/offers — Submit an offer from a buyer
   router.post('/offers', (req: Request, res: Response) => {
     const offer = req.body;
     const store = loadMarketplaceStore();
     const newOffer = {
       ...offer,
       id: offer.id || `ofr_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      status: offer.status || 'pending',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
     store.offers = [newOffer, ...store.offers];
     saveMarketplaceStore(store);
+
+    // 1. Dispatch Notification to SELLER (so seller gets real-time bell update)
+    if (newOffer.sellerId) {
+      addServerNotification({
+        recipientUserId: newOffer.sellerId,
+        senderUserId: newOffer.buyerId,
+        type: 'offer_received',
+        title: `🌾 New Produce Offer: ${newOffer.commodity}`,
+        titleHi: `🌾 नया खरीद ऑफर प्राप्त हुआ: ${newOffer.commodity}`,
+        message: `${newOffer.buyerName || 'Buyer'} offered ₹${newOffer.offeredPrice}/${newOffer.unit} for ${newOffer.quantity} ${newOffer.unit} of ${newOffer.commodity}. Total value: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}.`,
+        messageHi: `${newOffer.buyerName || 'खरीदार'} ने आपके ${newOffer.commodity} के लिए ₹${newOffer.offeredPrice}/${newOffer.unit} पर ${newOffer.quantity} ${newOffer.unit} का ऑफर दिया है। कुल सौदा: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}।`,
+        commodity: newOffer.commodity,
+        price: newOffer.offeredPrice,
+        quantity: newOffer.quantity,
+        unit: newOffer.unit,
+        counterPartyName: newOffer.buyerName,
+        offerId: newOffer.id,
+        listingId: newOffer.listingId,
+        timestamp: 'Just now',
+        linkTab: 'marketplace'
+      });
+    }
+
+    // 2. Dispatch Confirmation Notification to BUYER
+    if (newOffer.buyerId) {
+      addServerNotification({
+        recipientUserId: newOffer.buyerId,
+        senderUserId: newOffer.sellerId,
+        type: 'offer_received',
+        title: `📤 Offer Submitted: ${newOffer.commodity}`,
+        titleHi: `📤 ऑफर भेजा गया: ${newOffer.commodity}`,
+        message: `Your offer of ₹${newOffer.offeredPrice}/${newOffer.unit} (${newOffer.quantity} ${newOffer.unit}) was sent to ${newOffer.sellerName}. Total: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}.`,
+        messageHi: `आपका ₹${newOffer.offeredPrice}/${newOffer.unit} का ऑफर (${newOffer.quantity} ${newOffer.unit}) ${newOffer.sellerName} को भेज दिया गया है। कुल मूल्य: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}।`,
+        commodity: newOffer.commodity,
+        price: newOffer.offeredPrice,
+        quantity: newOffer.quantity,
+        unit: newOffer.unit,
+        counterPartyName: newOffer.sellerName,
+        offerId: newOffer.id,
+        listingId: newOffer.listingId,
+        timestamp: 'Just now',
+        linkTab: 'marketplace'
+      });
+    }
+
+    console.log(`[Marketplace API] 📨 Offer created: ${newOffer.id} on listing ${newOffer.listingId} by ${newOffer.buyerName}`);
     res.status(201).json({ success: true, offer: newOffer });
   });
 
-  // PUT /api/marketplace/offers/:id
+  // PUT /api/marketplace/offers/:id — Accept, counter, or update an offer
   router.put('/offers/:id', (req: Request, res: Response) => {
     const { id } = req.params;
     const updates = req.body;
     const store = loadMarketplaceStore();
-    const idx = store.offers.findIndex(o => o.id === id);
+    let idx = store.offers.findIndex(o => o.id === id);
 
+    // If offer not in file store (e.g. created earlier or client-persisted), upsert from client body
     if (idx === -1) {
-      return res.status(404).json({ error: 'Offer not found' });
+      if (updates.offerData) {
+        const fallbackOffer = {
+          ...updates.offerData,
+          id,
+          status: updates.status || 'accepted',
+          updatedAt: new Date().toISOString()
+        };
+        store.offers.unshift(fallbackOffer);
+        idx = 0;
+      } else {
+        return res.status(404).json({ error: 'Offer not found' });
+      }
     }
 
-    store.offers[idx] = { ...store.offers[idx], ...updates, updatedAt: new Date().toISOString() };
+    const previousStatus = store.offers[idx].status;
+    const updatedOffer = { ...store.offers[idx], ...updates, updatedAt: new Date().toISOString() };
+    delete updatedOffer.offerData; // clean up payload helper
+    store.offers[idx] = updatedOffer;
+
+    let createdOrder = null;
+
+    // IF OFFER IS BEING ACCEPTED:
+    if (updatedOffer.status === 'accepted' && previousStatus !== 'accepted') {
+      // 1. Create Confirmed Order in store.orders
+      const existingOrder = store.orders.find(ord => ord.offerId === updatedOffer.id);
+      if (!existingOrder) {
+        createdOrder = {
+          id: `ord_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          listingId: updatedOffer.listingId,
+          offerId: updatedOffer.id,
+          buyerId: updatedOffer.buyerId,
+          buyerName: updatedOffer.buyerName || 'Buyer',
+          sellerId: updatedOffer.sellerId,
+          sellerName: updatedOffer.sellerName || 'Seller',
+          commodity: updatedOffer.commodity,
+          quantity: updatedOffer.quantity,
+          unit: updatedOffer.unit,
+          agreedPrice: updatedOffer.offeredPrice,
+          totalAmount: updatedOffer.offeredPrice * updatedOffer.quantity,
+          escrowStatus: 'locked',
+          deliveryStatus: 'in_progress',
+          paymentStatus: 'escrow_funded',
+          pickupLocation: `${updatedOffer.commodity} Depot / Farm Gateway`,
+          createdAt: new Date().toISOString()
+        };
+        store.orders = [createdOrder, ...store.orders];
+      }
+
+      // 2. Update Listing occupied quantity
+      const listingIdx = store.listings.findIndex(l => l.id === updatedOffer.listingId);
+      if (listingIdx !== -1) {
+        const curOcc = Number(store.listings[listingIdx].occupiedQuantity || 0);
+        store.listings[listingIdx].occupiedQuantity = curOcc + Number(updatedOffer.quantity);
+      }
+
+      // 3. Dispatch Notification to BUYER (so Buyer's ID gets the acceptance notification!)
+      if (updatedOffer.buyerId) {
+        addServerNotification({
+          recipientUserId: updatedOffer.buyerId,
+          senderUserId: updatedOffer.sellerId,
+          type: 'offer_accepted',
+          title: `🎉 Offer Accepted! Deal Confirmed: ${updatedOffer.commodity}`,
+          titleHi: `🎉 आपका ऑफर स्वीकार कर लिया गया! सौदा पक्का: ${updatedOffer.commodity}`,
+          message: `${updatedOffer.sellerName || 'Seller'} accepted your offer for ${updatedOffer.quantity} ${updatedOffer.unit} of ${updatedOffer.commodity} at ₹${updatedOffer.offeredPrice}/${updatedOffer.unit}. Total ₹${(updatedOffer.offeredPrice * updatedOffer.quantity).toLocaleString('en-IN')}. Escrow is locked!`,
+          messageHi: `${updatedOffer.sellerName || 'विक्रेता'} ने आपके ${updatedOffer.quantity} ${updatedOffer.unit} ${updatedOffer.commodity} का ₹${updatedOffer.offeredPrice}/${updatedOffer.unit} पर ऑफर स्वीकार कर लिया। कुल ₹${(updatedOffer.offeredPrice * updatedOffer.quantity).toLocaleString('en-IN')}। एस्क्रो भुगतान सुरक्षित है!`,
+          commodity: updatedOffer.commodity,
+          price: updatedOffer.offeredPrice,
+          quantity: updatedOffer.quantity,
+          unit: updatedOffer.unit,
+          counterPartyName: updatedOffer.sellerName,
+          offerId: updatedOffer.id,
+          listingId: updatedOffer.listingId,
+          timestamp: 'Just now',
+          linkTab: 'marketplace'
+        });
+      }
+
+      // 4. Dispatch Notification to SELLER as well
+      if (updatedOffer.sellerId) {
+        addServerNotification({
+          recipientUserId: updatedOffer.sellerId,
+          senderUserId: updatedOffer.buyerId,
+          type: 'offer_accepted',
+          title: `🤝 Deal Confirmed & Escrow Locked: ${updatedOffer.commodity}`,
+          titleHi: `🤝 ऑफर स्वीकार हुआ! सौदा पक्का: ${updatedOffer.commodity}`,
+          message: `Deal agreed with ${updatedOffer.buyerName} for ${updatedOffer.quantity} ${updatedOffer.unit} of ${updatedOffer.commodity} at ₹${updatedOffer.offeredPrice}/${updatedOffer.unit}. Total value ₹${(updatedOffer.offeredPrice * updatedOffer.quantity).toLocaleString('en-IN')}. Order generated.`,
+          messageHi: `${updatedOffer.buyerName} के साथ ${updatedOffer.quantity} ${updatedOffer.unit} ${updatedOffer.commodity} का सौदा ₹${updatedOffer.offeredPrice}/${updatedOffer.unit} पर पक्का हुआ। कुल मूल्य ₹${(updatedOffer.offeredPrice * updatedOffer.quantity).toLocaleString('en-IN')}। एस्क्रो सुरक्षित।`,
+          commodity: updatedOffer.commodity,
+          price: updatedOffer.offeredPrice,
+          quantity: updatedOffer.quantity,
+          unit: updatedOffer.unit,
+          counterPartyName: updatedOffer.buyerName,
+          offerId: updatedOffer.id,
+          listingId: updatedOffer.listingId,
+          timestamp: 'Just now',
+          linkTab: 'marketplace'
+        });
+      }
+
+      console.log(`[Marketplace API] 🤝 Offer accepted: ${updatedOffer.id}. Bilateral notifications dispatched to Buyer ${updatedOffer.buyerId} and Seller ${updatedOffer.sellerId}`);
+    }
+
     saveMarketplaceStore(store);
-    res.json({ success: true, offer: store.offers[idx] });
+    res.json({ success: true, offer: updatedOffer, order: createdOrder });
   });
 
   // GET /api/marketplace/orders

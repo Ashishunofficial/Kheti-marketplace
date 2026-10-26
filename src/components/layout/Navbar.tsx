@@ -338,13 +338,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-3.5 text-center md:text-left">
             <button
               onClick={() => onTabChange('home')}
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-emerald-800 bg-white flex items-center justify-center p-1 shadow-xs shrink-0 hover:scale-105 transition-transform overflow-hidden"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-emerald-800 bg-white flex items-center justify-center p-0.5 shadow-xs shrink-0 hover:scale-105 transition-transform overflow-hidden"
               aria-label="Kheti AI Home"
             >
               <img
                 src="/logo.png"
                 alt="Kheti AI Logo"
-                className="w-full h-full object-contain rounded-xl"
+                className="w-full h-full object-contain rounded-full"
               />
             </button>
 

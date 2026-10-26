@@ -7,6 +7,7 @@ import { createGeminiRouter } from './routes/gemini';
 import { createMandiRouter } from './routes/mandi';
 import { createMarketplaceRouter } from './routes/marketplace';
 import { createServicesRouter } from './routes/services';
+import { createNotificationsRouter } from './routes/notifications';
 
 dotenv.config();
 
@@ -43,10 +44,10 @@ const genAI = new GoogleGenAI({
   }
 });
 
-// ─── Rate Limiting (30 req / min per IP for all /api routes) ──────────────────
+// ─── Rate Limiting (500 req / min per IP to support multi-user real-time polling) ───
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   validate: false,
@@ -60,6 +61,7 @@ app.use('/api/gemini', createGeminiRouter(genAI));
 app.use('/api/mandi', createMandiRouter());
 app.use('/api/marketplace', createMarketplaceRouter());
 app.use('/api/services', createServicesRouter());
+app.use('/api/notifications', createNotificationsRouter());
 
 // Server tool executor endpoint
 app.post('/api/tools/execute', (req: Request, res: Response) => {

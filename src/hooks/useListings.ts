@@ -61,7 +61,7 @@ interface UseListingsReturn {
   updateListing: (id: string, data: Partial<MarketplaceListing>) => Promise<void>;
   deleteListing: (id: string) => Promise<void>;
   makeOffer: (offer: Omit<OfferNegotiation, 'id'>) => Promise<void>;
-  acceptOffer: (offerId: string) => Promise<void>;
+  acceptOffer: (offerId: string, offerData?: OfferNegotiation) => Promise<void>;
   counterOffer: (offerId: string, price: number, message: string, senderName: string, senderId: string) => Promise<void>;
   refresh: () => void;
 }
@@ -214,10 +214,10 @@ export function useListings(): UseListingsReturn {
 
     fetchAll();
 
-    // Poll periodically to get new listings made by any other user
+    // Poll periodically to get new listings and offer updates made by any other user
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 15000);
+    }, 4000);
 
     return () => {
       isCancelled = true;
@@ -308,17 +308,31 @@ export function useListings(): UseListingsReturn {
     } catch {}
   }, []);
 
-  const acceptOffer = useCallback(async (offerId: string) => {
+  const acceptOffer = useCallback(async (offerId: string, offerData?: OfferNegotiation) => {
+    // 1. Immediately update local offer state to accepted
     setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'accepted' as const } : o));
 
     try {
-      await fetch(`/api/marketplace/offers/${offerId}`, {
+      const res = await fetch(`/api/marketplace/offers/${offerId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'accepted' })
+        body: JSON.stringify({
+          status: 'accepted',
+          offerData: offerData || offers.find(o => o.id === offerId)
+        })
       });
-    } catch {}
-  }, []);
+
+      if (res.ok) {
+        const data = await res.json();
+        // If an order was created by the server, add it to local orders state immediately
+        if (data.order) {
+          setOrders(prev => [data.order, ...prev.filter(ord => ord.id !== data.order.id)]);
+        }
+      }
+    } catch (err) {
+      console.warn('Error syncing accepted offer:', err);
+    }
+  }, [offers]);
 
   const counterOffer = useCallback(async (offerId: string, price: number, message: string, senderName: string, senderId: string) => {
     setOffers(prev => prev.map(o => {

@@ -25,7 +25,7 @@ interface MarketplaceDashboardProps {
   listings: MarketplaceListing[];
   offers: OfferNegotiation[];
   onOpenNewListingModal: () => void;
-  onAcceptOffer: (offerId: string) => void;
+  onAcceptOffer: (offerId: string, offer?: OfferNegotiation) => void;
   onCounterOffer: (offer: OfferNegotiation) => void;
   onRejectOffer?: (offerId: string) => void;
   onDeleteListing?: (id: string) => void;
@@ -405,7 +405,7 @@ const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'l
                   {offer.status === 'pending' && (
                     <>
                       <button
-                        onClick={() => onAcceptOffer(offer.id)}
+                        onClick={() => onAcceptOffer(offer.id, offer)}
                         className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg flex items-center gap-1 transition-colors shadow-xs"
                       >
                         <CheckCircle className="w-3.5 h-3.5" />

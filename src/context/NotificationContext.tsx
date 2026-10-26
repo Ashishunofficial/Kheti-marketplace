@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AppNotification } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
-const STORAGE_KEY = 'kheti_notifications_v2';
+const STORAGE_KEY = 'kheti_notifications_v3';
 
 const SEED_NOTIFICATIONS: AppNotification[] = [
   {
@@ -68,14 +69,18 @@ interface NotificationContextType {
   clearAll: () => void;
   addNotification: (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => void;
   simulateOfferNotification: (type: 'offer_received' | 'offer_accepted') => void;
+  refreshNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, profile } = useAuth();
+  const currentUserId = user?.id || profile?.id || '';
+
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(`${STORAGE_KEY}_${currentUserId || 'guest'}`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -88,37 +93,96 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
-  // Sync to localStorage
+  // Sync to user-specific localStorage key
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
+      localStorage.setItem(`${STORAGE_KEY}_${currentUserId || 'guest'}`, JSON.stringify(notifications));
     } catch (e) {
       console.warn('Failed to save notifications to localStorage:', e);
     }
-  }, [notifications]);
+  }, [notifications, currentUserId]);
+
+  // Fetch notifications from server for the active user ID
+  const fetchServerNotifications = useCallback(async () => {
+    try {
+      const url = currentUserId ? `/api/notifications?userId=${encodeURIComponent(currentUserId)}` : '/api/notifications';
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.notifications)) {
+          // Merge with any local seed notifications
+          const serverList: AppNotification[] = data.notifications;
+          setNotifications(prev => {
+            // Keep local read states if fresher
+            const readMap = new Map(prev.map(p => [p.id, p.isRead]));
+            return serverList.map(n => ({
+              ...n,
+              isRead: readMap.has(n.id) ? (readMap.get(n.id) ?? n.isRead) : n.isRead
+            }));
+          });
+        }
+      }
+    } catch (err) {
+      // Offline fallback: keep current local state
+    }
+  }, [currentUserId]);
+
+  // Initial fetch and regular polling every 3.5s for instant multi-user cross-notifications
+  useEffect(() => {
+    fetchServerNotifications();
+
+    const interval = setInterval(() => {
+      fetchServerNotifications();
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [fetchServerNotifications]);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const markAsRead = useCallback((id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    try {
+      await fetch(`/api/notifications/${id}/read`, { method: 'PUT' });
+    } catch {}
   }, []);
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  }, []);
+    try {
+      await fetch('/api/notifications/mark-all-read', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId })
+      });
+    } catch {}
+  }, [currentUserId]);
 
-  const clearAll = useCallback(() => {
+  const clearAll = useCallback(async () => {
     setNotifications([]);
-  }, []);
+    try {
+      await fetch(`/api/notifications?userId=${encodeURIComponent(currentUserId)}`, { method: 'DELETE' });
+    } catch {}
+  }, [currentUserId]);
 
-  const addNotification = useCallback((notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
+  const addNotification = useCallback(async (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
     const newEntry: AppNotification = {
       ...notif,
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString(),
+      timestamp: notif.timestamp || 'Just now',
       isRead: false,
     };
     setNotifications(prev => [newEntry, ...prev]);
+
+    // Push to server so other tabs/devices receive it
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEntry)
+      });
+    } catch {}
   }, []);
 
   const simulateOfferNotification = useCallback((type: 'offer_received' | 'offer_accepted') => {
@@ -130,6 +194,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (type === 'offer_received') {
       addNotification({
         type: 'offer_received',
+        recipientUserId: currentUserId,
         title: `New Buy Offer from ${randomFPO}`,
         titleHi: `${randomFPO} से नया खरीद प्रस्ताव प्राप्त हुआ`,
         message: `${randomFPO} submitted an offer of ₹${randomRate.toLocaleString('en-IN')}/qtl for ${randomQty} Quintals of ${randomCrop}. Total: ₹${(randomRate * randomQty).toLocaleString('en-IN')}.`,
@@ -145,6 +210,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } else {
       addNotification({
         type: 'offer_accepted',
+        recipientUserId: currentUserId,
         title: `Deal Confirmed with ${randomFPO}!`,
         titleHi: `${randomFPO} के साथ सौदा पक्का!`,
         message: `Your trade negotiation for ${randomQty} Quintals of ${randomCrop} at ₹${randomRate.toLocaleString('en-IN')}/qtl has been accepted. Escrow locked!`,
@@ -158,7 +224,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         linkTab: 'marketplace',
       });
     }
-  }, [addNotification]);
+  }, [addNotification, currentUserId]);
 
   return (
     <NotificationContext.Provider
@@ -172,6 +238,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         clearAll,
         addNotification,
         simulateOfferNotification,
+        refreshNotifications: fetchServerNotifications,
       }}
     >
       {children}

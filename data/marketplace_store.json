@@ -1,5 +1,58 @@
 {
   "listings": [],
-  "offers": [],
-  "orders": []
+  "offers": [
+    {
+      "listingId": "lst_test_101",
+      "commodity": "Wheat (गेहूं)",
+      "buyerId": "usr_buyer_beta_999",
+      "buyerName": "Pooja Traders",
+      "sellerId": "usr_farmer_alpha_111",
+      "sellerName": "Baldev Singh",
+      "originalPrice": 2550,
+      "offeredPrice": 2500,
+      "quantity": 50,
+      "unit": "Quintal",
+      "status": "accepted",
+      "id": "ofr_live_1793024278476_ppvl",
+      "createdAt": "2026-10-26T14:17:58.476Z",
+      "updatedAt": "2026-10-26T14:17:58.505Z"
+    },
+    {
+      "listingId": "lst_test_101",
+      "commodity": "Wheat (गेहूं)",
+      "buyerId": "usr_buyer_beta_999",
+      "buyerName": "Pooja Traders",
+      "sellerId": "usr_farmer_alpha_111",
+      "sellerName": "Baldev Singh",
+      "originalPrice": 2550,
+      "offeredPrice": 2500,
+      "quantity": 50,
+      "unit": "Quintal",
+      "status": "pending",
+      "id": "ofr_live_1793024255562_twic",
+      "createdAt": "2026-10-26T14:17:35.562Z",
+      "updatedAt": "2026-10-26T14:17:35.562Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord_1793024278505_h5nr",
+      "listingId": "lst_test_101",
+      "offerId": "ofr_live_1793024278476_ppvl",
+      "buyerId": "usr_buyer_beta_999",
+      "buyerName": "Pooja Traders",
+      "sellerId": "usr_farmer_alpha_111",
+      "sellerName": "Baldev Singh",
+      "commodity": "Wheat (गेहूं)",
+      "quantity": 50,
+      "unit": "Quintal",
+      "agreedPrice": 2500,
+      "totalAmount": 125000,
+      "escrowStatus": "locked",
+      "deliveryStatus": "in_progress",
+      "paymentStatus": "escrow_funded",
+      "pickupLocation": "Wheat (गेहूं) Depot / Farm Gateway",
+      "createdAt": "2026-10-26T14:17:58.505Z"
+    }
+  ]
 }
