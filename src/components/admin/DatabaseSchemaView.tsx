@@ -286,6 +286,8 @@ DROP POLICY IF EXISTS "Anyone insert storage" ON public.storage_facilities;
 CREATE POLICY "Anyone insert storage" ON public.storage_facilities FOR INSERT WITH CHECK (TRUE);
 DROP POLICY IF EXISTS "Anyone update storage" ON public.storage_facilities;
 CREATE POLICY "Anyone update storage" ON public.storage_facilities FOR UPDATE USING (TRUE);
+DROP POLICY IF EXISTS "Anyone delete storage" ON public.storage_facilities;
+CREATE POLICY "Anyone delete storage" ON public.storage_facilities FOR DELETE USING (TRUE);
 
 DROP POLICY IF EXISTS "Public read warehouse" ON public.warehouse_facilities;
 CREATE POLICY "Public read warehouse" ON public.warehouse_facilities FOR SELECT USING (TRUE);
@@ -293,6 +295,8 @@ DROP POLICY IF EXISTS "Anyone insert warehouse" ON public.warehouse_facilities;
 CREATE POLICY "Anyone insert warehouse" ON public.warehouse_facilities FOR INSERT WITH CHECK (TRUE);
 DROP POLICY IF EXISTS "Anyone update warehouse" ON public.warehouse_facilities;
 CREATE POLICY "Anyone update warehouse" ON public.warehouse_facilities FOR UPDATE USING (TRUE);
+DROP POLICY IF EXISTS "Anyone delete warehouse" ON public.warehouse_facilities;
+CREATE POLICY "Anyone delete warehouse" ON public.warehouse_facilities FOR DELETE USING (TRUE);
 
 DROP POLICY IF EXISTS "Public read machinery" ON public.machinery_equipment;
 CREATE POLICY "Public read machinery" ON public.machinery_equipment FOR SELECT USING (TRUE);
@@ -300,6 +304,8 @@ DROP POLICY IF EXISTS "Anyone insert machinery" ON public.machinery_equipment;
 CREATE POLICY "Anyone insert machinery" ON public.machinery_equipment FOR INSERT WITH CHECK (TRUE);
 DROP POLICY IF EXISTS "Anyone update machinery" ON public.machinery_equipment;
 CREATE POLICY "Anyone update machinery" ON public.machinery_equipment FOR UPDATE USING (TRUE);
+DROP POLICY IF EXISTS "Anyone delete machinery" ON public.machinery_equipment;
+CREATE POLICY "Anyone delete machinery" ON public.machinery_equipment FOR DELETE USING (TRUE);
 
 DROP POLICY IF EXISTS "Public read equipment" ON public.equipment_rentals;
 CREATE POLICY "Public read equipment" ON public.equipment_rentals FOR SELECT USING (TRUE);
@@ -307,6 +313,8 @@ DROP POLICY IF EXISTS "Anyone insert equipment" ON public.equipment_rentals;
 CREATE POLICY "Anyone insert equipment" ON public.equipment_rentals FOR INSERT WITH CHECK (TRUE);
 DROP POLICY IF EXISTS "Anyone update equipment" ON public.equipment_rentals;
 CREATE POLICY "Anyone update equipment" ON public.equipment_rentals FOR UPDATE USING (TRUE);
+DROP POLICY IF EXISTS "Anyone delete equipment" ON public.equipment_rentals;
+CREATE POLICY "Anyone delete equipment" ON public.equipment_rentals FOR DELETE USING (TRUE);
 
 DROP POLICY IF EXISTS "Public read advisories" ON public.university_advisories;
 CREATE POLICY "Public read advisories" ON public.university_advisories FOR SELECT USING (TRUE);

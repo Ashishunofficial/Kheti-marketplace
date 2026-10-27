@@ -148,6 +148,14 @@ export function useListings(): UseListingsReturn {
           });
         }
 
+        if (lData?.deletedListingIds && Array.isArray(lData.deletedListingIds)) {
+          try {
+            const current = JSON.parse(localStorage.getItem('kheti_deleted_listing_ids') || '[]');
+            const merged = Array.from(new Set([...current, ...lData.deletedListingIds]));
+            localStorage.setItem('kheti_deleted_listing_ids', JSON.stringify(merged));
+          } catch {}
+        }
+
         if (lData?.listings && Array.isArray(lData.listings)) {
           lData.listings.forEach((sl: MarketplaceListing) => {
             if (!serverListings.some(x => x.id === sl.id)) {
@@ -165,10 +173,24 @@ export function useListings(): UseListingsReturn {
         console.warn('Notice: Server API or Supabase fetch notice:', e);
       }
 
+      // Filter out permanently deleted listing IDs so they never resurrect from Supabase or server cache
+      let deletedListingIds = new Set<string>();
+      try {
+        const delArr = JSON.parse(localStorage.getItem('kheti_deleted_listing_ids') || '[]');
+        if (Array.isArray(delArr)) {
+          delArr.forEach((id: string) => {
+            deletedListingIds.add(String(id).trim());
+            deletedListingIds.add(String(id).trim().toLowerCase());
+          });
+        }
+      } catch {}
+
+      serverListings = serverListings.filter(sl => !deletedListingIds.has(sl.id) && !deletedListingIds.has(String(sl.id).toLowerCase()));
+
       // Merge local listings created in this browser
       const localListings = getLocalListings();
       localListings.forEach(ll => {
-        if (!serverListings.some(sl => sl.id === ll.id)) {
+        if (!deletedListingIds.has(ll.id) && !deletedListingIds.has(String(ll.id).toLowerCase()) && !serverListings.some(sl => sl.id === ll.id)) {
           serverListings.unshift(ll);
         }
       });
@@ -354,20 +376,46 @@ export function useListings(): UseListingsReturn {
   }, []);
 
   const deleteListing = useCallback(async (listingId: string) => {
-    setListings(prev => prev.filter(l => l.id !== listingId));
+    const cleanId = String(listingId).trim();
+    const lowerId = cleanId.toLowerCase();
+
+    // 1. Immediately remove from React state
+    setListings(prev => prev.filter(l => l.id !== cleanId && String(l.id).toLowerCase() !== lowerId));
+
+    // 2. Add to deleted blacklist in localStorage so polling never resurrects it
+    try {
+      const delArr: string[] = JSON.parse(localStorage.getItem('kheti_deleted_listing_ids') || '[]');
+      let updated = false;
+      if (!delArr.includes(cleanId)) {
+        delArr.push(cleanId);
+        updated = true;
+      }
+      if (!delArr.includes(lowerId)) {
+        delArr.push(lowerId);
+        updated = true;
+      }
+      if (updated) {
+        localStorage.setItem('kheti_deleted_listing_ids', JSON.stringify(delArr));
+      }
+    } catch {}
+
+    // 3. Update local listings storage
     try {
       const existingLocal = getLocalListings();
-      const updatedLocal = existingLocal.filter(l => l.id !== listingId);
+      const updatedLocal = existingLocal.filter(l => l.id !== cleanId && String(l.id).toLowerCase() !== lowerId);
       localStorage.setItem(LOCAL_STORAGE_KEYS.LISTINGS, JSON.stringify(updatedLocal));
     } catch (e) {}
 
+    // 4. Server API deletion
     try {
-      await fetch(`/api/marketplace/listings/${listingId}`, { method: 'DELETE' });
+      await fetch(`/api/marketplace/listings/${cleanId}`, { method: 'DELETE' });
     } catch {}
 
+    // 5. Supabase delete & update status to cancelled
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('marketplace_listings').delete().eq('id', listingId);
+        await supabase.from('marketplace_listings').update({ status: 'cancelled' }).eq('id', cleanId);
+        await supabase.from('marketplace_listings').delete().eq('id', cleanId);
       } catch {}
     }
   }, []);

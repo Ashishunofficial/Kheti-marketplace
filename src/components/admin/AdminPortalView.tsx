@@ -136,15 +136,27 @@ export const AdminPortalView: React.FC = () => {
 
   // Modal / confirmation state for deletion
   const [deletingItemId, setDeletingItemId] = useState<{ id: string; type: 'commodity' | 'warehouse' | 'equipment'; title: string } | null>(null);
+  const [adminDeletedIds, setAdminDeletedIds] = useState<Set<string>>(() => new Set());
 
   const handleConfirmDelete = async () => {
     if (!deletingItemId) return;
     const { id, type, title } = deletingItemId;
+    const cleanId = String(id).trim();
+    const lowerId = cleanId.toLowerCase();
+
+    // 1. Instantly eliminate from Admin view state without any UI lag
+    setAdminDeletedIds(prev => {
+      const next = new Set(prev);
+      next.add(cleanId);
+      next.add(lowerId);
+      return next;
+    });
+
     try {
       if (type === 'commodity') {
-        await deleteCommodityListing(id);
+        await deleteCommodityListing(cleanId);
       } else {
-        await deleteServiceListing(id, type);
+        await deleteServiceListing(cleanId, type);
       }
       showNotice(`Successfully deleted "${title}" from platform`);
     } catch {
@@ -212,18 +224,57 @@ export const AdminPortalView: React.FC = () => {
     setEditingEquipmentId(null);
   };
 
-  // Strictly filter real listings from live users (only exclude static guest demo items)
+  // Strictly filter real listings from live users (only exclude static guest demo items and deleted items)
+  const deletedListingIds = new Set(
+    (() => {
+      try {
+        const arr = JSON.parse(localStorage.getItem('kheti_deleted_listing_ids') || '[]');
+        return Array.isArray(arr) ? arr.map(id => String(id).trim().toLowerCase()) : [];
+      } catch {
+        return [];
+      }
+    })()
+  );
+
+  const deletedServiceIds = new Set(
+    (() => {
+      try {
+        const arr = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
+        return Array.isArray(arr) ? arr.map(id => String(id).trim().toLowerCase()) : [];
+      } catch {
+        return [];
+      }
+    })()
+  );
+
+  const isItemDeleted = (rawId: any) => {
+    if (!rawId) return false;
+    const clean = String(rawId).trim();
+    const lower = clean.toLowerCase();
+    return (
+      adminDeletedIds.has(clean) ||
+      adminDeletedIds.has(lower) ||
+      deletedListingIds.has(clean) ||
+      deletedListingIds.has(lower) ||
+      deletedServiceIds.has(clean) ||
+      deletedServiceIds.has(lower)
+    );
+  };
+
   const realCommodityListings = listings.filter(l => {
+    if (isItemDeleted(l.id)) return false;
     const id = (l.id || '').toLowerCase();
     return !id.startsWith('lst_10') && id !== 'lst_101' && id !== 'lst_102' && id !== 'lst_103';
   });
 
   const realWarehouses = allRawWarehouses.filter(w => {
+    if (isItemDeleted(w.id)) return false;
     const id = (w.id || '').toLowerCase();
     return !id.startsWith('wh_krn') && !id.startsWith('wh_ldh') && id !== 'wh_my_01';
   });
 
   const realEquipment = allRawEquipment.filter(e => {
+    if (isItemDeleted(e.id)) return false;
     const id = (e.id || '').toLowerCase();
     return !id.startsWith('eq_50') && id !== 'eq_my_01';
   });

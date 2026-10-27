@@ -105,6 +105,7 @@ export function useServicesManager() {
 
           if (whDb && Array.isArray(whDb)) {
             whDb.forEach((row: any) => {
+              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
               serverWh.push({
                 id: row.id,
                 ownerId: row.owner_id || undefined,
@@ -133,6 +134,7 @@ export function useServicesManager() {
 
           if (eqDb && Array.isArray(eqDb)) {
             eqDb.forEach((row: any) => {
+              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
               serverEq.push({
                 id: row.id,
                 ownerId: row.owner_id || undefined,
@@ -214,6 +216,13 @@ export function useServicesManager() {
 
         if (wRes.ok) {
           const wData = await wRes.json();
+          if (wData.deletedServiceIds && Array.isArray(wData.deletedServiceIds)) {
+            try {
+              const current = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
+              const merged = Array.from(new Set([...current, ...wData.deletedServiceIds]));
+              localStorage.setItem('kheti_deleted_service_ids', JSON.stringify(merged));
+            } catch {}
+          }
           if (wData.warehouses && Array.isArray(wData.warehouses)) {
             wData.warehouses.forEach((item: WarehouseFacility) => {
               if (!serverWh.some(s => s.id === item.id)) serverWh.push(item);
@@ -222,6 +231,13 @@ export function useServicesManager() {
         }
         if (eRes.ok) {
           const eData = await eRes.json();
+          if (eData.deletedServiceIds && Array.isArray(eData.deletedServiceIds)) {
+            try {
+              const current = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
+              const merged = Array.from(new Set([...current, ...eData.deletedServiceIds]));
+              localStorage.setItem('kheti_deleted_service_ids', JSON.stringify(merged));
+            } catch {}
+          }
           if (eData.equipment && Array.isArray(eData.equipment)) {
             eData.equipment.forEach((item: EquipmentRental) => {
               if (!serverEq.some(s => s.id === item.id)) serverEq.push(item);
@@ -266,17 +282,32 @@ export function useServicesManager() {
         }
       });
 
-      // 3. Merge local items created in this browser
+      // 3. Filter out permanently deleted service IDs
+      let deletedServiceIds = new Set<string>();
+      try {
+        const delArr = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
+        if (Array.isArray(delArr)) {
+          delArr.forEach((id: string) => {
+            deletedServiceIds.add(String(id).trim());
+            deletedServiceIds.add(String(id).trim().toLowerCase());
+          });
+        }
+      } catch {}
+
+      serverWh = serverWh.filter(w => !deletedServiceIds.has(w.id) && !deletedServiceIds.has(String(w.id).toLowerCase()));
+      serverEq = serverEq.filter(e => !deletedServiceIds.has(e.id) && !deletedServiceIds.has(String(e.id).toLowerCase()));
+
+      // 4. Merge local items created in this browser
       const localWh = getLocalData<WarehouseFacility>(STORAGE_KEYS.WAREHOUSES);
       const localEq = getLocalData<EquipmentRental>(STORAGE_KEYS.EQUIPMENT);
       const localBk = getLocalData<ServiceBooking>(STORAGE_KEYS.BOOKINGS);
       const localMsg = getLocalData<ServiceMessage>(STORAGE_KEYS.MESSAGES);
 
       localWh.forEach(item => {
-        if (!serverWh.some(s => s.id === item.id)) serverWh.unshift(item);
+        if (!deletedServiceIds.has(item.id) && !serverWh.some(s => s.id === item.id)) serverWh.unshift(item);
       });
       localEq.forEach(item => {
-        if (!serverEq.some(s => s.id === item.id)) serverEq.unshift(item);
+        if (!deletedServiceIds.has(item.id) && !serverEq.some(s => s.id === item.id)) serverEq.unshift(item);
       });
       localBk.forEach(item => {
         const existing = serverBk.find(s => s.id === item.id);
@@ -502,28 +533,67 @@ export function useServicesManager() {
 
   // Delete Listing
   const deleteListing = useCallback(async (id: string, type: 'warehouse' | 'equipment') => {
+    const cleanId = String(id).trim();
+    const lowerId = cleanId.toLowerCase();
+
+    // 1. Immediately remove from local state
     if (type === 'warehouse') {
-      setWarehouses(prev => prev.filter(w => w.id !== id));
+      setWarehouses(prev => prev.filter(w => w.id !== cleanId && String(w.id).toLowerCase() !== lowerId));
+    } else {
+      setEquipment(prev => prev.filter(e => e.id !== cleanId && String(e.id).toLowerCase() !== lowerId));
+    }
+
+    // 2. Add to deleted blacklist in localStorage so polling never resurrects it
+    try {
+      const delArr: string[] = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
+      let updated = false;
+      if (!delArr.includes(cleanId)) {
+        delArr.push(cleanId);
+        updated = true;
+      }
+      if (!delArr.includes(lowerId)) {
+        delArr.push(lowerId);
+        updated = true;
+      }
+      if (updated) {
+        localStorage.setItem('kheti_deleted_service_ids', JSON.stringify(delArr));
+      }
+    } catch {}
+
+    // 3. Update localStorage and call APIs
+    if (type === 'warehouse') {
       try {
         const local = getLocalData<WarehouseFacility>(STORAGE_KEYS.WAREHOUSES);
-        localStorage.setItem(STORAGE_KEYS.WAREHOUSES, JSON.stringify(local.filter(w => w.id !== id)));
-        await fetch(`/api/services/warehouses/${id}`, { method: 'DELETE' });
-        if (isSupabaseConfigured) {
-          await supabase.from('storage_facilities').delete().eq('id', id);
-          await supabase.from('warehouse_facilities').delete().eq('id', id);
-        }
+        localStorage.setItem(STORAGE_KEYS.WAREHOUSES, JSON.stringify(local.filter(w => w.id !== cleanId && String(w.id).toLowerCase() !== lowerId)));
       } catch {}
+      try {
+        await fetch(`/api/services/warehouses/${cleanId}`, { method: 'DELETE' });
+      } catch {}
+      if (isSupabaseConfigured) {
+        try {
+          // Soft delete flag and physical delete
+          await supabase.from('storage_facilities').update({ is_real: false }).eq('id', cleanId);
+          await supabase.from('warehouse_facilities').update({ is_real: false }).eq('id', cleanId);
+          await supabase.from('storage_facilities').delete().eq('id', cleanId);
+          await supabase.from('warehouse_facilities').delete().eq('id', cleanId);
+        } catch {}
+      }
     } else {
-      setEquipment(prev => prev.filter(e => e.id !== id));
       try {
         const local = getLocalData<EquipmentRental>(STORAGE_KEYS.EQUIPMENT);
-        localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(local.filter(e => e.id !== id)));
-        await fetch(`/api/services/equipment/${id}`, { method: 'DELETE' });
-        if (isSupabaseConfigured) {
-          await supabase.from('machinery_equipment').delete().eq('id', id);
-          await supabase.from('equipment_rentals').delete().eq('id', id);
-        }
+        localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(local.filter(e => e.id !== cleanId && String(e.id).toLowerCase() !== lowerId)));
       } catch {}
+      try {
+        await fetch(`/api/services/equipment/${cleanId}`, { method: 'DELETE' });
+      } catch {}
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.from('machinery_equipment').update({ is_real: false }).eq('id', cleanId);
+          await supabase.from('equipment_rentals').update({ is_real: false }).eq('id', cleanId);
+          await supabase.from('machinery_equipment').delete().eq('id', cleanId);
+          await supabase.from('equipment_rentals').delete().eq('id', cleanId);
+        } catch {}
+      }
     }
   }, []);
 

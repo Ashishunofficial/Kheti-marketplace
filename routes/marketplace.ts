@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 import { addServerNotification } from './notifications';
 
 // ─── File-Based Shared Persistence ──────────────────────────────────────────
@@ -24,6 +25,7 @@ interface MarketplaceStoreData {
   listings: any[];
   offers: any[];
   orders: any[];
+  deletedListingIds?: string[];
 }
 
 function loadMarketplaceStore(): MarketplaceStoreData {
@@ -32,6 +34,9 @@ function loadMarketplaceStore(): MarketplaceStoreData {
       const raw = fs.readFileSync(MARKETPLACE_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.listings)) {
+        if (!Array.isArray(parsed.deletedListingIds)) {
+          parsed.deletedListingIds = [];
+        }
         return parsed;
       }
     }
@@ -43,7 +48,8 @@ function loadMarketplaceStore(): MarketplaceStoreData {
   const initialData: MarketplaceStoreData = {
     listings: INITIAL_REAL_LISTINGS,
     offers: [],
-    orders: []
+    orders: [],
+    deletedListingIds: []
   };
   saveMarketplaceStore(initialData);
   return initialData;
@@ -63,12 +69,18 @@ export function createMarketplaceRouter() {
   // GET /api/marketplace/listings
   router.get('/listings', (_req: Request, res: Response) => {
     const store = loadMarketplaceStore();
-    // Return all real active listings
-    const activeListings = store.listings.filter(l => l.status === 'active' || !l.status);
+    const deletedSet = new Set((store.deletedListingIds || []).map(id => String(id).toLowerCase()));
+    // Return all real active listings excluding blacklisted/deleted ones
+    const activeListings = store.listings.filter(l => {
+      const lid = String(l.id || '').toLowerCase();
+      if (deletedSet.has(lid)) return false;
+      return l.status === 'active' || !l.status;
+    });
     res.json({
       success: true,
       count: activeListings.length,
-      listings: activeListings
+      listings: activeListings,
+      deletedListingIds: store.deletedListingIds || []
     });
   });
 
@@ -132,18 +144,40 @@ export function createMarketplaceRouter() {
   });
 
   // DELETE /api/marketplace/listings/:id
-  router.delete('/listings/:id', (req: Request, res: Response) => {
+  router.delete('/listings/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const store = loadMarketplaceStore();
-    const prevCount = store.listings.length;
-    store.listings = store.listings.filter(l => l.id !== id);
-
-    if (store.listings.length === prevCount) {
-      return res.status(404).json({ error: 'Listing not found' });
+    if (!store.deletedListingIds) {
+      store.deletedListingIds = [];
+    }
+    const cleanId = String(id).trim();
+    const lowerId = cleanId.toLowerCase();
+    if (!store.deletedListingIds.includes(cleanId)) {
+      store.deletedListingIds.push(cleanId);
+    }
+    if (!store.deletedListingIds.includes(lowerId)) {
+      store.deletedListingIds.push(lowerId);
     }
 
+    store.listings = store.listings.filter(l => {
+      const lid = String(l.id || '').toLowerCase();
+      return lid !== lowerId && l.id !== cleanId;
+    });
+
     saveMarketplaceStore(store);
-    res.json({ success: true, message: 'Listing deleted successfully' });
+
+    // Direct Supabase deletion & soft-delete cancellation from server
+    try {
+      const sbUrl = process.env.VITE_SUPABASE_URL || 'https://nsbmlujnxwfnuhnidmap.supabase.co';
+      const sbKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYm1sdWpueHdmbnVobmlkbWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNTE3NDQsImV4cCI6MjEwNzgyNzc0NH0.Q3ae0ec_UkxiOLJq8GTCRVDsqElwkKIek7zD3vhugqI';
+      const sb = createClient(sbUrl, sbKey);
+      await sb.from('marketplace_listings').update({ status: 'cancelled' }).eq('id', cleanId);
+      await sb.from('marketplace_listings').delete().eq('id', cleanId);
+    } catch (e) {
+      console.warn('[Marketplace Backend Delete Notice]:', e);
+    }
+
+    res.json({ success: true, message: 'Listing permanently removed', deletedId: cleanId });
   });
 
   // GET /api/marketplace/offers

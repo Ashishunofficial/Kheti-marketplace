@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 import { addServerNotification } from './notifications';
 
 // ─── File-Based Shared Persistence for Storage & Machinery ─────────────────
@@ -26,6 +27,7 @@ interface ServicesStoreData {
   equipment: any[];
   bookings: any[];
   messages: any[];
+  deletedServiceIds?: string[];
 }
 
 function loadServicesStore(): ServicesStoreData {
@@ -34,6 +36,9 @@ function loadServicesStore(): ServicesStoreData {
       const raw = fs.readFileSync(SERVICES_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.warehouses) && Array.isArray(parsed.equipment)) {
+        if (!Array.isArray(parsed.deletedServiceIds)) {
+          parsed.deletedServiceIds = [];
+        }
         return parsed;
       }
     }
@@ -46,7 +51,8 @@ function loadServicesStore(): ServicesStoreData {
     warehouses: INITIAL_REAL_WAREHOUSES,
     equipment: INITIAL_REAL_EQUIPMENTS,
     bookings: [],
-    messages: []
+    messages: [],
+    deletedServiceIds: []
   };
   saveServicesStore(initialData);
   return initialData;
@@ -66,10 +72,13 @@ export function createServicesRouter() {
   // ─── Warehouses ─────────────────────────────────────────────────────────────
   router.get('/warehouses', (_req: Request, res: Response) => {
     const store = loadServicesStore();
+    const deletedSet = new Set((store.deletedServiceIds || []).map(id => String(id).toLowerCase()));
+    const activeWarehouses = store.warehouses.filter(w => !deletedSet.has(String(w.id).toLowerCase()));
     res.json({
       success: true,
-      count: store.warehouses.length,
-      warehouses: store.warehouses
+      count: activeWarehouses.length,
+      warehouses: activeWarehouses,
+      deletedServiceIds: store.deletedServiceIds || []
     });
   });
 
@@ -120,27 +129,52 @@ export function createServicesRouter() {
     res.json({ success: true, warehouse: store.warehouses[idx] });
   });
 
-  router.delete('/warehouses/:id', (req: Request, res: Response) => {
+  router.delete('/warehouses/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const store = loadServicesStore();
-    const prevCount = store.warehouses.length;
-    store.warehouses = store.warehouses.filter(w => w.id !== id);
-
-    if (store.warehouses.length === prevCount) {
-      return res.status(404).json({ error: 'Warehouse not found' });
+    if (!store.deletedServiceIds) store.deletedServiceIds = [];
+    const cleanId = String(id).trim();
+    const lowerId = cleanId.toLowerCase();
+    if (!store.deletedServiceIds.includes(cleanId)) {
+      store.deletedServiceIds.push(cleanId);
+    }
+    if (!store.deletedServiceIds.includes(lowerId)) {
+      store.deletedServiceIds.push(lowerId);
     }
 
+    store.warehouses = store.warehouses.filter(w => {
+      const wid = String(w.id || '').toLowerCase();
+      return wid !== lowerId && w.id !== cleanId;
+    });
+
     saveServicesStore(store);
-    res.json({ success: true, message: 'Warehouse deleted successfully' });
+
+    // Sync deletion & soft-delete with Supabase from server
+    try {
+      const sbUrl = process.env.VITE_SUPABASE_URL || 'https://nsbmlujnxwfnuhnidmap.supabase.co';
+      const sbKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYm1sdWpueHdmbnVobmlkbWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNTE3NDQsImV4cCI6MjEwNzgyNzc0NH0.Q3ae0ec_UkxiOLJq8GTCRVDsqElwkKIek7zD3vhugqI';
+      const sb = createClient(sbUrl, sbKey);
+      await sb.from('storage_facilities').update({ is_real: false }).eq('id', cleanId);
+      await sb.from('warehouse_facilities').update({ is_real: false }).eq('id', cleanId);
+      await sb.from('storage_facilities').delete().eq('id', cleanId);
+      await sb.from('warehouse_facilities').delete().eq('id', cleanId);
+    } catch (e) {
+      console.warn('[Warehouse Backend Delete Notice]:', e);
+    }
+
+    res.json({ success: true, message: 'Warehouse deleted successfully', deletedId: cleanId });
   });
 
   // ─── Equipment ──────────────────────────────────────────────────────────────
   router.get('/equipment', (_req: Request, res: Response) => {
     const store = loadServicesStore();
+    const deletedSet = new Set((store.deletedServiceIds || []).map(id => String(id).toLowerCase()));
+    const activeEquipment = store.equipment.filter(e => !deletedSet.has(String(e.id).toLowerCase()));
     res.json({
       success: true,
-      count: store.equipment.length,
-      equipment: store.equipment
+      count: activeEquipment.length,
+      equipment: activeEquipment,
+      deletedServiceIds: store.deletedServiceIds || []
     });
   });
 
@@ -192,18 +226,40 @@ export function createServicesRouter() {
     res.json({ success: true, equipment: store.equipment[idx] });
   });
 
-  router.delete('/equipment/:id', (req: Request, res: Response) => {
+  router.delete('/equipment/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const store = loadServicesStore();
-    const prevCount = store.equipment.length;
-    store.equipment = store.equipment.filter(e => e.id !== id);
-
-    if (store.equipment.length === prevCount) {
-      return res.status(404).json({ error: 'Equipment not found' });
+    if (!store.deletedServiceIds) store.deletedServiceIds = [];
+    const cleanId = String(id).trim();
+    const lowerId = cleanId.toLowerCase();
+    if (!store.deletedServiceIds.includes(cleanId)) {
+      store.deletedServiceIds.push(cleanId);
+    }
+    if (!store.deletedServiceIds.includes(lowerId)) {
+      store.deletedServiceIds.push(lowerId);
     }
 
+    store.equipment = store.equipment.filter(e => {
+      const eid = String(e.id || '').toLowerCase();
+      return eid !== lowerId && e.id !== cleanId;
+    });
+
     saveServicesStore(store);
-    res.json({ success: true, message: 'Equipment deleted successfully' });
+
+    // Sync deletion & soft-delete with Supabase from server
+    try {
+      const sbUrl = process.env.VITE_SUPABASE_URL || 'https://nsbmlujnxwfnuhnidmap.supabase.co';
+      const sbKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYm1sdWpueHdmbnVobmlkbWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNTE3NDQsImV4cCI6MjEwNzgyNzc0NH0.Q3ae0ec_UkxiOLJq8GTCRVDsqElwkKIek7zD3vhugqI';
+      const sb = createClient(sbUrl, sbKey);
+      await sb.from('machinery_equipment').update({ is_real: false }).eq('id', cleanId);
+      await sb.from('equipment_rentals').update({ is_real: false }).eq('id', cleanId);
+      await sb.from('machinery_equipment').delete().eq('id', cleanId);
+      await sb.from('equipment_rentals').delete().eq('id', cleanId);
+    } catch (e) {
+      console.warn('[Equipment Backend Delete Notice]:', e);
+    }
+
+    res.json({ success: true, message: 'Equipment deleted successfully', deletedId: cleanId });
   });
 
   // ─── Bookings ───────────────────────────────────────────────────────────────
