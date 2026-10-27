@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { useNotifications } from '../context/NotificationContext';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, supabasePublic, isSupabaseConfigured } from '../lib/supabase';
 import { WarehouseFacility, EquipmentRental, ServiceBooking, ServiceMessage } from '../types';
 import { 
   MOCK_WAREHOUSES, 
@@ -96,9 +96,9 @@ export function useServicesManager() {
       // 1. Fetch directly from Supabase (storage_facilities & warehouse_facilities, machinery_equipment & equipment_rentals)
       if (isSupabaseConfigured) {
         try {
-          // Query storage_facilities
+          // Query storage_facilities using unauthenticated public client
           try {
-            const { data: stDb } = await supabase.from('storage_facilities').select('*');
+            const { data: stDb } = await supabasePublic.from('storage_facilities').select('*');
             if (stDb && Array.isArray(stDb)) {
               stDb.forEach((row: any) => {
                 if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
@@ -126,9 +126,9 @@ export function useServicesManager() {
             console.warn('[Services Sync] Notice fetching storage_facilities:', e1);
           }
 
-          // Query warehouse_facilities
+          // Query warehouse_facilities using unauthenticated public client
           try {
-            const { data: whDb } = await supabase.from('warehouse_facilities').select('*');
+            const { data: whDb } = await supabasePublic.from('warehouse_facilities').select('*');
             if (whDb && Array.isArray(whDb)) {
               whDb.forEach((row: any) => {
                 if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
@@ -156,9 +156,9 @@ export function useServicesManager() {
             console.warn('[Services Sync] Notice fetching warehouse_facilities:', e2);
           }
 
-          // Query machinery_equipment
+          // Query machinery_equipment using unauthenticated public client
           try {
-            const { data: mEqDb } = await supabase.from('machinery_equipment').select('*');
+            const { data: mEqDb } = await supabasePublic.from('machinery_equipment').select('*');
             if (mEqDb && Array.isArray(mEqDb)) {
               mEqDb.forEach((row: any) => {
                 if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
@@ -186,9 +186,9 @@ export function useServicesManager() {
             console.warn('[Services Sync] Notice fetching machinery_equipment:', e3);
           }
 
-          // Query equipment_rentals
+          // Query equipment_rentals using unauthenticated public client
           try {
-            const { data: eRentDb } = await supabase.from('equipment_rentals').select('*');
+            const { data: eRentDb } = await supabasePublic.from('equipment_rentals').select('*');
             if (eRentDb && Array.isArray(eRentDb)) {
               eRentDb.forEach((row: any) => {
                 if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
@@ -217,7 +217,7 @@ export function useServicesManager() {
           }
 
           // Service bookings from Supabase
-          const { data: bkDb } = await supabase.from('service_bookings').select('*');
+          const { data: bkDb } = await supabasePublic.from('service_bookings').select('*');
           if (bkDb && Array.isArray(bkDb)) {
             bkDb.forEach((row: any) => {
               serverBk.push({
@@ -244,7 +244,7 @@ export function useServicesManager() {
           }
 
           // Service messages from Supabase
-          const { data: msgDb } = await supabase.from('service_messages').select('*');
+          const { data: msgDb } = await supabasePublic.from('service_messages').select('*');
           if (msgDb && Array.isArray(msgDb)) {
             msgDb.forEach((row: any) => {
               serverMsg.push({

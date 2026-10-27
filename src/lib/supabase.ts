@@ -13,4 +13,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// Dedicated unauthenticated public client to fetch global public listings across all users without user-ID RLS filtering
+export const supabasePublic = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+});
+
 export const isSupabaseConfigured = true;

@@ -3,7 +3,7 @@
  * with Supabase backup, persistent storage, and strict Demo vs Live data separation.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, supabasePublic, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import type { MarketplaceListing, OfferNegotiation, OrderRecord } from '../types';
 import { MOCK_LISTINGS, MOCK_OFFERS, MOCK_ORDERS } from '../data/mockData';
@@ -149,12 +149,12 @@ export function useListings(): UseListingsReturn {
       let serverOffers: OfferNegotiation[] = [];
       let serverOrders: OrderRecord[] = [];
 
-      // 1. Fetch directly from Supabase in parallel with Express server API
+      // 1. Fetch directly from Supabase in parallel with Express server API using unauthenticated public client
       const supabasePromise = (async () => {
         if (!isSupabaseConfigured) return [];
         let rows: any[] = [];
         try {
-          const { data: dbRows, error: err1 } = await supabase
+          const { data: dbRows, error: err1 } = await supabasePublic
             .from('marketplace_listings')
             .select('*')
             .eq('status', 'active')
@@ -167,7 +167,7 @@ export function useListings(): UseListingsReturn {
         }
 
         try {
-          const { data: prodRows, error: err2 } = await supabase
+          const { data: prodRows, error: err2 } = await supabasePublic
             .from('produce_listings')
             .select('*')
             .eq('status', 'active')
