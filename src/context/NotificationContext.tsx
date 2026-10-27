@@ -139,27 +139,51 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const isRenter = b.renter_id === currentUserId;
             const isOwner = b.owner_id === currentUserId;
 
-            if (b.status === 'confirmed' && isRenter) {
-              combinedNotifs.push({
-                id: `notif_bk_conf_${b.id}`,
-                type: 'offer_accepted',
-                recipientUserId: currentUserId,
-                title: `🎉 Offer Accepted! Deal Confirmed: ${b.service_title}`,
-                titleHi: `🎉 ऑफर स्वीकार हुआ! सौदा पक्का: ${b.service_title}`,
-                message: `${b.owner_name || 'The owner'} accepted your booking offer of ₹${Number(b.total_estimated_amount || 0).toLocaleString('en-IN')} for ${b.quantity_requested} ${b.unit} of "${b.service_title}". Deal confirmed!`,
-                messageHi: `${b.owner_name || 'मालिक'} ने आपके "${b.service_title}" के लिए ₹${Number(b.total_estimated_amount || 0).toLocaleString('en-IN')} (${b.quantity_requested} ${b.unit}) का ऑफर स्वीकार कर लिया है। सौदा पक्का!`,
-                commodity: b.service_title,
-                price: Number(b.total_estimated_amount || 0),
-                quantity: Number(b.quantity_requested || 1),
-                unit: b.unit || 'units',
-                counterPartyName: b.owner_name || 'Facility Owner',
-                offerId: b.id,
-                listingId: b.service_id,
-                timestamp: 'Just now',
-                createdAt: b.updated_at || b.created_at || new Date().toISOString(),
-                isRead: false,
-                linkTab: 'services'
-              });
+            if (b.status === 'confirmed') {
+              if (isRenter) {
+                combinedNotifs.push({
+                  id: `notif_bk_conf_r_${b.id}`,
+                  type: 'offer_accepted',
+                  recipientUserId: currentUserId,
+                  title: `🎉 Offer Accepted! Deal Confirmed: ${b.service_title}`,
+                  titleHi: `🎉 ऑफर स्वीकार हुआ! सौदा पक्का: ${b.service_title}`,
+                  message: `${b.owner_name || 'The owner'} accepted your booking offer of ₹${Number(b.total_estimated_amount || 0).toLocaleString('en-IN')} for ${b.quantity_requested} ${b.unit} of "${b.service_title}". Deal confirmed!`,
+                  messageHi: `${b.owner_name || 'मालिक'} ने आपके "${b.service_title}" के लिए ₹${Number(b.total_estimated_amount || 0).toLocaleString('en-IN')} (${b.quantity_requested} ${b.unit}) का ऑफर स्वीकार कर लिया है। सौदा पक्का!`,
+                  commodity: b.service_title,
+                  price: Number(b.total_estimated_amount || 0),
+                  quantity: Number(b.quantity_requested || 1),
+                  unit: b.unit || 'units',
+                  counterPartyName: b.owner_name || 'Facility Owner',
+                  offerId: b.id,
+                  listingId: b.service_id,
+                  timestamp: 'Just now',
+                  createdAt: b.updated_at || b.created_at || new Date().toISOString(),
+                  isRead: false,
+                  linkTab: 'services'
+                });
+              }
+              if (isOwner) {
+                combinedNotifs.push({
+                  id: `notif_bk_conf_o_${b.id}`,
+                  type: 'offer_accepted',
+                  recipientUserId: currentUserId,
+                  title: `✅ You Accepted Offer: ${b.service_title}`,
+                  titleHi: `✅ आपने ऑफर स्वीकार किया: ${b.service_title}`,
+                  message: `You confirmed the booking deal of ${b.quantity_requested} ${b.unit} of "${b.service_title}" with ${b.renter_name || 'Farmer Client'} for ₹${Number(b.total_estimated_amount || 0).toLocaleString('en-IN')}.`,
+                  messageHi: `आपने ${b.renter_name || 'किसान'} के साथ "${b.service_title}" के लिए ₹${Number(b.total_estimated_amount || 0).toLocaleString('en-IN')} पर सौदा पक्का किया।`,
+                  commodity: b.service_title,
+                  price: Number(b.total_estimated_amount || 0),
+                  quantity: Number(b.quantity_requested || 1),
+                  unit: b.unit || 'units',
+                  counterPartyName: b.renter_name || 'Farmer Client',
+                  offerId: b.id,
+                  listingId: b.service_id,
+                  timestamp: 'Just now',
+                  createdAt: b.updated_at || b.created_at || new Date().toISOString(),
+                  isRead: false,
+                  linkTab: 'services'
+                });
+              }
             } else if (b.status === 'pending' && isOwner) {
               combinedNotifs.push({
                 id: `notif_bk_recv_${b.id}`,
@@ -181,24 +205,55 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 isRead: false,
                 linkTab: 'services'
               });
+            } else if (b.status === 'rejected' && isRenter) {
+              combinedNotifs.push({
+                id: `notif_bk_rej_${b.id}`,
+                type: 'offer_received',
+                recipientUserId: currentUserId,
+                title: `✕ Booking Offer Declined: ${b.service_title}`,
+                titleHi: `✕ बुकिंग ऑफर अस्वीकार हुआ: ${b.service_title}`,
+                message: `${b.owner_name || 'Owner'} declined your booking offer for "${b.service_title}".`,
+                messageHi: `${b.owner_name || 'मालिक'} ने आपका "${b.service_title}" का बुकिंग ऑफर अस्वीकार कर दिया।`,
+                commodity: b.service_title,
+                price: Number(b.total_estimated_amount || 0),
+                quantity: Number(b.quantity_requested || 1),
+                unit: b.unit || 'units',
+                counterPartyName: b.owner_name || 'Owner',
+                offerId: b.id,
+                listingId: b.service_id,
+                timestamp: 'Just now',
+                createdAt: b.updated_at || b.created_at || new Date().toISOString(),
+                isRead: false,
+                linkTab: 'services'
+              });
             }
           });
         }
 
         // B. Offer Negotiations (Marketplace Produce)
-        const { data: offersDb } = await supabase
-          .from('offer_negotiations')
-          .select('*')
-          .or(`buyer_id.eq.${currentUserId},seller_id.eq.${currentUserId}`);
+        const [offNegotiationsRes, mktOffersRes] = await Promise.allSettled([
+          supabase.from('offer_negotiations').select('*').or(`buyer_id.eq.${currentUserId},seller_id.eq.${currentUserId}`),
+          supabase.from('marketplace_offers').select('*').or(`buyer_id.eq.${currentUserId},seller_id.eq.${currentUserId}`)
+        ]);
 
-        if (offersDb && Array.isArray(offersDb)) {
-          offersDb.forEach((o: any) => {
-            const isBuyer = o.buyer_id === currentUserId;
-            const isSeller = o.seller_id === currentUserId;
+        const rawOffers: any[] = [];
+        if (offNegotiationsRes.status === 'fulfilled' && Array.isArray(offNegotiationsRes.value?.data)) {
+          rawOffers.push(...offNegotiationsRes.value.data);
+        }
+        if (mktOffersRes.status === 'fulfilled' && Array.isArray(mktOffersRes.value?.data)) {
+          mktOffersRes.value.data.forEach((item: any) => {
+            if (!rawOffers.some(r => r.id === item.id)) rawOffers.push(item);
+          });
+        }
 
-            if (o.status === 'accepted' && isBuyer) {
+        rawOffers.forEach((o: any) => {
+          const isBuyer = o.buyer_id === currentUserId;
+          const isSeller = o.seller_id === currentUserId;
+
+          if (o.status === 'accepted') {
+            if (isBuyer) {
               combinedNotifs.push({
-                id: `notif_ofr_acc_${o.id}`,
+                id: `notif_ofr_acc_b_${o.id}`,
                 type: 'offer_accepted',
                 recipientUserId: currentUserId,
                 title: `🎉 Produce Offer Accepted: ${o.commodity}`,
@@ -217,15 +272,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 isRead: false,
                 linkTab: 'marketplace'
               });
-            } else if (o.status === 'pending' && isSeller) {
+            }
+            if (isSeller) {
               combinedNotifs.push({
-                id: `notif_ofr_recv_${o.id}`,
-                type: 'offer_received',
+                id: `notif_ofr_acc_s_${o.id}`,
+                type: 'offer_accepted',
                 recipientUserId: currentUserId,
-                title: `🌾 New Produce Offer: ${o.commodity}`,
-                titleHi: `🌾 नया खरीद ऑफर: ${o.commodity}`,
-                message: `${o.buyer_name || 'Buyer'} offered ₹${Number(o.offered_price || 0).toLocaleString('en-IN')}/${o.unit || 'qtl'} for ${o.quantity} ${o.unit || 'Quintals'} of ${o.commodity}.`,
-                messageHi: `${o.buyer_name || 'खरीदार'} ने ${o.quantity} ${o.unit || 'क्विंटल'} ${o.commodity} के लिए ₹${Number(o.offered_price || 0).toLocaleString('en-IN')} का ऑफर दिया है।`,
+                title: `🤝 Deal Confirmed & Escrow Locked: ${o.commodity}`,
+                titleHi: `🤝 ऑफर स्वीकार हुआ! सौदा पक्का: ${o.commodity}`,
+                message: `Deal confirmed with ${o.buyer_name || 'Buyer'} for ${o.quantity} ${o.unit || 'Quintals'} of ${o.commodity} at ₹${Number(o.offered_price || 0).toLocaleString('en-IN')}/${o.unit || 'qtl'}.`,
+                messageHi: `${o.buyer_name || 'खरीदार'} के साथ ${o.quantity} ${o.unit || 'क्विंटल'} ${o.commodity} का सौदा ₹${Number(o.offered_price || 0).toLocaleString('en-IN')} पर पक्का हुआ।`,
                 commodity: o.commodity,
                 price: Number(o.offered_price || 0),
                 quantity: Number(o.quantity || 1),
@@ -234,13 +290,55 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 offerId: o.id,
                 listingId: o.listing_id,
                 timestamp: 'Just now',
-                createdAt: o.created_at || new Date().toISOString(),
+                createdAt: o.updated_at || o.created_at || new Date().toISOString(),
                 isRead: false,
                 linkTab: 'marketplace'
               });
             }
-          });
-        }
+          } else if (o.status === 'pending' && isSeller) {
+            combinedNotifs.push({
+              id: `notif_ofr_recv_${o.id}`,
+              type: 'offer_received',
+              recipientUserId: currentUserId,
+              title: `🌾 New Produce Offer: ${o.commodity}`,
+              titleHi: `🌾 नया खरीद ऑफर: ${o.commodity}`,
+              message: `${o.buyer_name || 'Buyer'} offered ₹${Number(o.offered_price || 0).toLocaleString('en-IN')}/${o.unit || 'qtl'} for ${o.quantity} ${o.unit || 'Quintals'} of ${o.commodity}.`,
+              messageHi: `${o.buyer_name || 'खरीदार'} ने ${o.quantity} ${o.unit || 'क्विंटल'} ${o.commodity} के लिए ₹${Number(o.offered_price || 0).toLocaleString('en-IN')} का ऑफर दिया है।`,
+              commodity: o.commodity,
+              price: Number(o.offered_price || 0),
+              quantity: Number(o.quantity || 1),
+              unit: o.unit || 'Quintal',
+              counterPartyName: o.buyer_name || 'Buyer',
+              offerId: o.id,
+              listingId: o.listing_id,
+              timestamp: 'Just now',
+              createdAt: o.created_at || new Date().toISOString(),
+              isRead: false,
+              linkTab: 'marketplace'
+            });
+          } else if (o.status === 'rejected' && isBuyer) {
+            combinedNotifs.push({
+              id: `notif_ofr_rej_${o.id}`,
+              type: 'offer_received',
+              recipientUserId: currentUserId,
+              title: `✕ Produce Offer Declined: ${o.commodity}`,
+              titleHi: `✕ उपज ऑफर अस्वीकार हुआ: ${o.commodity}`,
+              message: `${o.seller_name || 'Seller'} declined your offer for ${o.commodity}.`,
+              messageHi: `${o.seller_name || 'विक्रेता'} ने ${o.commodity} का आपका ऑफर अस्वीकार कर दिया।`,
+              commodity: o.commodity,
+              price: Number(o.offered_price || 0),
+              quantity: Number(o.quantity || 1),
+              unit: o.unit || 'Quintal',
+              counterPartyName: o.seller_name || 'Seller',
+              offerId: o.id,
+              listingId: o.listing_id,
+              timestamp: 'Just now',
+              createdAt: o.updated_at || o.created_at || new Date().toISOString(),
+              isRead: false,
+              linkTab: 'marketplace'
+            });
+          }
+        });
       } catch (sbErr) {
         console.warn('Notice: Supabase notifications fetch notice:', sbErr);
       }

@@ -998,14 +998,37 @@ export function useServicesManager() {
         });
       } catch {}
 
-      // Bell Drawer Notification for local user
+      // Bilateral Bell Drawer Notifications (For Renter and Owner)
       if (addNotification) {
+        // 1. Notify Renter (The user who submitted the offer)
+        if (counterPartyId) {
+          addNotification({
+            recipientUserId: counterPartyId,
+            type: 'offer_accepted',
+            title: `🎉 Offer Accepted! Deal Confirmed: ${srvTitle}`,
+            titleHi: `🎉 ऑफर स्वीकार हुआ! सौदा पक्का: ${srvTitle}`,
+            message: `${currentUserName || 'Owner'} accepted your booking offer of ₹${totalAmt} for ${qty} ${unit} of "${srvTitle}". Deal confirmed!`,
+            messageHi: `${currentUserName || 'मालिक'} ने आपके "${srvTitle}" के लिए ₹${totalAmt} (${qty} ${unit}) का ऑफर स्वीकार कर लिया है। सौदा पक्का!`,
+            commodity: srvTitle,
+            price: Number(targetBooking?.totalEstimatedAmount || 0),
+            quantity: Number(qty),
+            unit: unit,
+            counterPartyName: currentUserName,
+            offerId: bookingId,
+            listingId: srvId,
+            timestamp: 'Just now',
+            linkTab: 'services'
+          });
+        }
+
+        // 2. Notify Owner (Confirmation log)
         addNotification({
+          recipientUserId: currentUserId,
           type: 'offer_accepted',
-          title: `✅ Offer Accepted! Deal Confirmed: ${srvTitle}`,
-          titleHi: `✅ ऑफर स्वीकार हुआ! सौदा पक्का: ${srvTitle}`,
-          message: `Booking deal confirmed for ${qty} ${unit} of "${srvTitle}" at ₹${totalAmt}.`,
-          messageHi: `${srvTitle} के लिए ₹${totalAmt} पर ${qty} ${unit} का सौदा पक्का हुआ।`,
+          title: `✅ You Accepted Offer: ${srvTitle}`,
+          titleHi: `✅ आपने ऑफर स्वीकार किया: ${srvTitle}`,
+          message: `Booking deal confirmed for ${qty} ${unit} of "${srvTitle}" with ${counterPartyName} at ₹${totalAmt}.`,
+          messageHi: `${counterPartyName} के साथ "${srvTitle}" का ₹${totalAmt} पर ${qty} ${unit} का सौदा पक्का हुआ।`,
           commodity: srvTitle,
           price: Number(targetBooking?.totalEstimatedAmount || 0),
           quantity: Number(qty),
