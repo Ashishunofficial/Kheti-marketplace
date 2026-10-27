@@ -13,16 +13,8 @@ dotenv.config();
 
 // ─── Startup Validation ────────────────────────────────────────────────────────
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const isProdMode = process.env.NODE_ENV === 'production';
 if (!GEMINI_API_KEY) {
-  if (isProdMode) {
-    console.error('FATAL: GEMINI_API_KEY environment variable is not set.');
-    console.error('Copy .env.example to .env and fill in your API keys.');
-    process.exit(1);
-  } else {
-    console.warn('⚠️  GEMINI_API_KEY not set — AI features will return 503 in dev mode.');
-    console.warn('   Copy .env.example to .env and add your key for full functionality.');
-  }
+  console.warn('⚠️ GEMINI_API_KEY environment variable is not set. AI features will return 503 until GEMINI_API_KEY is configured in environment.');
 }
 
 // ─── App Setup ─────────────────────────────────────────────────────────────────
