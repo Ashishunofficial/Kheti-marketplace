@@ -32,6 +32,20 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 // Trust the first proxy hop in cloud/container environments (Cloud Run/reverse proxy)
 app.set('trust proxy', 1);
 
+// Enforce HTTPS redirection & HSTS in production environments
+app.use((req, res, next) => {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    req.headers['x-forwarded-proto'] &&
+    req.headers['x-forwarded-proto'] !== 'https'
+  ) {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
 app.use(express.json({ limit: '25mb' }));
 
 // ─── Gemini Client ─────────────────────────────────────────────────────────────
