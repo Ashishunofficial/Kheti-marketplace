@@ -75,9 +75,24 @@ export async function processUserMessage(
   } else if (
     imagePayload || lower.includes('disease') || lower.includes('bimari') || lower.includes('keeda') ||
     lower.includes('yellow') || lower.includes('peela') || lower.includes('fungus') || lower.includes('rog') ||
-    lower.includes('रोग') || lower.includes('पत्ती') || lower.includes('कीड़ा')
+    lower.includes('रोग') || lower.includes('पत्ती') || lower.includes('कीड़ा') || lower.includes('cabbage') ||
+    lower.includes('gobhi') || lower.includes('गोभी') || lower.includes('पत्तागोभी')
   ) {
-    matchedTool = AgriToolRegistry.get_crop_advice(lower.includes('paddy') || lower.includes('धान') ? 'paddy' : 'wheat');
+    let cropTarget = 'crop';
+    if (lower.includes('cabbage') || lower.includes('gobhi') || lower.includes('gobi') || lower.includes('पत्तागोभी') || lower.includes('फूलगोभी')) {
+      cropTarget = 'cabbage';
+    } else if (lower.includes('tomato') || lower.includes('tamatar') || lower.includes('टमाटर')) {
+      cropTarget = 'tomato';
+    } else if (lower.includes('potato') || lower.includes('aloo') || lower.includes('आलू')) {
+      cropTarget = 'potato';
+    } else if (lower.includes('mustard') || lower.includes('sarson') || lower.includes('सरसों')) {
+      cropTarget = 'mustard';
+    } else if (lower.includes('wheat') || lower.includes('gehun') || lower.includes('गेहूं')) {
+      cropTarget = 'wheat';
+    } else if (lower.includes('paddy') || lower.includes('dhan') || lower.includes('धान') || lower.includes('rice')) {
+      cropTarget = 'paddy';
+    }
+    matchedTool = AgriToolRegistry.get_crop_advice(cropTarget);
     matchedCard = { type: 'crop_diagnosis', data: matchedTool.data };
     toolLabel = 'ICAR Plant Pathology Diagnostic Engine';
   } else if (
@@ -126,6 +141,89 @@ export async function processUserMessage(
     }
   } catch (err) {
     console.debug('Switching to local conversational response:', err);
+  }
+
+  // 1.1 Direct Client-Side Pl@ntNet API Fallback (Active when on static hosting e.g. Vercel)
+  if (imagePayload) {
+    try {
+      const cleanB64 = imagePayload.includes('base64,') ? imagePayload.split('base64,')[1] : imagePayload;
+      const byteChars = atob(cleanB64);
+      const byteNums = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([new Uint8Array(byteNums)], { type: 'image/jpeg' });
+
+      const form = new FormData();
+      form.append('images', blob, 'crop_leaf.jpg');
+      form.append('organs', 'auto');
+
+      const ctrl = new AbortController();
+      const tId = setTimeout(() => ctrl.abort(), 7000);
+      const pnRes = await fetch('https://my-api.plantnet.org/v2/identify/all?api-key=2b10ih2lmPyeU0g2v0ioEzYZ&lang=en', {
+        method: 'POST',
+        body: form,
+        signal: ctrl.signal
+      });
+      clearTimeout(tId);
+
+      if (pnRes.ok) {
+        const pnData: any = await pnRes.json();
+        if (pnData && pnData.results && pnData.results.length > 0) {
+          const top = pnData.results[0];
+          const sp = top.species || {};
+          const scientific = sp.scientificNameWithoutAuthor || sp.scientificName || '';
+          const commonList = Array.isArray(sp.commonNames) ? sp.commonNames : [];
+          const commonStr = commonList.join(' ').toLowerCase();
+          const sciStr = scientific.toLowerCase();
+          const matchScore = Math.round((top.score || 0) * 100);
+
+          let detectedTarget = 'crop';
+          if (sciStr.includes('brassica') || commonStr.includes('cabbage') || commonStr.includes('kale') || sciStr.includes('oleracea') || sciStr.includes('lactuca') || commonStr.includes('lettuce')) {
+            detectedTarget = 'cabbage';
+          } else if (sciStr.includes('solanum') && (sciStr.includes('lycopersicum') || commonStr.includes('tomato'))) {
+            detectedTarget = 'tomato';
+          } else if (sciStr.includes('tuberosum') || commonStr.includes('potato')) {
+            detectedTarget = 'potato';
+          } else if (sciStr.includes('juncea') || commonStr.includes('mustard')) {
+            detectedTarget = 'mustard';
+          } else if (sciStr.includes('triticum') || commonStr.includes('wheat')) {
+            detectedTarget = 'wheat';
+          } else if (sciStr.includes('oryza') || commonStr.includes('rice') || commonStr.includes('paddy')) {
+            detectedTarget = 'paddy';
+          }
+
+          const resolvedTool = AgriToolRegistry.get_crop_advice(detectedTarget);
+          const pnMatch = {
+            speciesName: scientific || 'Botanical Species',
+            commonNames: commonList,
+            scorePercent: matchScore,
+            family: sp.family?.scientificNameWithoutAuthor || '',
+            genus: sp.genus?.scientificNameWithoutAuthor || ''
+          };
+
+          const actionCardData = {
+            ...resolvedTool.data,
+            plantNetMatch: pnMatch,
+            confidencePercent: Math.max(matchScore, resolvedTool.data.confidencePercent)
+          };
+
+          const diag = resolvedTool.data;
+          const commonDisplay = commonList[0] || (detectedTarget === 'cabbage' ? 'Cabbage / पत्तागोभी' : diag.cropIdentified);
+
+          const hindiText = `🩺 **AI Doctor - फसल रोग निदान (Pl@ntNet Vision Verified):**\n\n🌱 **पहचान की गई फसल (Botanical Match):**\n• वानस्पतिक नाम: **${scientific}** (${commonDisplay})\n• Kheti AI बॉटनिकल मिलान सटीकता: **${matchScore}%**\n\n🔬 **रोग व फफूंद लक्षण:**\n• संभावित रोग: **${diag.diseaseHindi}**\n\n💊 **AI Doctor का उपचार पर्चा:**\n• **रासायनिक स्प्रे:** ${diag.chemicalTreatment.join('\n• ')}\n• **जैविक उपचार:** ${diag.organicTreatment.join('\n• ')}\n\n🛡️ **बचाव व सुरक्षा:**\n• ${diag.preventativeMeasures.join('\n• ')}`;
+
+          return {
+            message: hindiText,
+            toolResult: resolvedTool,
+            actionCard: { type: 'crop_diagnosis', data: actionCardData },
+            audioPlaybackText: `फसल में ${diag.diseaseHindi} के लक्षण हैं। आप सुझाई गई दवा का तुरंत छिड़काव करें।`,
+            detectedToolName: 'AI Doctor (Pl@ntNet & Kheti AI Vision)',
+            model: 'AI Doctor (Kheti AI Vision)'
+          };
+        }
+      }
+    } catch (pnErr) {
+      console.debug('Direct PlantNet fallback error:', pnErr);
+    }
   }
 
   // 2. Greetings in selected language

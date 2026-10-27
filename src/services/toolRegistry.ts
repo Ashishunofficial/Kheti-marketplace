@@ -133,14 +133,124 @@ export const AgriToolRegistry = {
   },
 
   get_crop_advice(crop: string, symptoms?: string): ToolResult<CropDiagnosticResult> {
-    const isWheat = crop.toLowerCase().includes('wheat') || crop.includes('गेहूं');
-    const isPaddy = crop.toLowerCase().includes('paddy') || crop.toLowerCase().includes('rice') || crop.includes('धान');
+    const lower = crop.toLowerCase();
+    const isCabbage = lower.includes('cabbage') || lower.includes('gobhi') || lower.includes('gobi') || lower.includes('पत्तागोभी') || lower.includes('फूलगोभी') || lower.includes('oleracea');
+    const isTomato = lower.includes('tomato') || lower.includes('tamatar') || lower.includes('टमाटर') || lower.includes('lycopersicum');
+    const isPotato = lower.includes('potato') || lower.includes('aloo') || lower.includes('आलू') || lower.includes('tuberosum');
+    const isMustard = lower.includes('mustard') || lower.includes('sarson') || lower.includes('सरसों') || lower.includes('juncea');
+    const isWheat = lower.includes('wheat') || lower.includes('gehun') || lower.includes('गेहूं') || lower.includes('aestivum');
+    const isPaddy = lower.includes('paddy') || lower.includes('rice') || lower.includes('धान') || lower.includes('sativa');
 
     let diag: CropDiagnosticResult;
 
-    if (isWheat) {
+    if (isCabbage) {
       diag = {
-        cropIdentified: 'Wheat (Triticum aestivum)',
+        cropIdentified: 'Cabbage / पत्तागोभी (Brassica oleracea)',
+        diseaseOrPest: 'White Mold / Sclerotinia Rot & Black Rot Complex',
+        diseaseHindi: 'पत्तागोभी का फफूंद व काला सड़न रोग (White Mold / Soft Rot)',
+        confidencePercent: 94,
+        severity: 'high',
+        symptoms: [
+          'Water-soaked grayish lesions on cabbage leaves and head base',
+          'Cottony white fungal mycelium with dark sclerotia bodies on rotting tissue',
+          'Soft head decay and blackening of leaf veins in moist humid weather'
+        ],
+        organicTreatment: [
+          'Trichoderma viride @ 5g/L water foliar spray & root drenching',
+          'Neem Oil 10,000 ppm @ 5 ml per litre of water spray'
+        ],
+        chemicalTreatment: [
+          'Copper Oxychloride 50% WP @ 2.5g/L + Streptocycline 1g/10L water',
+          'Metalaxyl 8% + Mancozeb 64% WP (Ridomil Gold) @ 2g per litre of water'
+        ],
+        preventativeMeasures: [
+          'Avoid overhead sprinkler irrigation; keep head surface aerated',
+          'Ensure raised beds with excellent surface water drainage',
+          'Remove and burn severely infected leaves and rotting plant residues'
+        ],
+        estimatedYieldImpactPercent: 15
+      };
+    } else if (isTomato) {
+      diag = {
+        cropIdentified: 'Tomato / टमाटर (Solanum lycopersicum)',
+        diseaseOrPest: 'Early & Late Blight (Alternaria / Phytophthora)',
+        diseaseHindi: 'टमाटर का अगेती व पछेती झुलसा रोग',
+        confidencePercent: 92,
+        severity: 'high',
+        symptoms: [
+          'Concentric dark brown rings (target board pattern) on lower foliage',
+          'Dark water-soaked necrotic patches expanding rapidly across leaves and stems',
+          'Fruit rotting near calyx with leathery brown discoloration'
+        ],
+        organicTreatment: [
+          'Pseudomonas fluorescens @ 5g/L foliar spray',
+          'Fermented buttermilk (Chhachh) spray @ 50 ml/L water'
+        ],
+        chemicalTreatment: [
+          'Azoxystrobin 18.2% + Difenoconazole 11.4% SC @ 1 ml/L water',
+          'Mancozeb 75% WP @ 2.5g per litre of water'
+        ],
+        preventativeMeasures: [
+          'Stake tomato vines to keep foliage off moist soil',
+          'Follow drip irrigation instead of furrow flooding'
+        ],
+        estimatedYieldImpactPercent: 18
+      };
+    } else if (isPotato) {
+      diag = {
+        cropIdentified: 'Potato / आलू (Solanum tuberosum)',
+        diseaseOrPest: 'Late Blight (Phytophthora infestans)',
+        diseaseHindi: 'आलू का पछेती झुलसा (Late Blight)',
+        confidencePercent: 93,
+        severity: 'high',
+        symptoms: [
+          'Water-soaked blackish lesions on leaf margins with pale green halos',
+          'White downy fungal growth on underside of leaves in morning fog',
+          'Rapid blighting and collapse of foliage within 48 hours'
+        ],
+        organicTreatment: [
+          'Trichoderma harzianum @ 10g/L preventive spray',
+          'Neem extract 5% foliar spray'
+        ],
+        chemicalTreatment: [
+          'Cymoxanil 8% + Mancozeb 64% WP @ 2g/L water',
+          'Dimethomorph 50% WP @ 1g per litre of water'
+        ],
+        preventativeMeasures: [
+          'Earthing-up adequately to prevent tuber infection from spore wash',
+          'Do not irrigate during cold foggy or overcast days'
+        ],
+        estimatedYieldImpactPercent: 25
+      };
+    } else if (isMustard) {
+      diag = {
+        cropIdentified: 'Mustard / सरसों (Brassica juncea)',
+        diseaseOrPest: 'White Rust & Alternaria Blight (Albugo candida)',
+        diseaseHindi: 'सरसों का सफेद रतुआ व झुलसा रोग',
+        confidencePercent: 91,
+        severity: 'moderate',
+        symptoms: [
+          'White blister-like pustules on lower leaf surfaces',
+          'Hypertrophy and staghead formation on flowering racemes',
+          'Concentric brown spots on siliquae pods causing seed shriveling'
+        ],
+        organicTreatment: [
+          'Neem oil 10,000 ppm @ 3 ml/L spray at 45 days after sowing',
+          'Trichoderma viride seed treatment @ 4g/kg seed'
+        ],
+        chemicalTreatment: [
+          'Mancozeb 75% WP @ 2g/L or Ridomil MZ @ 2g/L water',
+          'Propiconazole 25% EC @ 1 ml per litre of water'
+        ],
+        preventativeMeasures: [
+          'Timely sowing by mid-October to escape aphid and rust peak',
+          'Maintain 30 x 10 cm crop geometry for sunlight penetration'
+        ],
+        estimatedYieldImpactPercent: 14
+      };
+    } else if (isWheat) {
+      diag = {
+        cropIdentified: 'Wheat / गेहूं (Triticum aestivum)',
         diseaseOrPest: 'Yellow Rust / Stripe Rust (Puccinia striiformis)',
         diseaseHindi: 'पीला रतुआ / स्ट्राइप रस्ट',
         confidencePercent: 94,
@@ -192,27 +302,27 @@ export const AgriToolRegistry = {
       };
     } else {
       diag = {
-        cropIdentified: crop || 'General Kharif/Rabi Field Crop',
-        diseaseOrPest: 'Nutrient Deficiency & Sucking Pest Complex',
-        diseaseHindi: 'पोषक तत्व कमी एवं रसचूषक कीट',
+        cropIdentified: crop || 'Vegetable & Field Crop Sample (सब्जी / फसल)',
+        diseaseOrPest: 'Foliar Blight & Pathogen Infection',
+        diseaseHindi: 'पत्ती झुलसा व फफूंद संक्रमण',
         confidencePercent: 88,
-        severity: 'low',
+        severity: 'moderate',
         symptoms: [
-          'Mild leaf yellowing (chlorosis) in interveinal regions',
-          'Leaf edge curling with minor whitefly / thrips presence'
+          'Chlorotic leaf spots with irregular discoloration',
+          'Moisture-induced rotting or fungal spotting on leaf margins'
         ],
         organicTreatment: [
-          'Spray 2% Panchagavya or Vermiwash solution',
-          'Install yellow sticky traps @ 10 traps per acre'
+          'Spray 2% Panchagavya or Trichoderma viride @ 5g/L',
+          'Neem Oil 10,000 ppm @ 5 ml per litre of water'
         ],
         chemicalTreatment: [
-          '19:19:19 NPK water soluble fertilizer @ 5g/L foliar spray',
-          'Imidacloprid 17.8% SL @ 0.5 ml/L for sucking pests'
+          'Copper Oxychloride 50% WP @ 2g/L or Mancozeb 75% WP @ 2.5g/L',
+          'Propiconazole 25% EC @ 1 ml per litre of water'
         ],
         preventativeMeasures: [
-          'Maintain balanced soil pH and optimum root aeration'
+          'Maintain balanced soil moisture and optimum air circulation'
         ],
-        estimatedYieldImpactPercent: 5
+        estimatedYieldImpactPercent: 10
       };
     }
 

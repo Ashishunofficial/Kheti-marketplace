@@ -5,6 +5,7 @@
   "installCommand": "npm install --legacy-peer-deps",
   "framework": null,
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

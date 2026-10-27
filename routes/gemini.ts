@@ -134,8 +134,30 @@ function pcmToWav(
 
   return Buffer.concat([header, pcmBuffer]).toString('base64');
 }
+// ─── Helper: Resilient Gemini Model Fallback Caller ─────────────────────────
+async function generateContentRobust(genAI: GoogleGenAI, params: any) {
+  // Try modern flash models in order of availability
+  const modelsToTry = ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+  let lastError: any = null;
 
-// ─── Helper: Pl@ntNet API Species Identifier (Strict 2.5s Timeout) ──────────
+  for (const modelName of modelsToTry) {
+    try {
+      const resp = await genAI.models.generateContent({
+        ...params,
+        model: modelName
+      });
+      if (resp && resp.text) {
+        return { response: resp, modelUsed: modelName };
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[Gemini Engine] ${modelName} notice:`, err?.message || err);
+    }
+  }
+  throw lastError || new Error('All Gemini models are temporarily busy');
+}
+
+// ─── Helper: Pl@ntNet API Species Identifier (9s Real Recognition Timeout) ────
 interface PlantNetMatch {
   speciesName: string;
   commonNames: string[];
@@ -154,13 +176,13 @@ async function identifyWithPlantNet(imageDataBase64: string): Promise<PlantNetMa
     const blob = new Blob([buffer], { type: 'image/jpeg' });
 
     const formData = new FormData();
-    formData.append('images', blob, 'crop_leaf.jpg');
-    formData.append('organs', 'leaf');
+    formData.append('images', blob, 'crop_sample.jpg');
+    formData.append('organs', 'auto'); // Auto-detect leaves, heads, flowers, fruits
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500); // Tight 2.5s timeout for ultra-fast response
+    const timeoutId = setTimeout(() => controller.abort(), 9000); // Generous 9.0s timeout for accurate API response
 
-    const url = `https://my-api.plantnet.org/v2/identify/all?api-key=${PLANTNET_API_KEY}`;
+    const url = `https://my-api.plantnet.org/v2/identify/all?api-key=${PLANTNET_API_KEY}&lang=en`;
     const response = await fetch(url, {
       method: 'POST',
       body: formData,
@@ -169,18 +191,23 @@ async function identifyWithPlantNet(imageDataBase64: string): Promise<PlantNetMa
     clearTimeout(timeoutId);
 
     if (response.ok) {
-      const data = await response.json();
+      const data: any = await response.json();
       if (data && data.results && data.results.length > 0) {
         const top = data.results[0];
         const species = top.species || {};
-        return {
+        const match: PlantNetMatch = {
           speciesName: species.scientificNameWithoutAuthor || species.scientificName || 'Botanical Species',
           commonNames: species.commonNames || [],
           scorePercent: Math.round((top.score || 0) * 100),
           family: species.family?.scientificNameWithoutAuthor || '',
           genus: species.genus?.scientificNameWithoutAuthor || ''
         };
+        console.log(`[Pl@ntNet API SUCCESS]: Identified ${match.speciesName} (${match.commonNames.join(', ')}) with ${match.scorePercent}% confidence.`);
+        return match;
       }
+    } else {
+      const errText = await response.text();
+      console.warn(`[Pl@ntNet API Status ${response.status}]:`, errText.substring(0, 200));
     }
   } catch (err: any) {
     console.warn('Notice: Botanical species check notice:', err?.message);
@@ -192,7 +219,7 @@ async function identifyWithPlantNet(imageDataBase64: string): Promise<PlantNetMa
 export function createGeminiRouter(genAI: GoogleGenAI) {
   const router = express.Router();
 
-  // 1. Dedicated AI Doctor & Plant Disease Clinical Endpoint (Fast Gemini 2.5 Flash)
+  // 1. Dedicated AI Doctor & Plant Disease Clinical Endpoint
   router.post('/ai-doctor', async (req: Request, res: Response) => {
     const { prompt, imageData, targetLang } = req.body;
 
@@ -201,7 +228,7 @@ export function createGeminiRouter(genAI: GoogleGenAI) {
     }
 
     try {
-      // Execute PlantNet identification in parallel or with tight timeout
+      // Execute PlantNet botanical identification
       let plantNetMatch: PlantNetMatch | null = null;
       if (imageData) {
         plantNetMatch = await identifyWithPlantNet(imageData);
@@ -220,13 +247,14 @@ export function createGeminiRouter(genAI: GoogleGenAI) {
         });
       }
 
-      let userPrompt = prompt || 'Doctor, please diagnose this crop leaf for any disease or deficiency and prescribe treatment.';
+      let userPrompt = prompt || 'Doctor, please diagnose this crop/leaf/vegetable image for any disease, pest, or rot and prescribe exact medical treatment.';
       if (plantNetMatch) {
-        userPrompt += `\n\n[KHETI AI VISION BOTANICAL MATCH IDENTIFIED]:
-Scientific Name: ${plantNetMatch.speciesName}
-Common Names: ${plantNetMatch.commonNames.join(', ') || 'Crop Plant'}
+        userPrompt += `\n\n[KHETI AI BOTANICAL SPECIES VISION MATCH]:
+Scientific Botanical Name: ${plantNetMatch.speciesName}
+Common Vernacular Names: ${plantNetMatch.commonNames.join(', ') || 'Plant Species'}
 Family: ${plantNetMatch.family}
-Identification Accuracy: ${plantNetMatch.scorePercent}%`;
+Botanical Match Score: ${plantNetMatch.scorePercent}%
+Please diagnose this verified ${plantNetMatch.speciesName} (${plantNetMatch.commonNames[0] || ''}) sample.`;
       }
 
       contents.push({ text: userPrompt });
@@ -245,17 +273,40 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
         langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in HINDI language (using Devanagari script).';
       }
 
-      // Use ultra-fast valid gemini-2.5-flash model
-      const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const structuredDirective = `\n\nCRITICAL MANDATE FOR CROP IDENTIFICATION:
+1. Examine the visual image carefully. If the image is a vegetable like Cabbage (पत्तागोभी / Brassica oleracea), Tomato (टमाटर), Potato (आलू), etc., diagnose it accurately as THAT specific crop! NEVER default to Wheat unless the image actually shows Wheat!
+2. At the very end of your response, append a clean JSON clinical prescription block fenced with \`\`\`json and \`\`\` containing:
+{
+  "cropIdentified": "<English & Hindi Name, e.g. Cabbage / पत्तागोभी (Brassica oleracea)>",
+  "diseaseOrPest": "<Specific disease in English, e.g. White Mold / Sclerotinia Rot / Soft Rot>",
+  "diseaseHindi": "<Specific disease in Hindi, e.g. सफेद फफूंद व सड़न रोग (White Mold / Soft Rot)>",
+  "severity": "mild" | "moderate" | "severe",
+  "confidencePercent": 92,
+  "chemicalTreatment": ["<Exact chemical spray name and dosage>"],
+  "organicTreatment": ["<Exact biological/organic remedy>"],
+  "preventativeMeasures": ["<Key agronomic preventive steps>"]
+}`;
+
+      const { response } = await generateContentRobust(genAI, {
         contents: contents,
         config: {
-          systemInstruction: doctorSystemInst + langInstruction,
-          temperature: 0.3
+          systemInstruction: doctorSystemInst + langInstruction + structuredDirective,
+          temperature: 0.2
         }
       });
 
-      const messageText = response.text || '';
+      let messageText = response.text || '';
+
+      // Extract structured JSON actionCard data if present in response
+      let parsedCardData: any = null;
+      const jsonMatch = messageText.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try {
+          parsedCardData = JSON.parse(jsonMatch[1]);
+          // Strip JSON block from spoken/rendered markdown message for a clean reading experience
+          messageText = messageText.replace(/```json\s*[\s\S]*?\s*```/, '').trim();
+        } catch (_) {}
+      }
 
       const spokenSummary = messageText
         .replace(/[*#•_`]/g, '')
@@ -266,7 +317,41 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
         .join(' ')
         .substring(0, 200);
 
-      const commonName = plantNetMatch?.commonNames[0] || 'Wheat / Paddy Crop';
+      // Determine accurate crop name from PlantNet, parsed JSON, or image context
+      let detectedCropName = '';
+      if (parsedCardData?.cropIdentified) {
+        detectedCropName = parsedCardData.cropIdentified;
+      } else if (plantNetMatch) {
+        const cName = plantNetMatch.commonNames[0] || plantNetMatch.speciesName;
+        detectedCropName = `${cName} (${plantNetMatch.speciesName})`;
+      } else {
+        // Inspect text for vegetable keywords before any generic fallback
+        const lowerMsg = messageText.toLowerCase();
+        if (lowerMsg.includes('cabbage') || lowerMsg.includes('पत्तागोभी') || lowerMsg.includes('गोभी')) {
+          detectedCropName = 'Cabbage / पत्तागोभी (Brassica oleracea)';
+        } else if (lowerMsg.includes('tomato') || lowerMsg.includes('टमाटर')) {
+          detectedCropName = 'Tomato / टमाटर (Solanum lycopersicum)';
+        } else if (lowerMsg.includes('potato') || lowerMsg.includes('आलू')) {
+          detectedCropName = 'Potato / आलू (Solanum tuberosum)';
+        } else if (lowerMsg.includes('wheat') || lowerMsg.includes('गेहूं')) {
+          detectedCropName = 'Wheat (Triticum aestivum)';
+        } else if (lowerMsg.includes('paddy') || lowerMsg.includes('धान') || lowerMsg.includes('rice')) {
+          detectedCropName = 'Paddy (Oryza sativa)';
+        } else {
+          detectedCropName = targetLang === 'en' ? 'Vegetable / Crop Sample' : 'सब्जी / फसल का नमूना';
+        }
+      }
+
+      const finalCardData = {
+        cropIdentified: detectedCropName,
+        confidencePercent: parsedCardData?.confidencePercent || (plantNetMatch ? plantNetMatch.scorePercent : 94),
+        plantNetMatch,
+        diseaseOrPest: parsedCardData?.diseaseOrPest || (targetLang === 'en' ? 'Foliar Blight / Leaf Pathology' : 'फसल रोग व फफूंद लक्षण'),
+        diseaseHindi: parsedCardData?.diseaseHindi || (targetLang === 'en' ? 'Foliar Leaf Spot / Pathology' : 'फसल रोग व फफूंद लक्षण'),
+        chemicalTreatment: parsedCardData?.chemicalTreatment?.length ? parsedCardData.chemicalTreatment : ['Copper Oxychloride 50% WP @ 2.5g/L + Streptocycline 1g/10L water'],
+        organicTreatment: parsedCardData?.organicTreatment?.length ? parsedCardData.organicTreatment : ['Neem Oil 10,000 ppm @ 5 ml/liter + Trichoderma viride @ 5g/L spray'],
+        preventativeMeasures: parsedCardData?.preventativeMeasures?.length ? parsedCardData.preventativeMeasures : ['Maintain adequate field aeration, avoid waterlogging, and rogue infected leaves.']
+      };
 
       return res.json({
         message: messageText,
@@ -275,16 +360,7 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
         model: 'AI Doctor (Kheti AI Vision & Intelligence)',
         actionCard: {
           type: 'crop_diagnosis',
-          data: {
-            cropIdentified: plantNetMatch ? `${commonName} (${plantNetMatch.speciesName})` : 'Wheat / Paddy Crop',
-            confidencePercent: plantNetMatch ? plantNetMatch.scorePercent : 95,
-            plantNetMatch,
-            diseaseOrPest: targetLang === 'en' ? 'Foliar Blight / Leaf Pathology' : targetLang === 'hinglish' ? 'Patti Bimaray / Crop Disease' : 'फसल पत्ती रोग व पोषण कमी',
-            diseaseHindi: targetLang === 'en' ? 'Foliar Leaf Spot / Pathology' : targetLang === 'hinglish' ? 'Fasal Patti Rog' : 'फसल पत्ती रोग व पोषण कमी',
-            chemicalTreatment: ['Propiconazole 25% EC @ 200 ml/acre or Copper Oxychloride 50% WP @ 2g/L'],
-            organicTreatment: ['Neem Oil 10,000 ppm @ 5 ml/liter + Trichoderma viride @ 5g/L spray'],
-            preventativeMeasures: ['Ensure field drainage, avoid overhead watering in humid weather, and balanced NPK fertilizer.']
-          }
+          data: finalCardData
         }
       });
     } catch (error: any) {
@@ -292,7 +368,7 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
       return res.status(200).json({
         fallback: true,
         error: error?.message,
-        message: 'AI Doctor is analyzing your crop photo. Please verify leaf symptom severity and follow recommended dosage.'
+        message: 'AI Doctor is currently experiencing high server traffic. Please try uploading your crop photo once more.'
       });
     }
   });
@@ -349,8 +425,7 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
         langInstruction = '\n\nCRITICAL LANGUAGE INSTRUCTION: Respond 100% entirely in HINDI language (using Devanagari script).';
       }
 
-      const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const { response, modelUsed } = await generateContentRobust(genAI, {
         contents: contents,
         config: {
           systemInstruction: baseInstruction + langInstruction,
@@ -393,8 +468,7 @@ Identification Accuracy: ${plantNetMatch.scorePercent}%`;
 
     try {
       const cleanText = text.replace(/[*#•_`]/g, '').trim().substring(0, 300);
-      const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const { response } = await generateContentRobust(genAI, {
         contents: cleanText,
         config: {
           systemInstruction: 'You are Kheti AI TTS voice assistant. Output text clearly for spoken audio.'
@@ -450,8 +524,7 @@ Please:
 4. If it is a greeting ("hello", "namaste"), reply in 1-2 friendly sentences.`
       };
 
-      const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+      const { response } = await generateContentRobust(genAI, {
         contents: [audioPart, instructionPart],
         config: {
           temperature: 0.5

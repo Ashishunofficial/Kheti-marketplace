@@ -72,6 +72,7 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'owner' | 'renter'>('all');
+  const [acceptedBookingIds, setAcceptedBookingIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Group messages into distinct conversations (by otherUserId + serviceId)
@@ -174,6 +175,8 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
   // Check if this thread has an accepted offer
   const isThreadConfirmed = 
     activeConversation?.associatedBooking?.status === 'confirmed' ||
+    (activeConversation?.associatedBooking?.id ? acceptedBookingIds.has(activeConversation.associatedBooking.id) : false) ||
+    (activeConversation?.serviceId ? acceptedBookingIds.has(activeConversation.serviceId) : false) ||
     activeMessages.some(m => m.text.includes('[BOOKING_ACCEPTED]') || m.text.includes('[OFFER_ACCEPTED]'));
 
   useEffect(() => {
@@ -363,7 +366,11 @@ export const ServiceMessagePortal: React.FC<ServiceMessagePortalProps> = ({
 
                       {activeConversation.isAsOwner && !isThreadConfirmed && (
                         <button
-                          onClick={() => onUpdateBookingStatus(activeConversation.associatedBooking!.id, 'confirmed')}
+                          onClick={() => {
+                            const bId = activeConversation.associatedBooking?.id || activeConversation.serviceId;
+                            setAcceptedBookingIds(prev => new Set([...prev, bId, activeConversation.serviceId]));
+                            onUpdateBookingStatus(bId, 'confirmed');
+                          }}
                           className="px-2.5 py-1 text-xs font-semibold bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
                         >
                           <CheckCircle2 className="w-3 h-3" />

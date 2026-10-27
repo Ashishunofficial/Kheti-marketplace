@@ -79,6 +79,16 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Serve public static assets (favicons, manifest, sitemap, robots.txt) directly
+app.use(express.static('public', {
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.ico')) {
+      res.setHeader('Content-Type', 'image/x-icon');
+    }
+  }
+}));
+
 // ─── Vite Dev Server Integration & Static Serving ─────────────────────────────
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
@@ -96,11 +106,18 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Kheti AI server running on http://0.0.0.0:${PORT} [Model: Gemini 1.5 Flash]`);
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Kheti AI server running on http://0.0.0.0:${PORT} [Model: Gemini Flash]`);
+    });
+  }
+}
+
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-});
+export default app;
+export { app };
