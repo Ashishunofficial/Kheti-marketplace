@@ -137,7 +137,7 @@ function pcmToWav(
 // ─── Helper: Resilient Gemini Model Fallback Caller ─────────────────────────
 async function generateContentRobust(genAI: GoogleGenAI, params: any) {
   // Try modern flash models in order of availability
-  const modelsToTry = ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
@@ -180,7 +180,7 @@ async function identifyWithPlantNet(imageDataBase64: string): Promise<PlantNetMa
     formData.append('organs', 'auto'); // Auto-detect leaves, heads, flowers, fruits
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000); // Generous 9.0s timeout for accurate API response
+    const timeoutId = setTimeout(() => controller.abort(), 3500); // Fast 3.5s timeout
 
     const url = `https://my-api.plantnet.org/v2/identify/all?api-key=${PLANTNET_API_KEY}&lang=en`;
     const response = await fetch(url, {

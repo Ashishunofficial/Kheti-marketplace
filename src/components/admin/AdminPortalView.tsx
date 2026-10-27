@@ -136,7 +136,14 @@ export const AdminPortalView: React.FC = () => {
 
   // Modal / confirmation state for deletion
   const [deletingItemId, setDeletingItemId] = useState<{ id: string; type: 'commodity' | 'warehouse' | 'equipment'; title: string } | null>(null);
-  const [adminDeletedIds, setAdminDeletedIds] = useState<Set<string>>(() => new Set());
+  const [adminDeletedIds, setAdminDeletedIds] = useState<Set<string>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('kheti_admin_deleted_ids') || '[]');
+      return new Set(Array.isArray(saved) ? saved.map((x: string) => String(x).trim().toLowerCase()) : []);
+    } catch {
+      return new Set();
+    }
+  });
 
   const handleConfirmDelete = async () => {
     if (!deletingItemId) return;
@@ -144,7 +151,45 @@ export const AdminPortalView: React.FC = () => {
     const cleanId = String(id).trim();
     const lowerId = cleanId.toLowerCase();
 
-    // 1. Instantly eliminate from Admin view state without any UI lag
+    // 1. Persist to permanent Admin Deleted IDs blacklist in localStorage
+    try {
+      const saved = JSON.parse(localStorage.getItem('kheti_admin_deleted_ids') || '[]');
+      const arr = Array.isArray(saved) ? saved : [];
+      if (!arr.includes(cleanId)) arr.push(cleanId);
+      if (!arr.includes(lowerId)) arr.push(lowerId);
+      localStorage.setItem('kheti_admin_deleted_ids', JSON.stringify(arr));
+    } catch {}
+
+    // 2. Persist to services/listing deleted IDs
+    try {
+      const servArr = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
+      if (!servArr.includes(cleanId)) servArr.push(cleanId);
+      if (!servArr.includes(lowerId)) servArr.push(lowerId);
+      localStorage.setItem('kheti_deleted_service_ids', JSON.stringify(servArr));
+    } catch {}
+
+    try {
+      const listArr = JSON.parse(localStorage.getItem('kheti_deleted_listing_ids') || '[]');
+      if (!listArr.includes(cleanId)) listArr.push(cleanId);
+      if (!listArr.includes(lowerId)) listArr.push(lowerId);
+      localStorage.setItem('kheti_deleted_listing_ids', JSON.stringify(listArr));
+    } catch {}
+
+    // 3. Clean from raw client stores
+    try {
+      const whs = JSON.parse(localStorage.getItem('kheti_warehouses_store_v3') || '[]');
+      localStorage.setItem('kheti_warehouses_store_v3', JSON.stringify(whs.filter((w: any) => w.id !== cleanId && String(w.id).toLowerCase() !== lowerId)));
+    } catch {}
+    try {
+      const eqs = JSON.parse(localStorage.getItem('kheti_equipment_store_v3') || '[]');
+      localStorage.setItem('kheti_equipment_store_v3', JSON.stringify(eqs.filter((e: any) => e.id !== cleanId && String(e.id).toLowerCase() !== lowerId)));
+    } catch {}
+    try {
+      const lsts = JSON.parse(localStorage.getItem('kheti_marketplace_listings_v3') || '[]');
+      localStorage.setItem('kheti_marketplace_listings_v3', JSON.stringify(lsts.filter((l: any) => l.id !== cleanId && String(l.id).toLowerCase() !== lowerId)));
+    } catch {}
+
+    // 4. Instantly eliminate from Admin view state without any UI lag
     setAdminDeletedIds(prev => {
       const next = new Set(prev);
       next.add(cleanId);
@@ -152,11 +197,17 @@ export const AdminPortalView: React.FC = () => {
       return next;
     });
 
+    // 5. Execute API deletions
     try {
       if (type === 'commodity') {
+        await fetch(`/api/marketplace/listings/${cleanId}`, { method: 'DELETE' }).catch(() => {});
         await deleteCommodityListing(cleanId);
-      } else {
-        await deleteServiceListing(cleanId, type);
+      } else if (type === 'warehouse') {
+        await fetch(`/api/services/warehouses/${cleanId}`, { method: 'DELETE' }).catch(() => {});
+        await deleteServiceListing(cleanId, 'warehouse');
+      } else if (type === 'equipment') {
+        await fetch(`/api/services/equipment/${cleanId}`, { method: 'DELETE' }).catch(() => {});
+        await deleteServiceListing(cleanId, 'equipment');
       }
       showNotice(`Successfully deleted "${title}" from platform`);
     } catch {
@@ -251,7 +302,17 @@ export const AdminPortalView: React.FC = () => {
     if (!rawId) return false;
     const clean = String(rawId).trim();
     const lower = clean.toLowerCase();
+
+    let isPersistedAdmin = false;
+    try {
+      const arr = JSON.parse(localStorage.getItem('kheti_admin_deleted_ids') || '[]');
+      if (Array.isArray(arr)) {
+        isPersistedAdmin = arr.includes(clean) || arr.includes(lower);
+      }
+    } catch {}
+
     return (
+      isPersistedAdmin ||
       adminDeletedIds.has(clean) ||
       adminDeletedIds.has(lower) ||
       deletedListingIds.has(clean) ||

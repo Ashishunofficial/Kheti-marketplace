@@ -292,6 +292,13 @@ export function useServicesManager() {
             deletedServiceIds.add(String(id).trim().toLowerCase());
           });
         }
+        const adminDel = JSON.parse(localStorage.getItem('kheti_admin_deleted_ids') || '[]');
+        if (Array.isArray(adminDel)) {
+          adminDel.forEach((id: string) => {
+            deletedServiceIds.add(String(id).trim());
+            deletedServiceIds.add(String(id).trim().toLowerCase());
+          });
+        }
       } catch {}
 
       serverWh = serverWh.filter(w => !deletedServiceIds.has(w.id) && !deletedServiceIds.has(String(w.id).toLowerCase()));
