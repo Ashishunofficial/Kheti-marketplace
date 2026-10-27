@@ -168,15 +168,35 @@ interface PlantNetMatch {
 
 async function identifyWithPlantNet(imageDataBase64: string): Promise<PlantNetMatch | null> {
   try {
+    let mimeType = 'image/jpeg';
+    let fileName = 'crop_sample.jpg';
+
+    if (imageDataBase64.startsWith('data:image/png')) {
+      mimeType = 'image/png';
+      fileName = 'crop_sample.png';
+    }
+
     const cleanBase64 = imageDataBase64.includes('base64,')
       ? imageDataBase64.split('base64,')[1]
       : imageDataBase64;
 
     const buffer = Buffer.from(cleanBase64, 'base64');
-    const blob = new Blob([buffer], { type: 'image/jpeg' });
+
+    // Inspect magic bytes to guarantee accurate mime type matching Pl@ntNet API rules
+    if (buffer.length > 4) {
+      if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+        mimeType = 'image/png';
+        fileName = 'crop_sample.png';
+      } else if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+        mimeType = 'image/jpeg';
+        fileName = 'crop_sample.jpg';
+      }
+    }
+
+    const blob = new Blob([buffer], { type: mimeType });
 
     const formData = new FormData();
-    formData.append('images', blob, 'crop_sample.jpg');
+    formData.append('images', blob, fileName);
     formData.append('organs', 'auto'); // Auto-detect leaves, heads, flowers, fruits
 
     const controller = new AbortController();

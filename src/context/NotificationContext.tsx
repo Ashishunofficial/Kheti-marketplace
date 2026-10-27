@@ -109,7 +109,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // 1. Fetch from server API if reachable
     try {
-      const currentUserName = profile?.name || user?.user_metadata?.full_name || '';
+      const currentUserName = profile?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : '');
       const params = new URLSearchParams();
       if (currentUserId) params.set('userId', currentUserId);
       if (currentUserName) params.set('userName', currentUserName);
@@ -246,74 +246,72 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     }
 
-    if (combinedNotifs.length > 0) {
-      setNotifications(prev => {
-        const readMap = new Map(prev.map(p => [p.id, p.isRead]));
-        // Deduplicate by ID
-        const seen = new Set<string>();
-        const merged: AppNotification[] = [];
+    setNotifications(prev => {
+      const readMap = new Map(prev.map(p => [p.id, p.isRead]));
+      // Deduplicate by ID
+      const seen = new Set<string>();
+      const merged: AppNotification[] = [];
 
-        // 1. First include any server/database notifications
-        combinedNotifs.forEach(n => {
-          if (!seen.has(n.id)) {
-            seen.add(n.id);
-            merged.push({
-              ...n,
-              isRead: readMap.has(n.id) ? (readMap.get(n.id) ?? n.isRead) : n.isRead
-            });
-          }
-        });
-
-        // 2. CRITICAL: Preserve any notifications currently in state (prev) so they are not wiped!
-        prev.forEach(p => {
-          if (!seen.has(p.id)) {
-            seen.add(p.id);
-            merged.push(p);
-          }
-        });
-
-        // 3. Preserve any notifications in localStorage
-        try {
-          const saved = localStorage.getItem(`${STORAGE_KEY}_${currentUserId || 'guest'}`);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-              parsed.forEach((item: AppNotification) => {
-                if (!seen.has(item.id)) {
-                  seen.add(item.id);
-                  merged.push({
-                    ...item,
-                    isRead: readMap.has(item.id) ? (readMap.get(item.id) ?? item.isRead) : item.isRead
-                  });
-                }
-              });
-            }
-          }
-        } catch {}
-
-        // 4. Add seed notifications if not already seen
-        SEED_NOTIFICATIONS.forEach(s => {
-          if (!seen.has(s.id)) {
-            seen.add(s.id);
-            merged.push({
-              ...s,
-              isRead: readMap.has(s.id) ? (readMap.get(s.id) ?? s.isRead) : s.isRead
-            });
-          }
-        });
-
-        return merged;
+      // 1. First include any server/database notifications
+      combinedNotifs.forEach(n => {
+        if (!seen.has(n.id)) {
+          seen.add(n.id);
+          merged.push({
+            ...n,
+            isRead: readMap.has(n.id) ? (readMap.get(n.id) ?? n.isRead) : n.isRead
+          });
+        }
       });
-    }
-  }, [currentUserId]);
 
-  // Initial fetch, regular polling (2.5s) and Supabase Realtime channel subscription
+      // 2. CRITICAL: Preserve any notifications currently in state (prev) so they are not wiped!
+      prev.forEach(p => {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          merged.push(p);
+        }
+      });
+
+      // 3. Preserve any notifications in localStorage
+      try {
+        const saved = localStorage.getItem(`${STORAGE_KEY}_${currentUserId || 'guest'}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((item: AppNotification) => {
+              if (!seen.has(item.id)) {
+                seen.add(item.id);
+                merged.push({
+                  ...item,
+                  isRead: readMap.has(item.id) ? (readMap.get(item.id) ?? item.isRead) : item.isRead
+                });
+              }
+            });
+          }
+        }
+      } catch {}
+
+      // 4. Add seed notifications if not already seen
+      SEED_NOTIFICATIONS.forEach(s => {
+        if (!seen.has(s.id)) {
+          seen.add(s.id);
+          merged.push({
+            ...s,
+            isRead: readMap.has(s.id) ? (readMap.get(s.id) ?? s.isRead) : s.isRead
+          });
+        }
+      });
+
+      return merged;
+    });
+  }, [currentUserId, profile, user]);
+
+  // Initial fetch, regular polling (1.5s) and Supabase Realtime channel subscription
   useEffect(() => {
     fetchServerNotifications();
 
     const interval = setInterval(() => {
       fetchServerNotifications();
-    }, 2500);
+    }, 1500);
 
     let rtChannel: any = null;
     if (isSupabaseConfigured) {

@@ -146,17 +146,35 @@ export function createNotificationsRouter() {
     }
 
     // Filter notifications for this specific user, user name, or global broadcasts
+    const cleanUserParam = (userName || '').toLowerCase().trim();
+
     const userNotifs = all.filter(n => {
-      // Global broadcast (no recipient)
+      // Global broadcast (no recipient specified)
       if (!n.recipientUserId && !n.recipientName) return true;
-      // Targeted to this user ID
-      if (userId && n.recipientUserId && n.recipientUserId.toLowerCase() === userId.toLowerCase()) return true;
-      // Targeted by user Name / fragment
-      if (userName && n.recipientName && (
-        n.recipientName.toLowerCase().includes(userName) || userName.includes(n.recipientName.toLowerCase())
+
+      // Match by User ID
+      if (userId && n.recipientUserId && (
+        n.recipientUserId.toLowerCase() === userId.toLowerCase() ||
+        userId.toLowerCase().includes(n.recipientUserId.toLowerCase()) ||
+        n.recipientUserId.toLowerCase().includes(userId.toLowerCase())
       )) return true;
-      // If notification has counterPartyName or recipientName matching user
-      if (userName && n.recipientUserId && userId && n.recipientUserId === userId) return true;
+
+      // Match by User Name (e.g. "Nitesh Gupta" matching "Nitesh Gupta (Kisan)")
+      if (cleanUserParam && n.recipientName) {
+        const cleanRecip = n.recipientName.toLowerCase().trim();
+        const firstUserWord = cleanUserParam.split(' ')[0];
+        const firstRecipWord = cleanRecip.split(' ')[0];
+
+        if (
+          cleanRecip.includes(cleanUserParam) ||
+          cleanUserParam.includes(cleanRecip) ||
+          (firstUserWord.length > 2 && cleanRecip.includes(firstUserWord)) ||
+          (firstRecipWord.length > 2 && cleanUserParam.includes(firstRecipWord))
+        ) {
+          return true;
+        }
+      }
+
       return false;
     });
 

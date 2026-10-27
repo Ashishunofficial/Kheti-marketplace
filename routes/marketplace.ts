@@ -197,26 +197,31 @@ export function createMarketplaceRouter() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    store.offers = [newOffer, ...store.offers];
-    saveMarketplaceStore(store);
-
-    // Resolve sellerId & sellerName if missing
     let sellerId = newOffer.sellerId;
     let sellerName = newOffer.sellerName;
-    if (!sellerId && newOffer.listingId) {
+
+    // Resolve sellerId & sellerName from parent listing if available
+    if (newOffer.listingId) {
       const parentListing = store.listings.find(l => l.id === newOffer.listingId);
       if (parentListing) {
-        sellerId = parentListing.sellerId;
-        sellerName = parentListing.sellerName || sellerName;
-        newOffer.sellerId = sellerId;
-        newOffer.sellerName = sellerName;
+        if (!sellerId || sellerId === 'usr_seller' || sellerId === 'usr_seller_lister') {
+          sellerId = parentListing.sellerId;
+          newOffer.sellerId = parentListing.sellerId;
+        }
+        if (!sellerName || sellerName === 'Seller' || sellerName === 'Verified Lister') {
+          sellerName = parentListing.sellerName;
+          newOffer.sellerName = parentListing.sellerName;
+        }
       }
     }
 
+    store.offers = [newOffer, ...store.offers];
+    saveMarketplaceStore(store);
+
     // 1. Dispatch Notification to SELLER (so seller gets real-time bell update)
     addServerNotification({
-      recipientUserId: sellerId || 'usr_seller',
-      recipientName: sellerName || 'Seller',
+      recipientUserId: sellerId || newOffer.sellerId || 'usr_seller',
+      recipientName: sellerName || newOffer.sellerName || 'Seller',
       senderUserId: newOffer.buyerId,
       senderName: newOffer.buyerName,
       type: 'offer_received',

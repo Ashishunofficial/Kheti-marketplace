@@ -403,16 +403,63 @@ export function useServicesManager() {
   const publicWarehouses = warehouses;
   const publicEquipment = equipment;
 
+  const cleanUserName = (currentUserName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+
   // 2. My Listings (Warehouses & Machinery owned strictly by this user)
-  const myWarehouses = warehouses.filter(wh => wh.ownerId === currentUserId);
-  const myEquipment = equipment.filter(eq => eq.ownerId === currentUserId);
+  const myWarehouses = warehouses.filter(wh => {
+    const matchesId = Boolean(currentUserId && wh.ownerId && (wh.ownerId === currentUserId || wh.ownerId.includes(currentUserId) || currentUserId.includes(wh.ownerId)));
+    const cleanOwner = (wh.ownerName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    const firstWord = cleanUserName.split(' ')[0];
+    const matchesName = Boolean(cleanUserName && cleanOwner && (
+      cleanOwner.includes(cleanUserName) ||
+      cleanUserName.includes(cleanOwner) ||
+      (firstWord.length > 2 && cleanOwner.includes(firstWord))
+    ));
+    return matchesId || matchesName;
+  });
+
+  const myEquipment = equipment.filter(eq => {
+    const matchesId = Boolean(currentUserId && eq.ownerId && (eq.ownerId === currentUserId || eq.ownerId.includes(currentUserId) || currentUserId.includes(eq.ownerId)));
+    const cleanOwner = (eq.ownerName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    const firstWord = cleanUserName.split(' ')[0];
+    const matchesName = Boolean(cleanUserName && cleanOwner && (
+      cleanOwner.includes(cleanUserName) ||
+      cleanUserName.includes(cleanOwner) ||
+      (firstWord.length > 2 && cleanOwner.includes(firstWord))
+    ));
+    return matchesId || matchesName;
+  });
+
   const totalMyListings = myWarehouses.length + myEquipment.length;
 
+  const myFacilityIds = new Set([...myWarehouses.map(w => w.id), ...myEquipment.map(e => e.id)]);
+
   // 3. Bookings Received (Customers who booked spaces/machinery listed by this user)
-  const bookingsReceived = bookings.filter(b => b.ownerId === currentUserId);
+  const bookingsReceived = bookings.filter(b => {
+    const isServiceOwner = myFacilityIds.has(b.serviceId);
+    const matchesId = Boolean(currentUserId && b.ownerId && (b.ownerId === currentUserId || b.ownerId.includes(currentUserId) || currentUserId.includes(b.ownerId)));
+    const cleanOwner = (b.ownerName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    const firstWord = cleanUserName.split(' ')[0];
+    const matchesName = Boolean(cleanUserName && cleanOwner && (
+      cleanOwner.includes(cleanUserName) ||
+      cleanUserName.includes(cleanOwner) ||
+      (firstWord.length > 2 && cleanOwner.includes(firstWord))
+    ));
+    return isServiceOwner || matchesId || matchesName;
+  });
 
   // 4. Bookings Made (Spaces/machinery this user booked from other owners)
-  const bookingsMade = bookings.filter(b => b.renterId === currentUserId);
+  const bookingsMade = bookings.filter(b => {
+    const matchesId = Boolean(currentUserId && b.renterId && (b.renterId === currentUserId || b.renterId.includes(currentUserId) || currentUserId.includes(b.renterId)));
+    const cleanRenter = (b.renterName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    const firstWord = cleanUserName.split(' ')[0];
+    const matchesName = Boolean(cleanUserName && cleanRenter && (
+      cleanRenter.includes(cleanUserName) ||
+      cleanUserName.includes(cleanRenter) ||
+      (firstWord.length > 2 && cleanRenter.includes(firstWord))
+    ));
+    return matchesId || matchesName;
+  });
 
   // 5. Messages involving current user
   const userMessages = messages.filter(m => m.senderId === currentUserId || m.recipientId === currentUserId);

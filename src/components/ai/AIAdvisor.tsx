@@ -476,7 +476,45 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setLeafImagePreview(event.target?.result as string);
+        const rawUrl = event.target?.result as string;
+        if (!rawUrl) return;
+
+        // Normalize all image formats (WebP, AVIF, PNG, BMP) to standard JPEG via HTML5 Canvas
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            setLeafImagePreview(jpegDataUrl);
+          } else {
+            setLeafImagePreview(rawUrl);
+          }
+        };
+        img.onerror = () => {
+          setLeafImagePreview(rawUrl);
+        };
+        img.src = rawUrl;
       };
       reader.readAsDataURL(file);
     }

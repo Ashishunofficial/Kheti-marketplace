@@ -52,10 +52,13 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
   const [editNotes, setEditNotes] = useState<string>('');
 
   const activeUserId = currentUserId || currentUser.id;
+  const activeUserName = currentUser.name || '';
+  const cleanActiveName = activeUserName.toLowerCase().replace(/\(.*?\)/g, '').trim();
 
-const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'lst_105']);
+  const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'lst_105']);
+  const MOCK_OFFER_IDS = new Set(['ofr_801', 'ofr_802']);
 
-  // Filter listings owned strictly by this user (or sample listings in pitch demo mode)
+  // Filter listings owned strictly by this user (by ID or clean Name)
   const myListings = listings.filter(l => {
     if (isDemoMode) {
       return (
@@ -64,13 +67,25 @@ const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'l
         l.sellerName.toLowerCase().includes('rameshwar')
       );
     }
-    // Strict isolation in live mode: only match current user's genuine id
     const isMock = MOCK_LISTING_IDS.has(l.id) || l.id.startsWith('demo_') || l.sellerId === 'usr_rameshwar_99';
-    return !isMock && (l.sellerId === activeUserId || (activeUserId && l.sellerId.includes(activeUserId)));
+    if (isMock) return false;
+
+    const matchesId = Boolean(activeUserId && l.sellerId && (l.sellerId === activeUserId || l.sellerId.includes(activeUserId) || activeUserId.includes(l.sellerId)));
+    const cleanSeller = (l.sellerName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    const firstWordActive = cleanActiveName.split(' ')[0];
+    const matchesName = Boolean(cleanActiveName && cleanSeller && (
+      cleanSeller.includes(cleanActiveName) ||
+      cleanActiveName.includes(cleanSeller) ||
+      (firstWordActive.length > 2 && cleanSeller.includes(firstWordActive))
+    ));
+
+    return matchesId || matchesName;
   });
 
-  // Filter offers received on this user's listings
+  // Set of all listing IDs owned by the user
   const myListingIds = new Set(myListings.map(l => l.id));
+
+  // Filter offers received on this user's listings or where user is seller/buyer
   const receivedOffers = offers.filter(o => {
     if (isDemoMode) {
       return (
@@ -80,11 +95,28 @@ const MOCK_LISTING_IDS = new Set(['lst_101', 'lst_102', 'lst_103', 'lst_104', 'l
         o.sellerName.toLowerCase().includes('rameshwar')
       );
     }
-    return (
-      myListingIds.has(o.listingId) ||
-      o.sellerId === activeUserId ||
-      (activeUserId && o.sellerId.includes(activeUserId))
+    const isMock = MOCK_OFFER_IDS.has(o.id) || o.id.startsWith('ofr_8');
+    if (isMock) return false;
+
+    const isListingOwner = myListingIds.has(o.listingId);
+    const matchesSellerId = Boolean(activeUserId && o.sellerId && (o.sellerId === activeUserId || o.sellerId.includes(activeUserId) || activeUserId.includes(o.sellerId)));
+    
+    const cleanSeller = (o.sellerName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    const firstWordActive = cleanActiveName.split(' ')[0];
+    const matchesSellerName = Boolean(cleanActiveName && cleanSeller && (
+      cleanSeller.includes(cleanActiveName) ||
+      cleanActiveName.includes(cleanSeller) ||
+      (firstWordActive.length > 2 && cleanSeller.includes(firstWordActive))
+    ));
+
+    // Also check if the parent listing in total listings list belongs to the current user
+    const parentListing = listings.find(l => l.id === o.listingId);
+    const matchesParentListing = parentListing && (
+      (activeUserId && parentListing.sellerId === activeUserId) ||
+      (cleanActiveName && parentListing.sellerName.toLowerCase().includes(cleanActiveName))
     );
+
+    return isListingOwner || matchesSellerId || matchesSellerName || matchesParentListing;
   });
 
   const pendingOffers = receivedOffers.filter(o => o.status === 'pending');
