@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import rateLimit from 'express-rate-limit';
@@ -100,11 +99,16 @@ async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa'
-    });
-    app.use(vite.middlewares);
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa'
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.warn('Vite dev server not loaded:', e);
+    }
   } else {
     app.use(express.static('dist'));
     app.get('*', (_req, res) => {
