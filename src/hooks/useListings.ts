@@ -62,6 +62,7 @@ interface UseListingsReturn {
   deleteListing: (id: string) => Promise<void>;
   makeOffer: (offer: Omit<OfferNegotiation, 'id'>) => Promise<void>;
   acceptOffer: (offerId: string, offerData?: OfferNegotiation) => Promise<void>;
+  rejectOffer: (offerId: string, offerData?: OfferNegotiation) => Promise<void>;
   counterOffer: (offerId: string, price: number, message: string, senderName: string, senderId: string) => Promise<void>;
   refresh: () => void;
 }
@@ -442,7 +443,7 @@ export function useListings(): UseListingsReturn {
       localStorage.setItem(LOCAL_STORAGE_KEYS.OFFERS, JSON.stringify([fullOffer, ...existing.filter(o => o.id !== fullOffer.id)]));
     } catch {}
 
-    // 3. Post to Express Server API
+    // 3. Post to Express Server API (which dispatches server notifications)
     try {
       await fetch('/api/marketplace/offers', {
         method: 'POST',
@@ -450,6 +451,29 @@ export function useListings(): UseListingsReturn {
         body: JSON.stringify(fullOffer)
       });
     } catch {}
+
+    // 4. Asynchronously push to Supabase offer_negotiations & marketplace_offers
+    if (isSupabaseConfigured) {
+      try {
+        const dbRow = {
+          id: offerId,
+          listing_id: offer.listingId,
+          buyer_id: offer.buyerId,
+          buyer_name: offer.buyerName,
+          seller_id: offer.sellerId,
+          seller_name: offer.sellerName,
+          commodity: offer.commodity,
+          quantity: Number(offer.quantity),
+          unit: offer.unit,
+          original_price: Number(offer.originalPrice),
+          offered_price: Number(offer.offeredPrice),
+          status: 'pending',
+          created_at: new Date().toISOString()
+        };
+        try { await supabase.from('offer_negotiations').insert([dbRow]); } catch (_) {}
+        try { await supabase.from('marketplace_offers').insert([dbRow]); } catch (_) {}
+      } catch (_) {}
+    }
   }, []);
 
   const acceptOffer = useCallback(async (offerId: string, offerData?: OfferNegotiation) => {
@@ -520,6 +544,46 @@ export function useListings(): UseListingsReturn {
     } catch (err) {
       console.warn('Error syncing accepted offer:', err);
     }
+
+    // 5. Supabase sync
+    if (isSupabaseConfigured) {
+      try { await supabase.from('offer_negotiations').update({ status: 'accepted' }).eq('id', offerId); } catch (_) {}
+      try { await supabase.from('marketplace_offers').update({ status: 'accepted' }).eq('id', offerId); } catch (_) {}
+    }
+  }, [offers]);
+
+  const rejectOffer = useCallback(async (offerId: string, offerData?: OfferNegotiation) => {
+    const targetOffer = offerData || offers.find(o => o.id === offerId);
+
+    // 1. Immediately update local offer state to rejected
+    setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'rejected' as const } : o));
+
+    // 2. Update localStorage offers
+    try {
+      const existing = getLocalOffers();
+      const updated = existing.map(o => o.id === offerId ? { ...o, status: 'rejected' as const } : o);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.OFFERS, JSON.stringify(updated));
+    } catch {}
+
+    // 3. Server API call
+    try {
+      await fetch(`/api/marketplace/offers/${offerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'rejected',
+          offerData: targetOffer
+        })
+      });
+    } catch (err) {
+      console.warn('Error syncing rejected offer:', err);
+    }
+
+    // 4. Supabase sync
+    if (isSupabaseConfigured) {
+      try { await supabase.from('offer_negotiations').update({ status: 'rejected' }).eq('id', offerId); } catch (_) {}
+      try { await supabase.from('marketplace_offers').update({ status: 'rejected' }).eq('id', offerId); } catch (_) {}
+    }
   }, [offers]);
 
   const counterOffer = useCallback(async (offerId: string, price: number, message: string, senderName: string, senderId: string) => {
@@ -549,6 +613,11 @@ export function useListings(): UseListingsReturn {
         })
       });
     } catch {}
+
+    if (isSupabaseConfigured) {
+      try { await supabase.from('offer_negotiations').update({ status: 'countered', offered_price: price }).eq('id', offerId); } catch (_) {}
+      try { await supabase.from('marketplace_offers').update({ status: 'countered', offered_price: price }).eq('id', offerId); } catch (_) {}
+    }
   }, []);
 
   const deleteListing = useCallback(async (listingId: string) => {
@@ -625,6 +694,7 @@ export function useListings(): UseListingsReturn {
     deleteListing,
     makeOffer,
     acceptOffer,
+    rejectOffer,
     counterOffer,
     refresh: () => setTick(t => t + 1),
   };

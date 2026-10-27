@@ -119,6 +119,26 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
     return isListingOwner || matchesSellerId || matchesSellerName || matchesParentListing;
   });
 
+  // Filter offers submitted by this user (where user is buyer)
+  const submittedOffers = offers.filter(o => {
+    if (isDemoMode) return false;
+    const isMock = MOCK_OFFER_IDS.has(o.id) || o.id.startsWith('ofr_8');
+    if (isMock) return false;
+
+    const isBuyerId = Boolean(activeUserId && o.buyerId && (o.buyerId === activeUserId || o.buyerId.includes(activeUserId) || activeUserId.includes(o.buyerId)));
+    const cleanBuyer = (o.buyerName || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    const firstWordActive = cleanActiveName.split(' ')[0];
+    const isBuyerName = Boolean(cleanActiveName && cleanBuyer && (
+      cleanBuyer.includes(cleanActiveName) ||
+      cleanActiveName.includes(cleanBuyer) ||
+      (firstWordActive.length > 2 && cleanBuyer.includes(firstWordActive))
+    ));
+
+    return isBuyerId || isBuyerName;
+  });
+
+  const [offerViewMode, setOfferViewMode] = useState<'received' | 'submitted'>('received');
+
   const pendingOffers = receivedOffers.filter(o => o.status === 'pending');
   const acceptedOffers = receivedOffers.filter(o => o.status === 'accepted');
 
@@ -128,7 +148,9 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
   const totalVolumeSold = acceptedOffers.reduce((sum, o) => sum + (Number(o.quantity) || 0), 0);
   const totalSalesValue = acceptedOffers.reduce((sum, o) => sum + (Number(o.offeredPrice || o.originalPrice) * Number(o.quantity || 0)), 0);
 
-  const filteredOffers = receivedOffers.filter(o => {
+  const activeOfferList = offerViewMode === 'received' ? receivedOffers : submittedOffers;
+
+  const filteredOffers = activeOfferList.filter(o => {
     if (selectedStatus === 'all') return true;
     return o.status === selectedStatus;
   });
@@ -341,16 +363,31 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
         )}
       </div>
 
-      {/* SECTION 2: Incoming Buyer Requests & Negotiations */}
+      {/* SECTION 2: Bilateral Offers & Negotiation Management */}
       <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-xs space-y-4">
+        {/* Top View Selector: Received Offers vs My Submitted Offers */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
-          <div>
-            <h3 className="text-base font-bold text-stone-900">
-              Buyer Offers & Negotiation Requests ({receivedOffers.length})
-            </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
-              Review miller purchase proposals, accept agreed prices, or propose a counter-rate.
-            </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setOfferViewMode('received')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                offerViewMode === 'received'
+                  ? 'bg-amber-800 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+              }`}
+            >
+              <span>📥 Offers Received ({receivedOffers.length})</span>
+            </button>
+            <button
+              onClick={() => setOfferViewMode('submitted')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                offerViewMode === 'submitted'
+                  ? 'bg-emerald-800 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+              }`}
+            >
+              <span>📤 Offers Made by Me ({submittedOffers.length})</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-lg text-xs">
@@ -360,7 +397,7 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
                 selectedStatus === 'all' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              All ({receivedOffers.length})
+              All ({activeOfferList.length})
             </button>
             <button
               onClick={() => setSelectedStatus('pending')}
@@ -368,7 +405,7 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
                 selectedStatus === 'pending' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Pending ({pendingOffers.length})
+              Pending ({activeOfferList.filter(o => o.status === 'pending').length})
             </button>
             <button
               onClick={() => setSelectedStatus('accepted')}
@@ -376,14 +413,16 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
                 selectedStatus === 'accepted' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Accepted ({acceptedOffers.length})
+              Accepted ({activeOfferList.filter(o => o.status === 'accepted').length})
             </button>
           </div>
         </div>
 
         {filteredOffers.length === 0 ? (
-          <div className="p-8 text-center text-xs text-stone-500">
-            No offer requests matching this filter.
+          <div className="p-8 text-center text-xs text-stone-500 bg-stone-50 rounded-xl border border-dashed border-stone-200">
+            {offerViewMode === 'received' 
+              ? 'No incoming purchase offers received on your listings yet.'
+              : 'You have not submitted any purchase offers on other sellers\' listings yet.'}
           </div>
         ) : (
           <div className="space-y-3">
@@ -394,19 +433,27 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
               >
                 <div className="space-y-1.5 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-stone-900">{offer.buyerName}</span>
+                    <span className="text-xs font-bold text-stone-500 uppercase">
+                      {offerViewMode === 'received' ? 'Buyer:' : 'Seller:'}
+                    </span>
+                    <span className="text-sm font-bold text-stone-900">
+                      {offerViewMode === 'received' ? offer.buyerName : offer.sellerName}
+                    </span>
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
                         offer.status === 'accepted'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                           : offer.status === 'pending'
-                          ? 'bg-amber-100 text-amber-800'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
                           : offer.status === 'countered'
-                          ? 'bg-sky-100 text-sky-800'
-                          : 'bg-rose-100 text-rose-800'
+                          ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                          : 'bg-rose-100 text-rose-800 border border-rose-300'
                       }`}
                     >
-                      {offer.status}
+                      {offer.status === 'pending' ? '⏳ Pending Review' :
+                       offer.status === 'accepted' ? '✅ Deal Confirmed' :
+                       offer.status === 'countered' ? '🔄 Counter Proposed' :
+                       '✕ Declined'}
                     </span>
                   </div>
 
@@ -434,28 +481,52 @@ export const MarketplaceDashboard: React.FC<MarketplaceDashboardProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-stone-200">
-                  {offer.status === 'pending' && (
+                  {offerViewMode === 'received' && offer.status === 'pending' && (
                     <>
                       <button
                         onClick={() => onAcceptOffer(offer.id, offer)}
-                        className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg flex items-center gap-1 transition-colors shadow-xs"
+                        className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
                       >
                         <CheckCircle className="w-3.5 h-3.5" />
                         <span>Accept Offer</span>
                       </button>
                       <button
                         onClick={() => onCounterOffer(offer)}
-                        className="px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50 border border-amber-300 rounded-lg transition-colors"
+                        className="px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50 border border-amber-300 rounded-lg transition-colors cursor-pointer"
                       >
-                        Counter Offer
+                        Counter Rate
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Decline offer from ${offer.buyerName} for ${offer.commodity}?`)) {
+                            onRejectOffer?.(offer.id);
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 border border-rose-300 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Decline
                       </button>
                     </>
                   )}
 
+                  {offerViewMode === 'submitted' && offer.status === 'pending' && (
+                    <span className="text-xs font-semibold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Sent to Seller · Awaiting Response</span>
+                    </span>
+                  )}
+
                   {offer.status === 'accepted' && (
                     <span className="text-xs font-bold text-emerald-800 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                      <CheckCircle className="w-3.5 h-3.5" />
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Order Created · Escrow Locked</span>
+                    </span>
+                  )}
+
+                  {offer.status === 'rejected' && (
+                    <span className="text-xs font-semibold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 flex items-center gap-1">
+                      <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Offer Declined</span>
                     </span>
                   )}
                 </div>

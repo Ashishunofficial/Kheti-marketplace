@@ -39,7 +39,7 @@ interface MarketplaceViewProps {
 }
 
 export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery }) => {
-  const { listings, offers, orders, loading, isSyncing, refresh, createListing, updateListing, deleteListing, makeOffer, counterOffer, acceptOffer } = useListings();
+  const { listings, offers, orders, loading, isSyncing, refresh, createListing, updateListing, deleteListing, makeOffer, counterOffer, acceptOffer, rejectOffer } = useListings();
   const { addNotification } = useNotifications();
   const [isSubmittingListing, setIsSubmittingListing] = useState(false);
   const { profile, user, isAuthenticated, isDemo } = useAuth();
@@ -534,6 +534,14 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
           }}
           onCounterOffer={(off) => {
             handleOpenOfferModal(listings.find(l => l.id === off.listingId) || listings[0]);
+          }}
+          onRejectOffer={async (offerId) => {
+            try {
+              await rejectOffer(offerId);
+              showNotification('Offer declined.');
+            } catch (err: any) {
+              showNotification(`Error: ${err.message}`);
+            }
           }}
           onDeleteListing={deleteListing}
           onUpdateListing={updateListing}

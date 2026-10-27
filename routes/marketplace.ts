@@ -431,6 +431,78 @@ export function createMarketplaceRouter() {
       }
 
       console.log(`[Marketplace API] 🤝 Offer accepted: ${updatedOffer.id}. Bilateral notifications dispatched to Buyer ${updatedOffer.buyerId} and Seller ${updatedOffer.sellerId}`);
+    } else if (updatedOffer.status === 'rejected' && previousStatus !== 'rejected') {
+      // Dispatch notification to BUYER (Offer Declined)
+      if (updatedOffer.buyerId) {
+        addServerNotification({
+          recipientUserId: updatedOffer.buyerId,
+          recipientName: updatedOffer.buyerName,
+          senderUserId: updatedOffer.sellerId,
+          senderName: updatedOffer.sellerName,
+          type: 'offer_received',
+          title: `✕ Offer Declined: ${updatedOffer.commodity}`,
+          titleHi: `✕ ऑफर अस्वीकार हुआ: ${updatedOffer.commodity}`,
+          message: `${updatedOffer.sellerName || 'Seller'} declined your offer of ₹${updatedOffer.offeredPrice}/${updatedOffer.unit} for ${updatedOffer.quantity} ${updatedOffer.unit} of ${updatedOffer.commodity}.`,
+          messageHi: `${updatedOffer.sellerName || 'विक्रेता'} ने आपके ${updatedOffer.commodity} के ₹${updatedOffer.offeredPrice}/${updatedOffer.unit} का ऑफर अस्वीकार कर दिया है।`,
+          commodity: updatedOffer.commodity,
+          price: updatedOffer.offeredPrice,
+          quantity: updatedOffer.quantity,
+          unit: updatedOffer.unit,
+          counterPartyName: updatedOffer.sellerName,
+          offerId: updatedOffer.id,
+          listingId: updatedOffer.listingId,
+          timestamp: 'Just now',
+          linkTab: 'marketplace'
+        });
+      }
+
+      // Dispatch notification to SELLER
+      if (updatedOffer.sellerId) {
+        addServerNotification({
+          recipientUserId: updatedOffer.sellerId,
+          recipientName: updatedOffer.sellerName,
+          senderUserId: updatedOffer.buyerId,
+          senderName: updatedOffer.buyerName,
+          type: 'offer_received',
+          title: `Offer Declined: ${updatedOffer.commodity}`,
+          titleHi: `ऑफर अस्वीकार हुआ: ${updatedOffer.commodity}`,
+          message: `You declined ${updatedOffer.buyerName || 'Buyer'}'s offer of ₹${updatedOffer.offeredPrice}/${updatedOffer.unit} for ${updatedOffer.commodity}.`,
+          messageHi: `आपने ${updatedOffer.buyerName || 'खरीदार'} का ${updatedOffer.commodity} पर ऑफर अस्वीकार किया।`,
+          commodity: updatedOffer.commodity,
+          price: updatedOffer.offeredPrice,
+          quantity: updatedOffer.quantity,
+          unit: updatedOffer.unit,
+          counterPartyName: updatedOffer.buyerName,
+          offerId: updatedOffer.id,
+          listingId: updatedOffer.listingId,
+          timestamp: 'Just now',
+          linkTab: 'marketplace'
+        });
+      }
+    } else if (updatedOffer.status === 'countered') {
+      // Dispatch counter offer notification to BUYER
+      if (updatedOffer.buyerId) {
+        addServerNotification({
+          recipientUserId: updatedOffer.buyerId,
+          recipientName: updatedOffer.buyerName,
+          senderUserId: updatedOffer.sellerId,
+          senderName: updatedOffer.sellerName,
+          type: 'offer_received',
+          title: `🔄 Counter-Offer Received: ${updatedOffer.commodity}`,
+          titleHi: `🔄 काउंटर ऑफर प्राप्त हुआ: ${updatedOffer.commodity}`,
+          message: `${updatedOffer.sellerName || 'Seller'} proposed a counter rate of ₹${updatedOffer.offeredPrice}/${updatedOffer.unit} for ${updatedOffer.commodity}. Review and confirm.`,
+          messageHi: `${updatedOffer.sellerName || 'विक्रेता'} ने आपके लिए ${updatedOffer.commodity} का ₹${updatedOffer.offeredPrice}/${updatedOffer.unit} का नया काउंटर रेट प्रस्तावित किया है।`,
+          commodity: updatedOffer.commodity,
+          price: updatedOffer.offeredPrice,
+          quantity: updatedOffer.quantity,
+          unit: updatedOffer.unit,
+          counterPartyName: updatedOffer.sellerName,
+          offerId: updatedOffer.id,
+          listingId: updatedOffer.listingId,
+          timestamp: 'Just now',
+          linkTab: 'marketplace'
+        });
+      }
     }
 
     saveMarketplaceStore(store);
