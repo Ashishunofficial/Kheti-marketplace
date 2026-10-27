@@ -84,9 +84,27 @@ export function useListings(): UseListingsReturn {
     }
   };
 
+  const getInitialOffers = (): OfferNegotiation[] => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.OFFERS);
+      const local = saved ? JSON.parse(saved) : [];
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch {}
+    return MOCK_OFFERS;
+  };
+
+  const getInitialOrders = (): OrderRecord[] => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.ORDERS);
+      const local = saved ? JSON.parse(saved) : [];
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch {}
+    return MOCK_ORDERS;
+  };
+
   const [listings, setListings] = useState<MarketplaceListing[]>(getInitialListings);
-  const [offers, setOffers] = useState<OfferNegotiation[]>(MOCK_OFFERS);
-  const [orders, setOrders] = useState<OrderRecord[]>(MOCK_ORDERS);
+  const [offers, setOffers] = useState<OfferNegotiation[]>(getInitialOffers);
+  const [orders, setOrders] = useState<OrderRecord[]>(getInitialOrders);
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +114,24 @@ export function useListings(): UseListingsReturn {
   const getLocalListings = (): MarketplaceListing[] => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.LISTINGS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const getLocalOffers = (): OfferNegotiation[] => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.OFFERS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const getLocalOrders = (): OrderRecord[] => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.ORDERS);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -192,6 +228,25 @@ export function useListings(): UseListingsReturn {
       localListings.forEach(ll => {
         if (!deletedListingIds.has(ll.id) && !deletedListingIds.has(String(ll.id).toLowerCase()) && !serverListings.some(sl => sl.id === ll.id)) {
           serverListings.unshift(ll);
+        }
+      });
+
+      // Merge local offers created or updated in this browser
+      const localOffers = getLocalOffers();
+      localOffers.forEach(lo => {
+        const existingIdx = serverOffers.findIndex(so => so.id === lo.id);
+        if (existingIdx === -1) {
+          serverOffers.unshift(lo);
+        } else if (lo.status === 'accepted' && serverOffers[existingIdx].status !== 'accepted') {
+          serverOffers[existingIdx] = lo;
+        }
+      });
+
+      // Merge local orders created in this browser
+      const localOrders = getLocalOrders();
+      localOrders.forEach(lord => {
+        if (!serverOrders.some(so => so.id === lord.id)) {
+          serverOrders.unshift(lord);
         }
       });
 
@@ -319,8 +374,16 @@ export function useListings(): UseListingsReturn {
     const offerId = `ofr_live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
     const fullOffer: OfferNegotiation = { ...offer, id: offerId, status: 'pending' };
 
+    // 1. Immediately update local state
     setOffers(prev => [fullOffer, ...prev]);
 
+    // 2. Cache in localStorage immediately so it survives reloads & polling
+    try {
+      const existing = getLocalOffers();
+      localStorage.setItem(LOCAL_STORAGE_KEYS.OFFERS, JSON.stringify([fullOffer, ...existing.filter(o => o.id !== fullOffer.id)]));
+    } catch {}
+
+    // 3. Post to Express Server API
     try {
       await fetch('/api/marketplace/offers', {
         method: 'POST',
@@ -331,24 +394,68 @@ export function useListings(): UseListingsReturn {
   }, []);
 
   const acceptOffer = useCallback(async (offerId: string, offerData?: OfferNegotiation) => {
+    const targetOffer = offerData || offers.find(o => o.id === offerId);
+
     // 1. Immediately update local offer state to accepted
     setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'accepted' as const } : o));
 
+    // 2. Update localStorage offers
+    try {
+      const existing = getLocalOffers();
+      const updated = existing.map(o => o.id === offerId ? { ...o, status: 'accepted' as const } : o);
+      if (!updated.some(o => o.id === offerId) && targetOffer) {
+        updated.unshift({ ...targetOffer, status: 'accepted' });
+      }
+      localStorage.setItem(LOCAL_STORAGE_KEYS.OFFERS, JSON.stringify(updated));
+    } catch {}
+
+    // 3. Optimistic Order Creation so user sees confirmed order right away
+    if (targetOffer) {
+      const optimisticOrder: OrderRecord = {
+        id: `ord_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        listingId: targetOffer.listingId,
+        offerId: targetOffer.id,
+        buyerId: targetOffer.buyerId,
+        buyerName: targetOffer.buyerName,
+        sellerId: targetOffer.sellerId,
+        sellerName: targetOffer.sellerName,
+        commodity: targetOffer.commodity as any,
+        quantity: targetOffer.quantity,
+        unit: targetOffer.unit,
+        agreedPrice: targetOffer.offeredPrice,
+        totalAmount: targetOffer.offeredPrice * targetOffer.quantity,
+        deliveryType: 'buyer_pickup',
+        status: 'confirmed',
+        paymentStatus: 'escrow_locked',
+        pickupLocation: `${targetOffer.commodity} Depot / Farm Gateway`,
+        createdAt: new Date().toISOString()
+      };
+      setOrders(prev => [optimisticOrder, ...prev.filter(x => x.id !== optimisticOrder.id)]);
+      try {
+        const existingOrders = getLocalOrders();
+        localStorage.setItem(LOCAL_STORAGE_KEYS.ORDERS, JSON.stringify([optimisticOrder, ...existingOrders.filter(x => x.id !== optimisticOrder.id)]));
+      } catch {}
+    }
+
+    // 4. Server API call
     try {
       const res = await fetch(`/api/marketplace/offers/${offerId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'accepted',
-          offerData: offerData || offers.find(o => o.id === offerId)
+          offerData: targetOffer
         })
       });
 
       if (res.ok) {
         const data = await res.json();
-        // If an order was created by the server, add it to local orders state immediately
         if (data.order) {
           setOrders(prev => [data.order, ...prev.filter(ord => ord.id !== data.order.id)]);
+          try {
+            const existingOrders = getLocalOrders();
+            localStorage.setItem(LOCAL_STORAGE_KEYS.ORDERS, JSON.stringify([data.order, ...existingOrders.filter(x => x.id !== data.order.id)]));
+          } catch {}
         }
       }
     } catch (err) {
@@ -362,6 +469,16 @@ export function useListings(): UseListingsReturn {
       const newEntry = { senderId, senderName, price, quantity: o.quantity, timestamp: new Date().toLocaleString('en-IN'), message };
       return { ...o, offeredPrice: price, status: 'countered' as const, history: [...(o.history ?? []), newEntry] };
     }));
+
+    try {
+      const existing = getLocalOffers();
+      const updated = existing.map(o => {
+        if (o.id !== offerId) return o;
+        const newEntry = { senderId, senderName, price, quantity: o.quantity, timestamp: new Date().toLocaleString('en-IN'), message };
+        return { ...o, offeredPrice: price, status: 'countered' as const, history: [...(o.history ?? []), newEntry] };
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEYS.OFFERS, JSON.stringify(updated));
+    } catch {}
 
     try {
       await fetch(`/api/marketplace/offers/${offerId}`, {

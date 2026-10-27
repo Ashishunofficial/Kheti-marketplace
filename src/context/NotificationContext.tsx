@@ -109,7 +109,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // 1. Fetch from server API if reachable
     try {
-      const url = currentUserId ? `/api/notifications?userId=${encodeURIComponent(currentUserId)}` : '/api/notifications';
+      const currentUserName = profile?.name || user?.user_metadata?.full_name || '';
+      const params = new URLSearchParams();
+      if (currentUserId) params.set('userId', currentUserId);
+      if (currentUserName) params.set('userName', currentUserName);
+      const url = `/api/notifications?${params.toString()}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -249,6 +253,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const seen = new Set<string>();
         const merged: AppNotification[] = [];
 
+        // 1. First include any server/database notifications
         combinedNotifs.forEach(n => {
           if (!seen.has(n.id)) {
             seen.add(n.id);
@@ -259,7 +264,34 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
         });
 
-        // Add seed notifications if not already seen
+        // 2. CRITICAL: Preserve any notifications currently in state (prev) so they are not wiped!
+        prev.forEach(p => {
+          if (!seen.has(p.id)) {
+            seen.add(p.id);
+            merged.push(p);
+          }
+        });
+
+        // 3. Preserve any notifications in localStorage
+        try {
+          const saved = localStorage.getItem(`${STORAGE_KEY}_${currentUserId || 'guest'}`);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((item: AppNotification) => {
+                if (!seen.has(item.id)) {
+                  seen.add(item.id);
+                  merged.push({
+                    ...item,
+                    isRead: readMap.has(item.id) ? (readMap.get(item.id) ?? item.isRead) : item.isRead
+                  });
+                }
+              });
+            }
+          }
+        } catch {}
+
+        // 4. Add seed notifications if not already seen
         SEED_NOTIFICATIONS.forEach(s => {
           if (!seen.has(s.id)) {
             seen.add(s.id);
@@ -341,12 +373,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const addNotification = useCallback(async (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
     const newEntry: AppNotification = {
       ...notif,
+      recipientUserId: notif.recipientUserId || currentUserId,
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString(),
       timestamp: notif.timestamp || 'Just now',
       isRead: false,
     };
-    setNotifications(prev => [newEntry, ...prev]);
+
+    setNotifications(prev => {
+      const next = [newEntry, ...prev.filter(x => x.id !== newEntry.id)];
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_${currentUserId || 'guest'}`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
     // Push to server so other tabs/devices receive it
     try {
@@ -356,7 +396,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         body: JSON.stringify(newEntry)
       });
     } catch {}
-  }, []);
+  }, [currentUserId]);
 
   const simulateOfferNotification = useCallback((type: 'offer_received' | 'offer_accepted') => {
     const randomFPO = ['Kisan Vikas FPO', 'Haryana Agro Traders', 'Ambala Grain Corporation', 'Golden Harvest FPC'][Math.floor(Math.random() * 4)];

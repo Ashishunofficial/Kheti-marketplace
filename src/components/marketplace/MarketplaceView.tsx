@@ -99,29 +99,52 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     return matchesTab && matchesCommodity && matchesState;
   });
 
+  // Set of listing IDs owned/created by the current user
+  const userListingIds = new Set(
+    listings
+      .filter(l => (currentUserId && l.sellerId === currentUserId) ||
+                   (currentUserName && l.sellerName?.toLowerCase().includes(currentUserName.toLowerCase())))
+      .map(l => l.id)
+  );
+
   const displayOffers = offers.filter(o => {
     if (isDemo) return true;
     const isMock = MOCK_OFFER_IDS.has(o.id) || MOCK_LISTING_IDS.has(o.listingId);
+    if (isMock) return false;
+
     const matchesId = (o.buyerId && currentUserId && o.buyerId === currentUserId) ||
                       (o.sellerId && currentUserId && o.sellerId === currentUserId);
     const matchesName = (o.buyerName && currentUserName && o.buyerName.toLowerCase().includes(currentUserName.toLowerCase())) ||
                         (o.sellerName && currentUserName && o.sellerName.toLowerCase().includes(currentUserName.toLowerCase()));
-    return !isMock && (matchesId || matchesName);
+    const isOwnerOfListing = userListingIds.has(o.listingId);
+
+    return matchesId || matchesName || isOwnerOfListing;
   });
 
   const displayOrders = orders.filter(ord => {
     if (isDemo) return true;
     const isMock = MOCK_ORDER_IDS.has(ord.id);
+    if (isMock) return false;
+
     const matchesId = (ord.buyerId && currentUserId && ord.buyerId === currentUserId) ||
                       (ord.sellerId && currentUserId && ord.sellerId === currentUserId);
     const matchesName = (ord.buyerName && currentUserName && ord.buyerName.toLowerCase().includes(currentUserName.toLowerCase())) ||
                         (ord.sellerName && currentUserName && ord.sellerName.toLowerCase().includes(currentUserName.toLowerCase()));
-    return !isMock && (matchesId || matchesName);
+    const isOwnerOfListing = userListingIds.has(ord.listingId);
+
+    return matchesId || matchesName || isOwnerOfListing;
   });
 
   const showNegotiationSection = isDemo || displayOffers.length > 0 || displayOrders.length > 0;
 
   const handleOpenOfferModal = (listing: MarketplaceListing) => {
+    const isOwner = (currentUserId && listing.sellerId === currentUserId) ||
+                    (currentUserName && listing.sellerName?.toLowerCase().includes(currentUserName.toLowerCase())) ||
+                    userListingIds.has(listing.id);
+    if (isOwner) {
+      showNotification('This is your own listing. You cannot make an offer on your own post!');
+      return;
+    }
     setSelectedListingForOffer(listing);
     setOfferPriceInput(listing.askingPrice);
     setOfferQuantityInput(listing.minOrderQuantity || 20);
@@ -131,21 +154,26 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
 
   const handleSendOffer = async () => {
     if (!selectedListingForOffer) return;
+    const sellerId = selectedListingForOffer.sellerId || 'usr_seller_lister';
+    const sellerName = selectedListingForOffer.sellerName || 'Verified Lister';
+    const buyerId = currentUser.id || currentUserId || 'usr_buyer';
+    const buyerName = currentUser.name || currentUserName || 'Buyer';
+
     const newOffer: Omit<OfferNegotiation, 'id'> = {
       listingId: selectedListingForOffer.id,
       commodity: selectedListingForOffer.commodity,
-      buyerId: currentUser.id,
-      buyerName: currentUser.name,
-      sellerId: selectedListingForOffer.sellerId,
-      sellerName: selectedListingForOffer.sellerName,
+      buyerId,
+      buyerName,
+      sellerId,
+      sellerName,
       originalPrice: selectedListingForOffer.askingPrice,
       offeredPrice: offerPriceInput,
       quantity: offerQuantityInput,
       unit: selectedListingForOffer.unit,
       status: 'pending',
       history: [{
-        senderId: currentUser.id,
-        senderName: currentUser.name,
+        senderId: buyerId,
+        senderName: buyerName,
         price: offerPriceInput,
         quantity: offerQuantityInput,
         timestamp: new Date().toLocaleString('en-IN'),
@@ -157,20 +185,39 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
     try {
       await makeOffer(newOffer);
       setShowNegotiationModal(false);
-      showNotification(`Offer of ₹${offerPriceInput}/${selectedListingForOffer.unit} submitted to ${selectedListingForOffer.sellerName}!`);
+      showNotification(`Offer of ₹${offerPriceInput}/${selectedListingForOffer.unit} submitted to ${sellerName}!`);
 
-      // Add real notification to Bell & Notification Drawer
+      // 1. Add notification for Buyer
       addNotification({
+        recipientUserId: buyerId,
         type: 'offer_received',
         title: `Offer Sent: ${selectedListingForOffer.commodity}`,
         titleHi: `ऑफर भेजा गया: ${selectedListingForOffer.commodity}`,
-        message: `Your negotiation offer of ₹${offerPriceInput}/${selectedListingForOffer.unit} for ${offerQuantityInput} ${selectedListingForOffer.unit} was submitted to ${selectedListingForOffer.sellerName}. Total deal: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}.`,
-        messageHi: `आपका ₹${offerPriceInput}/${selectedListingForOffer.unit} का ऑफर (${offerQuantityInput} ${selectedListingForOffer.unit}) ${selectedListingForOffer.sellerName} को भेज दिया गया है। कुल मूल्य: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}।`,
+        message: `Your negotiation offer of ₹${offerPriceInput}/${selectedListingForOffer.unit} for ${offerQuantityInput} ${selectedListingForOffer.unit} was submitted to ${sellerName}. Total deal: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}.`,
+        messageHi: `आपका ₹${offerPriceInput}/${selectedListingForOffer.unit} का ऑफर (${offerQuantityInput} ${selectedListingForOffer.unit}) ${sellerName} को भेज दिया गया है। कुल मूल्य: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}।`,
         commodity: selectedListingForOffer.commodity,
         price: offerPriceInput,
         quantity: offerQuantityInput,
         unit: selectedListingForOffer.unit,
-        counterPartyName: selectedListingForOffer.sellerName,
+        counterPartyName: sellerName,
+        listingId: selectedListingForOffer.id,
+        timestamp: 'Just now',
+        linkTab: 'marketplace',
+      });
+
+      // 2. Add notification for Seller / Lister so they immediately see the alert in their bell
+      addNotification({
+        recipientUserId: sellerId,
+        type: 'offer_received',
+        title: `New Offer on Listing: ${selectedListingForOffer.commodity}`,
+        titleHi: `आपकी फसल पर नया खरीद ऑफर: ${selectedListingForOffer.commodity}`,
+        message: `${buyerName} submitted an offer of ₹${offerPriceInput}/${selectedListingForOffer.unit} for ${offerQuantityInput} ${selectedListingForOffer.unit} of ${selectedListingForOffer.commodity}. Total: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}. Review and accept.`,
+        messageHi: `${buyerName} ने आपके ${selectedListingForOffer.commodity} के लिए ₹${offerPriceInput}/${selectedListingForOffer.unit} (${offerQuantityInput} ${selectedListingForOffer.unit}) का ऑफर भेजा है। कुल सौदा: ₹${(offerPriceInput * offerQuantityInput).toLocaleString('en-IN')}।`,
+        commodity: selectedListingForOffer.commodity,
+        price: offerPriceInput,
+        quantity: offerQuantityInput,
+        unit: selectedListingForOffer.unit,
+        counterPartyName: buyerName,
         listingId: selectedListingForOffer.id,
         timestamp: 'Just now',
         linkTab: 'marketplace',
@@ -185,18 +232,38 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
       await acceptOffer(offer.id, offer);
       showNotification(`Deal agreed! Order confirmed for ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')}. Escrow locked.`);
 
-      // Add real notification to Bell & Notification Drawer
+      // 1. Add notification for Seller
       addNotification({
+        recipientUserId: offer.sellerId || currentUserId,
         type: 'offer_accepted',
-        title: `Offer Accepted! Deal Confirmed: ${offer.commodity}`,
-        titleHi: `ऑफर स्वीकार हुआ! सौदा पक्का: ${offer.commodity}`,
-        message: `Deal confirmed with ${offer.buyerName || offer.sellerName} for ${offer.quantity} ${offer.unit} of ${offer.commodity} at ₹${offer.offeredPrice}/${offer.unit}. Total value ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')} locked in escrow.`,
-        messageHi: `${offer.buyerName || offer.sellerName} के साथ ${offer.quantity} ${offer.unit} ${offer.commodity} का सौदा ₹${offer.offeredPrice}/${offer.unit} पर पक्का हुआ। कुल मूल्य ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')} एस्क्रो में सुरक्षित।`,
+        title: `🤝 Deal Confirmed: ${offer.commodity}`,
+        titleHi: `🤝 ऑफर स्वीकार हुआ! सौदा पक्का: ${offer.commodity}`,
+        message: `Deal agreed with ${offer.buyerName} for ${offer.quantity} ${offer.unit} of ${offer.commodity} at ₹${offer.offeredPrice}/${offer.unit}. Total value ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')} locked in escrow.`,
+        messageHi: `${offer.buyerName} के साथ ${offer.quantity} ${offer.unit} ${offer.commodity} का सौदा ₹${offer.offeredPrice}/${offer.unit} पर पक्का हुआ। कुल मूल्य ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')} एस्क्रो में सुरक्षित।`,
         commodity: offer.commodity,
         price: offer.offeredPrice,
         quantity: offer.quantity,
         unit: offer.unit,
-        counterPartyName: offer.buyerName || offer.sellerName,
+        counterPartyName: offer.buyerName,
+        offerId: offer.id,
+        listingId: offer.listingId,
+        timestamp: 'Just now',
+        linkTab: 'marketplace',
+      });
+
+      // 2. Add notification for Buyer
+      addNotification({
+        recipientUserId: offer.buyerId,
+        type: 'offer_accepted',
+        title: `🎉 Offer Accepted! Deal Confirmed: ${offer.commodity}`,
+        titleHi: `🎉 आपका ऑफर स्वीकार कर लिया गया! सौदा पक्का: ${offer.commodity}`,
+        message: `${offer.sellerName} accepted your offer for ${offer.quantity} ${offer.unit} of ${offer.commodity} at ₹${offer.offeredPrice}/${offer.unit}. Total ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')}. Escrow locked!`,
+        messageHi: `${offer.sellerName} ने आपके ${offer.quantity} ${offer.unit} ${offer.commodity} का ₹${offer.offeredPrice}/${offer.unit} पर ऑफर स्वीकार कर लिया। कुल ₹${(offer.offeredPrice * offer.quantity).toLocaleString('en-IN')}। एस्क्रो भुगतान सुरक्षित है!`,
+        commodity: offer.commodity,
+        price: offer.offeredPrice,
+        quantity: offer.quantity,
+        unit: offer.unit,
+        counterPartyName: offer.sellerName,
         offerId: offer.id,
         listingId: offer.listingId,
         timestamp: 'Just now',
@@ -501,6 +568,10 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                   ? (idx % 2 === 0 ? '/assets/aistudio/image_ed46a4f3.png' : '/assets/aistudio/image_481883ee.png')
                   : '/assets/aistudio/Kheti_AI_Marketplace_Dashboard_682d8c37.png';
 
+                const isOwner = (currentUserId && listing.sellerId === currentUserId) ||
+                  (currentUserName && listing.sellerName?.toLowerCase().includes(currentUserName.toLowerCase())) ||
+                  userListingIds.has(listing.id);
+
                 return (
                   <div
                     key={listing.id}
@@ -611,13 +682,23 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ onOpenAIQuery 
                         <span>Fair Price?</span>
                       </button>
 
-                      <button
-                        onClick={() => handleOpenOfferModal(listing)}
-                        className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-                      >
-                        <span>Make Offer</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
+                      {isOwner ? (
+                        <button
+                          onClick={() => setActiveTab('dashboard')}
+                          className="bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                        >
+                          <Tag className="w-4 h-4 text-amber-800" />
+                          <span>Your Listing (Dashboard)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenOfferModal(listing)}
+                          className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                        >
+                          <span>Make Offer</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

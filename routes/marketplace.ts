@@ -200,43 +200,58 @@ export function createMarketplaceRouter() {
     store.offers = [newOffer, ...store.offers];
     saveMarketplaceStore(store);
 
-    // 1. Dispatch Notification to SELLER (so seller gets real-time bell update)
-    if (newOffer.sellerId) {
-      addServerNotification({
-        recipientUserId: newOffer.sellerId,
-        senderUserId: newOffer.buyerId,
-        type: 'offer_received',
-        title: `🌾 New Produce Offer: ${newOffer.commodity}`,
-        titleHi: `🌾 नया खरीद ऑफर प्राप्त हुआ: ${newOffer.commodity}`,
-        message: `${newOffer.buyerName || 'Buyer'} offered ₹${newOffer.offeredPrice}/${newOffer.unit} for ${newOffer.quantity} ${newOffer.unit} of ${newOffer.commodity}. Total value: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}.`,
-        messageHi: `${newOffer.buyerName || 'खरीदार'} ने आपके ${newOffer.commodity} के लिए ₹${newOffer.offeredPrice}/${newOffer.unit} पर ${newOffer.quantity} ${newOffer.unit} का ऑफर दिया है। कुल सौदा: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}।`,
-        commodity: newOffer.commodity,
-        price: newOffer.offeredPrice,
-        quantity: newOffer.quantity,
-        unit: newOffer.unit,
-        counterPartyName: newOffer.buyerName,
-        offerId: newOffer.id,
-        listingId: newOffer.listingId,
-        timestamp: 'Just now',
-        linkTab: 'marketplace'
-      });
+    // Resolve sellerId & sellerName if missing
+    let sellerId = newOffer.sellerId;
+    let sellerName = newOffer.sellerName;
+    if (!sellerId && newOffer.listingId) {
+      const parentListing = store.listings.find(l => l.id === newOffer.listingId);
+      if (parentListing) {
+        sellerId = parentListing.sellerId;
+        sellerName = parentListing.sellerName || sellerName;
+        newOffer.sellerId = sellerId;
+        newOffer.sellerName = sellerName;
+      }
     }
+
+    // 1. Dispatch Notification to SELLER (so seller gets real-time bell update)
+    addServerNotification({
+      recipientUserId: sellerId || 'usr_seller',
+      recipientName: sellerName || 'Seller',
+      senderUserId: newOffer.buyerId,
+      senderName: newOffer.buyerName,
+      type: 'offer_received',
+      title: `🌾 New Produce Offer: ${newOffer.commodity}`,
+      titleHi: `🌾 नया खरीद ऑफर प्राप्त हुआ: ${newOffer.commodity}`,
+      message: `${newOffer.buyerName || 'Buyer'} offered ₹${newOffer.offeredPrice}/${newOffer.unit} for ${newOffer.quantity} ${newOffer.unit} of ${newOffer.commodity}. Total value: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}.`,
+      messageHi: `${newOffer.buyerName || 'खरीदार'} ने आपके ${newOffer.commodity} के लिए ₹${newOffer.offeredPrice}/${newOffer.unit} पर ${newOffer.quantity} ${newOffer.unit} का ऑफर दिया है। कुल सौदा: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}।`,
+      commodity: newOffer.commodity,
+      price: newOffer.offeredPrice,
+      quantity: newOffer.quantity,
+      unit: newOffer.unit,
+      counterPartyName: newOffer.buyerName,
+      offerId: newOffer.id,
+      listingId: newOffer.listingId,
+      timestamp: 'Just now',
+      linkTab: 'marketplace'
+    });
 
     // 2. Dispatch Confirmation Notification to BUYER
     if (newOffer.buyerId) {
       addServerNotification({
         recipientUserId: newOffer.buyerId,
-        senderUserId: newOffer.sellerId,
+        recipientName: newOffer.buyerName,
+        senderUserId: sellerId,
+        senderName: sellerName,
         type: 'offer_received',
         title: `📤 Offer Submitted: ${newOffer.commodity}`,
         titleHi: `📤 ऑफर भेजा गया: ${newOffer.commodity}`,
-        message: `Your offer of ₹${newOffer.offeredPrice}/${newOffer.unit} (${newOffer.quantity} ${newOffer.unit}) was sent to ${newOffer.sellerName}. Total: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}.`,
-        messageHi: `आपका ₹${newOffer.offeredPrice}/${newOffer.unit} का ऑफर (${newOffer.quantity} ${newOffer.unit}) ${newOffer.sellerName} को भेज दिया गया है। कुल मूल्य: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}।`,
+        message: `Your offer of ₹${newOffer.offeredPrice}/${newOffer.unit} (${newOffer.quantity} ${newOffer.unit}) was sent to ${sellerName || 'Seller'}. Total: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}.`,
+        messageHi: `आपका ₹${newOffer.offeredPrice}/${newOffer.unit} का ऑफर (${newOffer.quantity} ${newOffer.unit}) ${sellerName || 'विक्रेता'} को भेज दिया गया है। कुल मूल्य: ₹${(newOffer.offeredPrice * newOffer.quantity).toLocaleString('en-IN')}।`,
         commodity: newOffer.commodity,
         price: newOffer.offeredPrice,
         quantity: newOffer.quantity,
         unit: newOffer.unit,
-        counterPartyName: newOffer.sellerName,
+        counterPartyName: sellerName,
         offerId: newOffer.id,
         listingId: newOffer.listingId,
         timestamp: 'Just now',
@@ -244,7 +259,7 @@ export function createMarketplaceRouter() {
       });
     }
 
-    console.log(`[Marketplace API] 📨 Offer created: ${newOffer.id} on listing ${newOffer.listingId} by ${newOffer.buyerName}`);
+    console.log(`[Marketplace API] 📨 Offer created: ${newOffer.id} on listing ${newOffer.listingId} by ${newOffer.buyerName} -> Seller: ${sellerName} (${sellerId})`);
     res.status(201).json({ success: true, offer: newOffer });
   });
 
@@ -316,7 +331,9 @@ export function createMarketplaceRouter() {
       if (updatedOffer.buyerId) {
         addServerNotification({
           recipientUserId: updatedOffer.buyerId,
+          recipientName: updatedOffer.buyerName,
           senderUserId: updatedOffer.sellerId,
+          senderName: updatedOffer.sellerName,
           type: 'offer_accepted',
           title: `🎉 Offer Accepted! Deal Confirmed: ${updatedOffer.commodity}`,
           titleHi: `🎉 आपका ऑफर स्वीकार कर लिया गया! सौदा पक्का: ${updatedOffer.commodity}`,
@@ -338,7 +355,9 @@ export function createMarketplaceRouter() {
       if (updatedOffer.sellerId) {
         addServerNotification({
           recipientUserId: updatedOffer.sellerId,
+          recipientName: updatedOffer.sellerName,
           senderUserId: updatedOffer.buyerId,
+          senderName: updatedOffer.buyerName,
           type: 'offer_accepted',
           title: `🤝 Deal Confirmed & Escrow Locked: ${updatedOffer.commodity}`,
           titleHi: `🤝 ऑफर स्वीकार हुआ! सौदा पक्का: ${updatedOffer.commodity}`,

@@ -495,6 +495,9 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
               filteredWarehouses.map((wh) => {
                 const isCold = wh.type.toLowerCase().includes('cold');
 
+                const isOwnerWh = (wh.ownerId && currentUserId && wh.ownerId === currentUserId) ||
+                  (wh.ownerName && currentUserName && wh.ownerName.toLowerCase().includes(currentUserName.toLowerCase()));
+
                 return (
                   <div
                     key={wh.id}
@@ -582,13 +585,23 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
                         <span className="truncate">{wh.contactPhone || '+91 98960 55441'}</span>
                       </div>
 
-                      <button
-                        onClick={() => setSelectedServiceForBooking({ service: wh, type: 'warehouse' })}
-                        className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-                      >
-                        <span>Reserve Space</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
+                      {isOwnerWh ? (
+                        <button
+                          onClick={() => setActiveTab('provider-dashboard')}
+                          className="bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                        >
+                          <Building2 className="w-4 h-4 text-amber-800" />
+                          <span>Your Facility (Dashboard)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedServiceForBooking({ service: wh, type: 'warehouse' })}
+                          className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                        >
+                          <span>Reserve Space</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -673,86 +686,101 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onAskAI }) => {
                 </p>
               </div>
             ) : (
-              filteredEquipment.map((eq) => (
-                <div
-                  key={eq.id}
-                  className="bg-white border border-stone-200/90 rounded-3xl p-4 sm:p-5 shadow-2xs space-y-3 hover:border-emerald-400 transition-all flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="bg-teal-100/90 text-teal-900 border border-teal-300 font-bold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider truncate shrink-0">
-                        {eq.category.toUpperCase()}
-                      </span>
+              filteredEquipment.map((eq) => {
+                const isOwnerEq = (eq.ownerId && currentUserId && eq.ownerId === currentUserId) ||
+                  (eq.ownerName && currentUserName && eq.ownerName.toLowerCase().includes(currentUserName.toLowerCase()));
 
-                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-250 font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Operator Included</span>
-                      </span>
+                return (
+                  <div
+                    key={eq.id}
+                    className="bg-white border border-stone-200/90 rounded-3xl p-4 sm:p-5 shadow-2xs space-y-3 hover:border-emerald-400 transition-all flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="bg-teal-100/90 text-teal-900 border border-teal-300 font-bold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider truncate shrink-0">
+                          {eq.category.toUpperCase()}
+                        </span>
+
+                        <span className="bg-emerald-50 text-emerald-800 border border-emerald-250 font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Operator Included</span>
+                        </span>
+                      </div>
+
+                      <div className="flex flex-row items-start gap-3 sm:gap-4">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
+                          <img
+                            src={eq.imageUrl || 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=600&q=80'}
+                            alt={eq.title}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h3 className="text-base sm:text-lg font-black text-stone-900 tracking-tight leading-snug truncate">
+                            {eq.title}
+                          </h3>
+                          <p className="text-xs font-bold text-stone-600 truncate">
+                            Provider: <span className="text-stone-800">{eq.ownerName}</span>
+                          </p>
+                          <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium truncate pt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                            <span className="truncate">{eq.district}, {eq.state}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Full-width Metric Boxes Row - Clean vertical stack, zero overflow */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[10px] uppercase tracking-wider truncate">
+                            <span>💰</span>
+                            <span className="truncate">Rental Rate</span>
+                          </div>
+                          <div className="mt-0.5 font-black text-emerald-950 text-sm sm:text-base font-mono truncate">
+                            ₹{eq.ratePerAcre || eq.ratePerHour} <span className="text-xs font-medium text-emerald-800 font-sans">/ {eq.ratePerAcre ? 'acre' : 'hr'}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 text-stone-500 font-bold text-[10px] uppercase tracking-wider truncate">
+                            <span>📍</span>
+                            <span className="truncate">Location</span>
+                          </div>
+                          <div className="mt-0.5 font-extrabold text-stone-900 text-xs sm:text-sm truncate">
+                            {eq.district}, {eq.state}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex flex-row items-start gap-3 sm:gap-4">
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 relative">
-                        <img
-                          src={eq.imageUrl || 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=600&q=80'}
-                          alt={eq.title}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                        />
+                    <div className="pt-2 flex items-center justify-between gap-2 border-t border-stone-150">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800 truncate">
+                        <Phone className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                        <span className="truncate">{eq.contactPhone || '+91 98124 55432'}</span>
                       </div>
 
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <h3 className="text-base sm:text-lg font-black text-stone-900 tracking-tight leading-snug truncate">
-                          {eq.title}
-                        </h3>
-                        <p className="text-xs font-bold text-stone-600 truncate">
-                          Provider: <span className="text-stone-800">{eq.ownerName}</span>
-                        </p>
-                        <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium truncate pt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                          <span className="truncate">{eq.district}, {eq.state}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Full-width Metric Boxes Row - Clean vertical stack, zero overflow */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
-                        <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[10px] uppercase tracking-wider truncate">
-                          <span>💰</span>
-                          <span className="truncate">Rental Rate</span>
-                        </div>
-                        <div className="mt-0.5 font-black text-emerald-950 text-sm sm:text-base font-mono truncate">
-                          ₹{eq.ratePerAcre || eq.ratePerHour} <span className="text-xs font-medium text-emerald-800 font-sans">/ {eq.ratePerAcre ? 'acre' : 'hr'}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-2.5 flex flex-col justify-center min-w-0 overflow-hidden">
-                        <div className="flex items-center gap-1.5 text-stone-500 font-bold text-[10px] uppercase tracking-wider truncate">
-                          <span>📍</span>
-                          <span className="truncate">Location</span>
-                        </div>
-                        <div className="mt-0.5 font-extrabold text-stone-900 text-xs sm:text-sm truncate">
-                          {eq.district}, {eq.state}
-                        </div>
-                      </div>
+                      {isOwnerEq ? (
+                        <button
+                          onClick={() => setActiveTab('provider-dashboard')}
+                          className="bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                        >
+                          <Tractor className="w-4 h-4 text-amber-800" />
+                          <span>Your Equipment (Dashboard)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedServiceForBooking({ service: eq, type: 'equipment' })}
+                          className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                        >
+                          <span>Book Machine</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  <div className="pt-2 flex items-center justify-between gap-2 border-t border-stone-150">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800 truncate">
-                      <Phone className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                      <span className="truncate">{eq.contactPhone || '+91 98124 55432'}</span>
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedServiceForBooking({ service: eq, type: 'equipment' })}
-                      className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-                    >
-                      <span>Book Machine</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

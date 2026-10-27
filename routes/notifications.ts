@@ -17,7 +17,9 @@ if (!fs.existsSync(DATA_DIR)) {
 export interface StoredNotification {
   id: string;
   recipientUserId?: string; // Target user UUID or ID
+  recipientName?: string;   // Target user name or role
   senderUserId?: string;
+  senderName?: string;
   type: 'offer_received' | 'offer_accepted' | 'offer_countered' | 'service_booking' | 'system_alert';
   title: string;
   titleHi: string;
@@ -133,23 +135,28 @@ export function addServerNotification(notif: Omit<StoredNotification, 'id' | 'cr
 export function createNotificationsRouter() {
   const router = express.Router();
 
-  // GET /api/notifications?userId=...
+  // GET /api/notifications?userId=...&userName=...
   router.get('/', (req: Request, res: Response) => {
-    const userId = req.query.userId as string | undefined;
+    const userId = req.query.userId ? String(req.query.userId).trim() : undefined;
+    const userName = req.query.userName ? String(req.query.userName).trim().toLowerCase() : undefined;
     const all = loadNotifications();
 
-    if (!userId) {
+    if (!userId && !userName) {
       return res.json({ success: true, count: all.length, notifications: all });
     }
 
-    // Filter notifications for this specific user or global broadcasts
+    // Filter notifications for this specific user, user name, or global broadcasts
     const userNotifs = all.filter(n => {
       // Global broadcast (no recipient)
-      if (!n.recipientUserId) return true;
+      if (!n.recipientUserId && !n.recipientName) return true;
       // Targeted to this user ID
-      if (n.recipientUserId === userId) return true;
-      // Or case-insensitive match on user email / ID fragment
-      if (userId && n.recipientUserId.toLowerCase() === userId.toLowerCase()) return true;
+      if (userId && n.recipientUserId && n.recipientUserId.toLowerCase() === userId.toLowerCase()) return true;
+      // Targeted by user Name / fragment
+      if (userName && n.recipientName && (
+        n.recipientName.toLowerCase().includes(userName) || userName.includes(n.recipientName.toLowerCase())
+      )) return true;
+      // If notification has counterPartyName or recipientName matching user
+      if (userName && n.recipientUserId && userId && n.recipientUserId === userId) return true;
       return false;
     });
 

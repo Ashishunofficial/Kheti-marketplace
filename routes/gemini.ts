@@ -136,8 +136,8 @@ function pcmToWav(
 }
 // ─── Helper: Resilient Gemini Model Fallback Caller ─────────────────────────
 async function generateContentRobust(genAI: GoogleGenAI, params: any) {
-  // Try modern flash models in order of availability
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  // Try official supported Gemini models in order
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
@@ -157,7 +157,7 @@ async function generateContentRobust(genAI: GoogleGenAI, params: any) {
   throw lastError || new Error('All Gemini models are temporarily busy');
 }
 
-// ─── Helper: Pl@ntNet API Species Identifier (9s Real Recognition Timeout) ────
+// ─── Helper: Pl@ntNet API Species Identifier (8s Timeout) ────
 interface PlantNetMatch {
   speciesName: string;
   commonNames: string[];
@@ -180,7 +180,7 @@ async function identifyWithPlantNet(imageDataBase64: string): Promise<PlantNetMa
     formData.append('organs', 'auto'); // Auto-detect leaves, heads, flowers, fruits
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500); // Fast 3.5s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // Reliable 8s timeout
 
     const url = `https://my-api.plantnet.org/v2/identify/all?api-key=${PLANTNET_API_KEY}&lang=en`;
     const response = await fetch(url, {

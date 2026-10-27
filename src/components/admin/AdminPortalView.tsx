@@ -185,8 +185,10 @@ export const AdminPortalView: React.FC = () => {
       localStorage.setItem('kheti_equipment_store_v3', JSON.stringify(eqs.filter((e: any) => e.id !== cleanId && String(e.id).toLowerCase() !== lowerId)));
     } catch {}
     try {
-      const lsts = JSON.parse(localStorage.getItem('kheti_marketplace_listings_v3') || '[]');
-      localStorage.setItem('kheti_marketplace_listings_v3', JSON.stringify(lsts.filter((l: any) => l.id !== cleanId && String(l.id).toLowerCase() !== lowerId)));
+      const lsts1 = JSON.parse(localStorage.getItem('kheti_local_marketplace_listings_v3') || '[]');
+      localStorage.setItem('kheti_local_marketplace_listings_v3', JSON.stringify(lsts1.filter((l: any) => l.id !== cleanId && String(l.id).toLowerCase() !== lowerId)));
+      const lsts2 = JSON.parse(localStorage.getItem('kheti_marketplace_listings_v3') || '[]');
+      localStorage.setItem('kheti_marketplace_listings_v3', JSON.stringify(lsts2.filter((l: any) => l.id !== cleanId && String(l.id).toLowerCase() !== lowerId)));
     } catch {}
 
     // 4. Instantly eliminate from Admin view state without any UI lag
