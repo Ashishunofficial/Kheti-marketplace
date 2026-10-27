@@ -110,6 +110,35 @@ export function createServicesRouter() {
     store.warehouses = [newWarehouse, ...store.warehouses];
     saveServicesStore(store);
 
+    // Asynchronously persist to Supabase from server for global multi-device visibility
+    (async () => {
+      try {
+        const sbUrl = process.env.VITE_SUPABASE_URL || 'https://nsbmlujnxwfnuhnidmap.supabase.co';
+        const sbKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYm1sdWpueHdmbnVobmlkbWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNTE3NDQsImV4cCI6MjEwNzgyNzc0NH0.Q3ae0ec_UkxiOLJq8GTCRVDsqElwkKIek7zD3vhugqI';
+        const sb = createClient(sbUrl, sbKey);
+        const dbRow = {
+          id: newWarehouse.id,
+          owner_id: newWarehouse.ownerId,
+          name: newWarehouse.name,
+          owner_name: newWarehouse.ownerName,
+          type: newWarehouse.type,
+          district: newWarehouse.district,
+          state: newWarehouse.state,
+          total_capacity_mt: newWarehouse.totalCapacityMT,
+          available_capacity_mt: newWarehouse.availableCapacityMT,
+          rate_per_bag_per_month: newWarehouse.ratePerBagPerMonth,
+          is_wdrc_registered: newWarehouse.isWdrcRegistered,
+          contact_phone: newWarehouse.contactPhone,
+          address: newWarehouse.address || null,
+          is_real: true
+        };
+        try { await sb.from('storage_facilities').insert([dbRow]); } catch (_) {}
+        try { await sb.from('warehouse_facilities').insert([dbRow]); } catch (_) {}
+      } catch (e) {
+        console.warn('[Backend Warehouse Supabase Notice]:', e);
+      }
+    })();
+
     console.log(`[Services API] ✅ New warehouse listed by ${newWarehouse.ownerName}: ${newWarehouse.name}`);
     res.status(201).json({ success: true, warehouse: newWarehouse });
   });
@@ -206,6 +235,35 @@ export function createServicesRouter() {
 
     store.equipment = [newEquipment, ...store.equipment];
     saveServicesStore(store);
+
+    // Asynchronously persist to Supabase from server for global multi-device visibility
+    (async () => {
+      try {
+        const sbUrl = process.env.VITE_SUPABASE_URL || 'https://nsbmlujnxwfnuhnidmap.supabase.co';
+        const sbKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYm1sdWpueHdmbnVobmlkbWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNTE3NDQsImV4cCI6MjEwNzgyNzc0NH0.Q3ae0ec_UkxiOLJq8GTCRVDsqElwkKIek7zD3vhugqI';
+        const sb = createClient(sbUrl, sbKey);
+        const dbRow = {
+          id: newEquipment.id,
+          owner_id: newEquipment.ownerId,
+          title: newEquipment.title,
+          category: newEquipment.category,
+          owner_name: newEquipment.ownerName,
+          district: newEquipment.district,
+          state: newEquipment.state,
+          rate_per_hour: newEquipment.ratePerHour || null,
+          rate_per_acre: newEquipment.ratePerAcre || null,
+          operator_included: newEquipment.operatorIncluded,
+          is_available_now: newEquipment.isAvailableNow,
+          contact_phone: newEquipment.contactPhone || null,
+          model_year: newEquipment.modelYear || null,
+          is_real: true
+        };
+        try { await sb.from('machinery_equipment').insert([dbRow]); } catch (_) {}
+        try { await sb.from('equipment_rentals').insert([dbRow]); } catch (_) {}
+      } catch (e) {
+        console.warn('[Backend Equipment Supabase Notice]:', e);
+      }
+    })();
 
     console.log(`[Services API] ✅ New equipment listed by ${newEquipment.ownerName}: ${newEquipment.title}`);
     res.status(201).json({ success: true, equipment: newEquipment });

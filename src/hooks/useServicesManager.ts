@@ -93,65 +93,127 @@ export function useServicesManager() {
       let serverBk: ServiceBooking[] = [];
       let serverMsg: ServiceMessage[] = [];
 
-      // 1. Fetch directly from Supabase (storage_facilities / warehouse_facilities)
+      // 1. Fetch directly from Supabase (storage_facilities & warehouse_facilities, machinery_equipment & equipment_rentals)
       if (isSupabaseConfigured) {
         try {
-          // Query storage_facilities or fallback to warehouse_facilities
-          let { data: whDb, error: whErr } = await supabase.from('storage_facilities').select('*');
-          if (whErr || !whDb || whDb.length === 0) {
-            const fallback = await supabase.from('warehouse_facilities').select('*');
-            if (fallback.data && fallback.data.length > 0) whDb = fallback.data;
-          }
-
-          if (whDb && Array.isArray(whDb)) {
-            whDb.forEach((row: any) => {
-              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
-              serverWh.push({
-                id: row.id,
-                ownerId: row.owner_id || undefined,
-                name: row.name,
-                ownerName: row.owner_name,
-                type: row.type,
-                district: row.district,
-                state: row.state,
-                totalCapacityMT: Number(row.total_capacity_mt || 1000),
-                availableCapacityMT: Number(row.available_capacity_mt || 500),
-                ratePerBagPerMonth: Number(row.rate_per_bag_per_month || 8),
-                isWdrcRegistered: row.is_wdrc_registered ?? true,
-                contactPhone: row.contact_phone || '',
-                address: row.address || undefined,
-                createdAt: row.created_at
+          // Query storage_facilities
+          try {
+            const { data: stDb } = await supabase.from('storage_facilities').select('*');
+            if (stDb && Array.isArray(stDb)) {
+              stDb.forEach((row: any) => {
+                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+                if (!serverWh.some(w => w.id === row.id)) {
+                  serverWh.push({
+                    id: String(row.id),
+                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                    name: row.name || row.title || 'Storage Facility',
+                    ownerName: row.owner_name || 'Verified Provider',
+                    type: row.type || 'Dry Godown',
+                    district: row.district || 'General',
+                    state: row.state || 'India',
+                    totalCapacityMT: Number(row.total_capacity_mt || 1000),
+                    availableCapacityMT: Number(row.available_capacity_mt || 500),
+                    ratePerBagPerMonth: Number(row.rate_per_bag_per_month || 8),
+                    isWdrcRegistered: row.is_wdrc_registered ?? true,
+                    contactPhone: row.contact_phone || '',
+                    address: row.address || undefined,
+                    createdAt: row.created_at
+                  });
+                }
               });
-            });
+            }
+          } catch (e1) {
+            console.warn('[Services Sync] Notice fetching storage_facilities:', e1);
           }
 
-          // Query machinery_equipment or fallback to equipment_rentals
-          let { data: eqDb, error: eqErr } = await supabase.from('machinery_equipment').select('*');
-          if (eqErr || !eqDb || eqDb.length === 0) {
-            const fallback = await supabase.from('equipment_rentals').select('*');
-            if (fallback.data && fallback.data.length > 0) eqDb = fallback.data;
-          }
-
-          if (eqDb && Array.isArray(eqDb)) {
-            eqDb.forEach((row: any) => {
-              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
-              serverEq.push({
-                id: row.id,
-                ownerId: row.owner_id || undefined,
-                title: row.title,
-                category: row.category,
-                ownerName: row.owner_name,
-                district: row.district,
-                state: row.state,
-                ratePerHour: row.rate_per_hour ? Number(row.rate_per_hour) : undefined,
-                ratePerAcre: row.rate_per_acre ? Number(row.rate_per_acre) : undefined,
-                operatorIncluded: row.operator_included ?? true,
-                isAvailableNow: row.is_available_now ?? true,
-                contactPhone: row.contact_phone || undefined,
-                modelYear: row.model_year || undefined,
-                createdAt: row.created_at
+          // Query warehouse_facilities
+          try {
+            const { data: whDb } = await supabase.from('warehouse_facilities').select('*');
+            if (whDb && Array.isArray(whDb)) {
+              whDb.forEach((row: any) => {
+                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+                if (!serverWh.some(w => w.id === String(row.id))) {
+                  serverWh.push({
+                    id: String(row.id),
+                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                    name: row.name || row.title || 'Storage Facility',
+                    ownerName: row.owner_name || 'Verified Provider',
+                    type: row.type || 'Dry Godown',
+                    district: row.district || 'General',
+                    state: row.state || 'India',
+                    totalCapacityMT: Number(row.total_capacity_mt || 1000),
+                    availableCapacityMT: Number(row.available_capacity_mt || 500),
+                    ratePerBagPerMonth: Number(row.rate_per_bag_per_month || 8),
+                    isWdrcRegistered: row.is_wdrc_registered ?? true,
+                    contactPhone: row.contact_phone || '',
+                    address: row.address || undefined,
+                    createdAt: row.created_at
+                  });
+                }
               });
-            });
+            }
+          } catch (e2) {
+            console.warn('[Services Sync] Notice fetching warehouse_facilities:', e2);
+          }
+
+          // Query machinery_equipment
+          try {
+            const { data: mEqDb } = await supabase.from('machinery_equipment').select('*');
+            if (mEqDb && Array.isArray(mEqDb)) {
+              mEqDb.forEach((row: any) => {
+                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+                if (!serverEq.some(e => e.id === String(row.id))) {
+                  serverEq.push({
+                    id: String(row.id),
+                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                    title: row.title || row.name || 'Equipment Rental',
+                    category: row.category || 'Tractor',
+                    ownerName: row.owner_name || 'Verified Owner',
+                    district: row.district || 'General',
+                    state: row.state || 'India',
+                    ratePerHour: row.rate_per_hour ? Number(row.rate_per_hour) : undefined,
+                    ratePerAcre: row.rate_per_acre ? Number(row.rate_per_acre) : undefined,
+                    operatorIncluded: row.operator_included ?? true,
+                    isAvailableNow: row.is_available_now ?? true,
+                    contactPhone: row.contact_phone || undefined,
+                    modelYear: row.model_year || undefined,
+                    createdAt: row.created_at
+                  });
+                }
+              });
+            }
+          } catch (e3) {
+            console.warn('[Services Sync] Notice fetching machinery_equipment:', e3);
+          }
+
+          // Query equipment_rentals
+          try {
+            const { data: eRentDb } = await supabase.from('equipment_rentals').select('*');
+            if (eRentDb && Array.isArray(eRentDb)) {
+              eRentDb.forEach((row: any) => {
+                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+                if (!serverEq.some(e => e.id === String(row.id))) {
+                  serverEq.push({
+                    id: String(row.id),
+                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                    title: row.title || row.name || 'Equipment Rental',
+                    category: row.category || 'Tractor',
+                    ownerName: row.owner_name || 'Verified Owner',
+                    district: row.district || 'General',
+                    state: row.state || 'India',
+                    ratePerHour: row.rate_per_hour ? Number(row.rate_per_hour) : undefined,
+                    ratePerAcre: row.rate_per_acre ? Number(row.rate_per_acre) : undefined,
+                    operatorIncluded: row.operator_included ?? true,
+                    isAvailableNow: row.is_available_now ?? true,
+                    contactPhone: row.contact_phone || undefined,
+                    modelYear: row.model_year || undefined,
+                    createdAt: row.created_at
+                  });
+                }
+              });
+            }
+          } catch (e4) {
+            console.warn('[Services Sync] Notice fetching equipment_rentals:', e4);
           }
 
           // Service bookings from Supabase
@@ -366,17 +428,29 @@ export function useServicesManager() {
 
     fetchAllServices();
 
-    // Fast multi-device polling interval (3.5s) for instant cross-device updates
+    // Fast multi-device polling interval (2.0s) for instant cross-device updates
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 3500);
+    }, 2000);
 
-    // Supabase Realtime channel subscription for instant booking & message sync
+    // Supabase Realtime channel subscription for instant storage, machinery, booking & message sync
     let rtChannel: any = null;
     if (isSupabaseConfigured) {
       try {
         rtChannel = supabase
           .channel('kheti_services_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'storage_facilities' }, () => {
+            setTick(t => t + 1);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouse_facilities' }, () => {
+            setTick(t => t + 1);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'machinery_equipment' }, () => {
+            setTick(t => t + 1);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_rentals' }, () => {
+            setTick(t => t + 1);
+          })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'service_bookings' }, () => {
             setTick(t => t + 1);
           })
@@ -499,27 +573,33 @@ export function useServicesManager() {
 
     // Direct Supabase storage persistence
     if (isSupabaseConfigured) {
+      const dbRow = {
+        id: newFacility.id,
+        owner_id: currentUserId,
+        name: newFacility.name,
+        owner_name: newFacility.ownerName,
+        type: newFacility.type,
+        district: newFacility.district,
+        state: newFacility.state,
+        total_capacity_mt: newFacility.totalCapacityMT,
+        available_capacity_mt: newFacility.availableCapacityMT,
+        rate_per_bag_per_month: newFacility.ratePerBagPerMonth,
+        is_wdrc_registered: newFacility.isWdrcRegistered,
+        contact_phone: newFacility.contactPhone,
+        address: newFacility.address || null,
+        is_real: true
+      };
       try {
-        const dbRow = {
-          id: newFacility.id,
-          owner_id: currentUserId,
-          name: newFacility.name,
-          owner_name: newFacility.ownerName,
-          type: newFacility.type,
-          district: newFacility.district,
-          state: newFacility.state,
-          total_capacity_mt: newFacility.totalCapacityMT,
-          available_capacity_mt: newFacility.availableCapacityMT,
-          rate_per_bag_per_month: newFacility.ratePerBagPerMonth,
-          is_wdrc_registered: newFacility.isWdrcRegistered,
-          contact_phone: newFacility.contactPhone,
-          address: newFacility.address || null,
-          is_real: true
-        };
-        await supabase.from('storage_facilities').insert([dbRow]);
-        await supabase.from('warehouse_facilities').insert([dbRow]);
+        const { error } = await supabase.from('storage_facilities').insert([dbRow]);
+        if (error) console.warn('[Supabase storage_facilities insert notice]:', error);
       } catch (e) {
-        console.warn('Supabase storage save notice:', e);
+        console.warn('Supabase storage_facilities save notice:', e);
+      }
+      try {
+        const { error } = await supabase.from('warehouse_facilities').insert([dbRow]);
+        if (error) console.warn('[Supabase warehouse_facilities insert notice]:', error);
+      } catch (e) {
+        console.warn('Supabase warehouse_facilities save notice:', e);
       }
     }
 
@@ -558,27 +638,33 @@ export function useServicesManager() {
 
     // Direct Supabase machinery persistence
     if (isSupabaseConfigured) {
+      const dbRow = {
+        id: newEquipment.id,
+        owner_id: currentUserId,
+        title: newEquipment.title,
+        category: newEquipment.category,
+        owner_name: newEquipment.ownerName,
+        district: newEquipment.district,
+        state: newEquipment.state,
+        rate_per_hour: newEquipment.ratePerHour || null,
+        rate_per_acre: newEquipment.ratePerAcre || null,
+        operator_included: newEquipment.operatorIncluded,
+        is_available_now: newEquipment.isAvailableNow,
+        contact_phone: newEquipment.contactPhone || null,
+        model_year: newEquipment.modelYear || null,
+        is_real: true
+      };
       try {
-        const dbRow = {
-          id: newEquipment.id,
-          owner_id: currentUserId,
-          title: newEquipment.title,
-          category: newEquipment.category,
-          owner_name: newEquipment.ownerName,
-          district: newEquipment.district,
-          state: newEquipment.state,
-          rate_per_hour: newEquipment.ratePerHour || null,
-          rate_per_acre: newEquipment.ratePerAcre || null,
-          operator_included: newEquipment.operatorIncluded,
-          is_available_now: newEquipment.isAvailableNow,
-          contact_phone: newEquipment.contactPhone || null,
-          model_year: newEquipment.modelYear || null,
-          is_real: true
-        };
-        await supabase.from('machinery_equipment').insert([dbRow]);
-        await supabase.from('equipment_rentals').insert([dbRow]);
+        const { error } = await supabase.from('machinery_equipment').insert([dbRow]);
+        if (error) console.warn('[Supabase machinery_equipment insert notice]:', error);
       } catch (e) {
-        console.warn('Supabase machinery save notice:', e);
+        console.warn('Supabase machinery_equipment save notice:', e);
+      }
+      try {
+        const { error } = await supabase.from('equipment_rentals').insert([dbRow]);
+        if (error) console.warn('[Supabase equipment_rentals insert notice]:', error);
+      } catch (e) {
+        console.warn('Supabase equipment_rentals save notice:', e);
       }
     }
 
