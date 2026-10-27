@@ -152,16 +152,38 @@ export function useListings(): UseListingsReturn {
       // 1. Fetch directly from Supabase in parallel with Express server API
       const supabasePromise = (async () => {
         if (!isSupabaseConfigured) return [];
+        let rows: any[] = [];
         try {
-          const { data: dbRows } = await supabase
+          const { data: dbRows, error: err1 } = await supabase
             .from('marketplace_listings')
             .select('*')
             .eq('status', 'active')
             .order('created_at', { ascending: false });
-          return dbRows && Array.isArray(dbRows) ? dbRows.map(mapDbToListing) : [];
-        } catch {
-          return [];
+          if (!err1 && dbRows && Array.isArray(dbRows)) {
+            rows.push(...dbRows);
+          }
+        } catch (e) {
+          console.warn('[Supabase marketplace_listings notice]:', e);
         }
+
+        try {
+          const { data: prodRows, error: err2 } = await supabase
+            .from('produce_listings')
+            .select('*')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false });
+          if (!err2 && prodRows && Array.isArray(prodRows)) {
+            prodRows.forEach(r => {
+              if (!rows.some(x => String(x.id) === String(r.id))) {
+                rows.push(r);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('[Supabase produce_listings notice]:', e);
+        }
+
+        return rows.map(mapDbToListing);
       })();
 
       const apiPromise = Promise.all([
@@ -291,14 +313,38 @@ export function useListings(): UseListingsReturn {
 
     fetchAll();
 
-    // Poll periodically to get new listings and offer updates made by any other user
+    // Fast multi-device polling interval (2.0s) for instant cross-device updates
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 4000);
+    }, 2000);
+
+    // Supabase Realtime channel subscription for instant marketplace listings & offer sync
+    let rtChannel: any = null;
+    if (isSupabaseConfigured) {
+      try {
+        rtChannel = supabase
+          .channel('kheti_marketplace_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_listings' }, () => {
+            setTick(t => t + 1);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'produce_listings' }, () => {
+            setTick(t => t + 1);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_offers' }, () => {
+            setTick(t => t + 1);
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn('Marketplace realtime channel error:', err);
+      }
+    }
 
     return () => {
       isCancelled = true;
       clearInterval(interval);
+      if (rtChannel) {
+        try { supabase.removeChannel(rtChannel); } catch (_) {}
+      }
     };
   }, [tick, isAuthenticated, isDemo]);
 
@@ -335,38 +381,70 @@ export function useListings(): UseListingsReturn {
       console.warn('Server API listing sync notice:', e);
     }
 
-    // 4. Secondary push to Supabase if available
+    // 4. Multi-level resilient push to Supabase
     if (isSupabaseConfigured) {
+      const dbRowFull: Record<string, any> = {
+        id: listingId,
+        seller_id: listing.sellerId || 'usr_anonymous',
+        seller_name: listing.sellerName,
+        seller_type: listing.sellerType,
+        is_verified: listing.isVerified ?? true,
+        listing_type: listing.listingType,
+        commodity: listing.commodity,
+        variety: listing.variety ?? '',
+        grade: listing.grade ?? 'Grade A',
+        quantity: Number(listing.quantity),
+        unit: listing.unit ?? 'Quintal',
+        asking_price: Number(listing.askingPrice),
+        min_order_quantity: Number(listing.minOrderQuantity || 10),
+        moisture_content_percent: listing.moistureContentPercent ? Number(listing.moistureContentPercent) : null,
+        location_village: listing.location?.village || '',
+        location_district: listing.location?.district || '',
+        location_state: listing.location?.state || '',
+        pickup_available: listing.pickupAvailable ?? true,
+        delivery_available: listing.deliveryAvailable ?? false,
+        notes: listing.notes || '',
+        status: 'active',
+        posted_date: new Date().toISOString(),
+        expiry_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      const dbRowCore: Record<string, any> = {
+        id: listingId,
+        seller_id: listing.sellerId || 'usr_anonymous',
+        seller_name: listing.sellerName,
+        seller_type: listing.sellerType,
+        listing_type: listing.listingType,
+        commodity: listing.commodity,
+        variety: listing.variety ?? '',
+        grade: listing.grade ?? 'Grade A',
+        quantity: Number(listing.quantity),
+        unit: listing.unit ?? 'Quintal',
+        asking_price: Number(listing.askingPrice),
+        min_order_quantity: Number(listing.minOrderQuantity || 10),
+        status: 'active',
+        posted_date: new Date().toISOString()
+      };
+
+      // Try full schema insert on marketplace_listings
       try {
-        const dbRow: Record<string, any> = {
-          id: listingId,
-          seller_id: listing.sellerId || '',
-          seller_name: listing.sellerName,
-          seller_type: listing.sellerType,
-          is_verified: listing.isVerified ?? true,
-          listing_type: listing.listingType,
-          commodity: listing.commodity,
-          variety: listing.variety ?? '',
-          grade: listing.grade ?? 'Grade A',
-          quantity: Number(listing.quantity),
-          unit: listing.unit ?? 'Quintal',
-          asking_price: Number(listing.askingPrice),
-          min_order_quantity: Number(listing.minOrderQuantity || 10),
-          moisture_content_percent: listing.moistureContentPercent ? Number(listing.moistureContentPercent) : null,
-          location_village: listing.location?.village || '',
-          location_district: listing.location?.district || '',
-          location_state: listing.location?.state || '',
-          pickup_available: listing.pickupAvailable ?? true,
-          delivery_available: listing.deliveryAvailable ?? false,
-          notes: listing.notes || '',
-          status: 'active',
-          posted_date: new Date().toISOString(),
-          expiry_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
-        };
-        await supabase.from('marketplace_listings').insert([dbRow]);
-      } catch (err: any) {
-        // Silent catch for external DB
+        const { error: fullErr } = await supabase.from('marketplace_listings').insert([dbRowFull]);
+        if (fullErr) {
+          console.warn('[Supabase marketplace_listings full insert notice]:', fullErr.message);
+          // Fallback to core fields
+          const { error: coreErr } = await supabase.from('marketplace_listings').insert([dbRowCore]);
+          if (coreErr) {
+            console.warn('[Supabase marketplace_listings core insert notice]:', coreErr.message);
+          }
+        }
+      } catch (e) {
+        console.warn('marketplace_listings insert exception:', e);
       }
+
+      // Try insert on produce_listings fallback table
+      try {
+        await supabase.from('produce_listings').insert([dbRowCore]);
+      } catch (_) {}
     }
   }, []);
 

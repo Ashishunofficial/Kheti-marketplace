@@ -123,6 +123,56 @@ export function createMarketplaceRouter() {
     store.listings = [newListing, ...store.listings];
     saveMarketplaceStore(store);
 
+    // Asynchronously persist to Supabase from server for global multi-device visibility
+    (async () => {
+      try {
+        const sbUrl = process.env.VITE_SUPABASE_URL || 'https://nsbmlujnxwfnuhnidmap.supabase.co';
+        const sbKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYm1sdWpueHdmbnVobmlkbWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNTE3NDQsImV4cCI6MjEwNzgyNzc0NH0.Q3ae0ec_UkxiOLJq8GTCRVDsqElwkKIek7zD3vhugqI';
+        const sb = createClient(sbUrl, sbKey);
+
+        const dbRowCore = {
+          id: newListing.id,
+          seller_id: newListing.sellerId || 'usr_anonymous',
+          seller_name: newListing.sellerName,
+          seller_type: newListing.sellerType,
+          listing_type: newListing.listingType,
+          commodity: newListing.commodity,
+          variety: newListing.variety || '',
+          grade: newListing.grade || 'Grade A',
+          quantity: Number(newListing.quantity),
+          unit: newListing.unit || 'Quintal',
+          asking_price: Number(newListing.askingPrice),
+          min_order_quantity: Number(newListing.minOrderQuantity || 10),
+          status: 'active',
+          posted_date: new Date().toISOString()
+        };
+
+        const dbRowFull = {
+          ...dbRowCore,
+          is_verified: newListing.isVerified ?? true,
+          location_village: newListing.location?.village || '',
+          location_district: newListing.location?.district || '',
+          location_state: newListing.location?.state || '',
+          pickup_available: newListing.pickupAvailable ?? true,
+          delivery_available: newListing.deliveryAvailable ?? false,
+          notes: newListing.notes || ''
+        };
+
+        try {
+          const { error: fErr } = await sb.from('marketplace_listings').insert([dbRowFull]);
+          if (fErr) {
+            try { await sb.from('marketplace_listings').insert([dbRowCore]); } catch (_) {}
+          }
+        } catch (_) {
+          try { await sb.from('marketplace_listings').insert([dbRowCore]); } catch (_) {}
+        }
+
+        try { await sb.from('produce_listings').insert([dbRowCore]); } catch (_) {}
+      } catch (e) {
+        console.warn('[Backend Marketplace Supabase Notice]:', e);
+      }
+    })();
+
     console.log(`[Marketplace API] ✅ New listing created by ${newListing.sellerName} (${newListing.sellerId}): ${newListing.commodity}`);
     res.status(201).json({ success: true, listing: newListing });
   });
