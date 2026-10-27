@@ -141,94 +141,75 @@ export function useListings(): UseListingsReturn {
   useEffect(() => {
     let isCancelled = false;
 
-    async function fetchAll() {
-      setIsSyncing(true);
+    async function fetchAll(isManualCall = false) {
+      if (isManualCall || loading) {
+        setIsSyncing(true);
+      }
       setError(null);
 
       let serverListings: MarketplaceListing[] = [];
       let serverOffers: OfferNegotiation[] = [];
       let serverOrders: OrderRecord[] = [];
 
-      // 1. Fetch directly from Supabase in parallel with Express server API using unauthenticated public client
-      const supabasePromise = (async () => {
-        if (!isSupabaseConfigured) return [];
-        let rows: any[] = [];
-        try {
-          const { data: dbRows, error: err1 } = await supabasePublic
-            .from('marketplace_listings')
-            .select('*')
-            .eq('status', 'active')
-            .order('created_at', { ascending: false });
-          if (!err1 && dbRows && Array.isArray(dbRows)) {
-            rows.push(...dbRows);
-          }
-        } catch (e) {
-          console.warn('[Supabase marketplace_listings notice]:', e);
-        }
+      try {
+        if (isSupabaseConfigured) {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Fetch timeout')), 3500)
+          );
 
-        try {
-          const { data: prodRows, error: err2 } = await supabasePublic
-            .from('produce_listings')
-            .select('*')
-            .eq('status', 'active')
-            .order('created_at', { ascending: false });
-          if (!err2 && prodRows && Array.isArray(prodRows)) {
-            prodRows.forEach(r => {
-              if (!rows.some(x => String(x.id) === String(r.id))) {
-                rows.push(r);
+          const supabasePromise = Promise.allSettled([
+            supabasePublic.from('marketplace_listings').select('*').eq('status', 'active').order('created_at', { ascending: false }),
+            supabasePublic.from('produce_listings').select('*').eq('status', 'active').order('created_at', { ascending: false })
+          ]);
+
+          const apiPromise = Promise.allSettled([
+            fetch('/api/marketplace/listings').then(r => r.ok ? r.json() : null),
+            fetch('/api/marketplace/offers').then(r => r.ok ? r.json() : null),
+            fetch('/api/marketplace/orders').then(r => r.ok ? r.json() : null)
+          ]);
+
+          const [sbRes, apiRes] = await Promise.race([
+            Promise.all([supabasePromise, apiPromise]),
+            timeoutPromise.then(() => [[], []])
+          ]) as any;
+
+          // Process marketplace_listings
+          if (sbRes[0]?.status === 'fulfilled' && sbRes[0].value?.data) {
+            sbRes[0].value.data.map(mapDbToListing).forEach((ml: MarketplaceListing) => {
+              if (!serverListings.some(sl => sl.id === ml.id)) {
+                serverListings.push(ml);
               }
             });
           }
-        } catch (e) {
-          console.warn('[Supabase produce_listings notice]:', e);
-        }
 
-        return rows.map(mapDbToListing);
-      })();
+          // Process produce_listings
+          if (sbRes[1]?.status === 'fulfilled' && sbRes[1].value?.data) {
+            sbRes[1].value.data.map(mapDbToListing).forEach((pl: MarketplaceListing) => {
+              if (!serverListings.some(sl => sl.id === pl.id)) {
+                serverListings.push(pl);
+              }
+            });
+          }
 
-      const apiPromise = Promise.all([
-        fetch('/api/marketplace/listings').then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch('/api/marketplace/offers').then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch('/api/marketplace/orders').then(r => r.ok ? r.json() : null).catch(() => null)
-      ]);
+          // Process Express API results
+          if (apiRes[0]?.status === 'fulfilled' && apiRes[0].value?.listings) {
+            apiRes[0].value.listings.forEach((sl: MarketplaceListing) => {
+              if (!serverListings.some(x => x.id === sl.id)) {
+                serverListings.push(sl);
+              }
+            });
+          }
 
-      try {
-        const [sbMapped, [lData, oData, ordData]] = await Promise.all([
-          supabasePromise,
-          apiPromise
-        ]);
+          if (apiRes[1]?.status === 'fulfilled' && apiRes[1].value?.offers) {
+            serverOffers = apiRes[1].value.offers;
+          }
 
-        if (Array.isArray(sbMapped)) {
-          sbMapped.forEach(ml => {
-            if (!serverListings.some(sl => sl.id === ml.id)) {
-              serverListings.push(ml);
-            }
-          });
-        }
-
-        if (lData?.deletedListingIds && Array.isArray(lData.deletedListingIds)) {
-          try {
-            const current = JSON.parse(localStorage.getItem('kheti_deleted_listing_ids') || '[]');
-            const merged = Array.from(new Set([...current, ...lData.deletedListingIds]));
-            localStorage.setItem('kheti_deleted_listing_ids', JSON.stringify(merged));
-          } catch {}
-        }
-
-        if (lData?.listings && Array.isArray(lData.listings)) {
-          lData.listings.forEach((sl: MarketplaceListing) => {
-            if (!serverListings.some(x => x.id === sl.id)) {
-              serverListings.push(sl);
-            }
-          });
-        }
-        if (oData?.offers && Array.isArray(oData.offers)) {
-          serverOffers = oData.offers;
-        }
-        if (ordData?.orders && Array.isArray(ordData.orders)) {
-          serverOrders = ordData.orders;
+          if (apiRes[2]?.status === 'fulfilled' && apiRes[2].value?.orders) {
+            serverOrders = apiRes[2].value.orders;
+          }
         }
       } catch (e) {
-        console.warn('Notice: Server API or Supabase fetch notice:', e);
+        console.warn('[Marketplace Sync] Notice during parallel fetch:', e);
       }
 
       // Filter out permanently deleted listing IDs so they never resurrect from Supabase or server cache
@@ -311,12 +292,12 @@ export function useListings(): UseListingsReturn {
       setIsSyncing(false);
     }
 
-    fetchAll();
+    fetchAll(tick === 0);
 
-    // Fast multi-device polling interval (2.0s) for instant cross-device updates
+    // Silent background polling interval (4.0s) for non-blocking multi-device updates
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 2000);
+    }, 4000);
 
     // Supabase Realtime channel subscription for instant marketplace listings & offer sync
     let rtChannel: any = null;

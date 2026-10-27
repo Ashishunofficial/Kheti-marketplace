@@ -85,231 +85,208 @@ export function useServicesManager() {
   useEffect(() => {
     let isCancelled = false;
 
-    async function fetchAllServices() {
-      setIsSyncing(true);
+    async function fetchAllServices(isManualCall = false) {
+      if (isManualCall || loading) {
+        setIsSyncing(true);
+      }
 
       let serverWh: WarehouseFacility[] = [];
       let serverEq: EquipmentRental[] = [];
       let serverBk: ServiceBooking[] = [];
       let serverMsg: ServiceMessage[] = [];
 
-      // 1. Fetch directly from Supabase (storage_facilities & warehouse_facilities, machinery_equipment & equipment_rentals)
-      if (isSupabaseConfigured) {
-        try {
-          // Query storage_facilities using unauthenticated public client
-          try {
-            const { data: stDb } = await supabasePublic.from('storage_facilities').select('*');
-            if (stDb && Array.isArray(stDb)) {
-              stDb.forEach((row: any) => {
-                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
-                if (!serverWh.some(w => w.id === row.id)) {
-                  serverWh.push({
-                    id: String(row.id),
-                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
-                    name: row.name || row.title || 'Storage Facility',
-                    ownerName: row.owner_name || 'Verified Provider',
-                    type: row.type || 'Dry Godown',
-                    district: row.district || 'General',
-                    state: row.state || 'India',
-                    totalCapacityMT: Number(row.total_capacity_mt || 1000),
-                    availableCapacityMT: Number(row.available_capacity_mt || 500),
-                    ratePerBagPerMonth: Number(row.rate_per_bag_per_month || 8),
-                    isWdrcRegistered: row.is_wdrc_registered ?? true,
-                    contactPhone: row.contact_phone || '',
-                    address: row.address || undefined,
-                    createdAt: row.created_at
-                  });
-                }
-              });
-            }
-          } catch (e1) {
-            console.warn('[Services Sync] Notice fetching storage_facilities:', e1);
-          }
-
-          // Query warehouse_facilities using unauthenticated public client
-          try {
-            const { data: whDb } = await supabasePublic.from('warehouse_facilities').select('*');
-            if (whDb && Array.isArray(whDb)) {
-              whDb.forEach((row: any) => {
-                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
-                if (!serverWh.some(w => w.id === String(row.id))) {
-                  serverWh.push({
-                    id: String(row.id),
-                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
-                    name: row.name || row.title || 'Storage Facility',
-                    ownerName: row.owner_name || 'Verified Provider',
-                    type: row.type || 'Dry Godown',
-                    district: row.district || 'General',
-                    state: row.state || 'India',
-                    totalCapacityMT: Number(row.total_capacity_mt || 1000),
-                    availableCapacityMT: Number(row.available_capacity_mt || 500),
-                    ratePerBagPerMonth: Number(row.rate_per_bag_per_month || 8),
-                    isWdrcRegistered: row.is_wdrc_registered ?? true,
-                    contactPhone: row.contact_phone || '',
-                    address: row.address || undefined,
-                    createdAt: row.created_at
-                  });
-                }
-              });
-            }
-          } catch (e2) {
-            console.warn('[Services Sync] Notice fetching warehouse_facilities:', e2);
-          }
-
-          // Query machinery_equipment using unauthenticated public client
-          try {
-            const { data: mEqDb } = await supabasePublic.from('machinery_equipment').select('*');
-            if (mEqDb && Array.isArray(mEqDb)) {
-              mEqDb.forEach((row: any) => {
-                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
-                if (!serverEq.some(e => e.id === String(row.id))) {
-                  serverEq.push({
-                    id: String(row.id),
-                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
-                    title: row.title || row.name || 'Equipment Rental',
-                    category: row.category || 'Tractor',
-                    ownerName: row.owner_name || 'Verified Owner',
-                    district: row.district || 'General',
-                    state: row.state || 'India',
-                    ratePerHour: row.rate_per_hour ? Number(row.rate_per_hour) : undefined,
-                    ratePerAcre: row.rate_per_acre ? Number(row.rate_per_acre) : undefined,
-                    operatorIncluded: row.operator_included ?? true,
-                    isAvailableNow: row.is_available_now ?? true,
-                    contactPhone: row.contact_phone || undefined,
-                    modelYear: row.model_year || undefined,
-                    createdAt: row.created_at
-                  });
-                }
-              });
-            }
-          } catch (e3) {
-            console.warn('[Services Sync] Notice fetching machinery_equipment:', e3);
-          }
-
-          // Query equipment_rentals using unauthenticated public client
-          try {
-            const { data: eRentDb } = await supabasePublic.from('equipment_rentals').select('*');
-            if (eRentDb && Array.isArray(eRentDb)) {
-              eRentDb.forEach((row: any) => {
-                if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
-                if (!serverEq.some(e => e.id === String(row.id))) {
-                  serverEq.push({
-                    id: String(row.id),
-                    ownerId: row.owner_id ? String(row.owner_id) : undefined,
-                    title: row.title || row.name || 'Equipment Rental',
-                    category: row.category || 'Tractor',
-                    ownerName: row.owner_name || 'Verified Owner',
-                    district: row.district || 'General',
-                    state: row.state || 'India',
-                    ratePerHour: row.rate_per_hour ? Number(row.rate_per_hour) : undefined,
-                    ratePerAcre: row.rate_per_acre ? Number(row.rate_per_acre) : undefined,
-                    operatorIncluded: row.operator_included ?? true,
-                    isAvailableNow: row.is_available_now ?? true,
-                    contactPhone: row.contact_phone || undefined,
-                    modelYear: row.model_year || undefined,
-                    createdAt: row.created_at
-                  });
-                }
-              });
-            }
-          } catch (e4) {
-            console.warn('[Services Sync] Notice fetching equipment_rentals:', e4);
-          }
-
-          // Service bookings from Supabase
-          const { data: bkDb } = await supabasePublic.from('service_bookings').select('*');
-          if (bkDb && Array.isArray(bkDb)) {
-            bkDb.forEach((row: any) => {
-              serverBk.push({
-                id: row.id,
-                serviceId: row.service_id,
-                serviceType: row.service_type,
-                serviceTitle: row.service_title,
-                ownerId: row.owner_id,
-                ownerName: row.owner_name,
-                ownerPhone: row.owner_phone,
-                renterId: row.renter_id,
-                renterName: row.renter_name,
-                renterPhone: row.renter_phone,
-                startDate: row.start_date,
-                endDate: row.end_date,
-                quantityRequested: Number(row.quantity_requested),
-                unit: row.unit,
-                totalEstimatedAmount: Number(row.total_estimated_amount),
-                notes: row.notes,
-                status: row.status,
-                createdAt: row.created_at
-              });
-            });
-          }
-
-          // Service messages from Supabase
-          const { data: msgDb } = await supabasePublic.from('service_messages').select('*');
-          if (msgDb && Array.isArray(msgDb)) {
-            msgDb.forEach((row: any) => {
-              serverMsg.push({
-                id: row.id,
-                bookingId: row.booking_id,
-                serviceId: row.service_id,
-                serviceTitle: row.service_title,
-                senderId: row.sender_id,
-                senderName: row.sender_name,
-                recipientId: row.recipient_id,
-                recipientName: row.recipient_name,
-                text: row.text,
-                timestamp: row.timestamp || row.created_at || new Date().toISOString(),
-                isRead: row.is_read ?? false
-              });
-            });
-          }
-        } catch (supabaseErr) {
-          console.warn('[Kheti Services] Supabase tables check notice:', supabaseErr);
-        }
-      }
-
-      // 2. Fetch from Express persistent shared server API
       try {
-        const [wRes, eRes, bRes, mRes] = await Promise.all([
-          fetch('/api/services/warehouses'),
-          fetch('/api/services/equipment'),
-          fetch('/api/services/bookings'),
-          fetch('/api/services/messages')
-        ]);
+        // Parallelized fetching across all Supabase tables and Express API endpoints
+        if (isSupabaseConfigured) {
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Fetch timeout')), 3500)
+          );
 
-        if (wRes.ok) {
-          const wData = await wRes.json();
-          if (wData.deletedServiceIds && Array.isArray(wData.deletedServiceIds)) {
-            try {
-              const current = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
-              const merged = Array.from(new Set([...current, ...wData.deletedServiceIds]));
-              localStorage.setItem('kheti_deleted_service_ids', JSON.stringify(merged));
-            } catch {}
+          const supabaseQueries = Promise.allSettled([
+            supabasePublic.from('storage_facilities').select('*'),
+            supabasePublic.from('warehouse_facilities').select('*'),
+            supabasePublic.from('machinery_equipment').select('*'),
+            supabasePublic.from('equipment_rentals').select('*'),
+            supabasePublic.from('service_bookings').select('*'),
+            supabasePublic.from('service_messages').select('*')
+          ]);
+
+          const apiQueries = Promise.allSettled([
+            fetch('/api/services/warehouses').then(r => r.ok ? r.json() : null),
+            fetch('/api/services/equipment').then(r => r.ok ? r.json() : null),
+            fetch('/api/services/bookings').then(r => r.ok ? r.json() : null),
+            fetch('/api/services/messages').then(r => r.ok ? r.json() : null)
+          ]);
+
+          const [sbResults, apiResults] = await Promise.race([
+            Promise.all([supabaseQueries, apiQueries]),
+            timeoutPromise.then(() => [[], []])
+          ]) as any;
+
+          // 1. Process Supabase storage_facilities
+          if (sbResults[0]?.status === 'fulfilled' && sbResults[0].value?.data) {
+            sbResults[0].value.data.forEach((row: any) => {
+              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+              if (!serverWh.some(w => w.id === String(row.id))) {
+                serverWh.push({
+                  id: String(row.id),
+                  ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                  name: row.name || row.title || 'Storage Facility',
+                  ownerName: row.owner_name || 'Verified Provider',
+                  type: row.type || 'Dry Godown',
+                  district: row.district || 'General',
+                  state: row.state || 'India',
+                  totalCapacityMT: Number(row.total_capacity_mt || 1000),
+                  availableCapacityMT: Number(row.available_capacity_mt || 500),
+                  ratePerBagPerMonth: Number(row.rate_per_bag_per_month || 8),
+                  isWdrcRegistered: row.is_wdrc_registered ?? true,
+                  contactPhone: row.contact_phone || '',
+                  address: row.address || undefined,
+                  createdAt: row.created_at
+                });
+              }
+            });
           }
-          if (wData.warehouses && Array.isArray(wData.warehouses)) {
-            wData.warehouses.forEach((item: WarehouseFacility) => {
+
+          // 2. Process Supabase warehouse_facilities
+          if (sbResults[1]?.status === 'fulfilled' && sbResults[1].value?.data) {
+            sbResults[1].value.data.forEach((row: any) => {
+              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+              if (!serverWh.some(w => w.id === String(row.id))) {
+                serverWh.push({
+                  id: String(row.id),
+                  ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                  name: row.name || row.title || 'Storage Facility',
+                  ownerName: row.owner_name || 'Verified Provider',
+                  type: row.type || 'Dry Godown',
+                  district: row.district || 'General',
+                  state: row.state || 'India',
+                  totalCapacityMT: Number(row.total_capacity_mt || 1000),
+                  availableCapacityMT: Number(row.available_capacity_mt || 500),
+                  ratePerBagPerMonth: Number(row.rate_per_bag_per_month || 8),
+                  isWdrcRegistered: row.is_wdrc_registered ?? true,
+                  contactPhone: row.contact_phone || '',
+                  address: row.address || undefined,
+                  createdAt: row.created_at
+                });
+              }
+            });
+          }
+
+          // 3. Process Supabase machinery_equipment
+          if (sbResults[2]?.status === 'fulfilled' && sbResults[2].value?.data) {
+            sbResults[2].value.data.forEach((row: any) => {
+              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+              if (!serverEq.some(e => e.id === String(row.id))) {
+                serverEq.push({
+                  id: String(row.id),
+                  ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                  title: row.title || row.name || 'Equipment Rental',
+                  category: row.category || 'Tractor',
+                  ownerName: row.owner_name || 'Verified Owner',
+                  district: row.district || 'General',
+                  state: row.state || 'India',
+                  ratePerHour: row.rate_per_hour ? Number(row.rate_per_hour) : undefined,
+                  ratePerAcre: row.rate_per_acre ? Number(row.rate_per_acre) : undefined,
+                  operatorIncluded: row.operator_included ?? true,
+                  isAvailableNow: row.is_available_now ?? true,
+                  contactPhone: row.contact_phone || undefined,
+                  modelYear: row.model_year || undefined,
+                  createdAt: row.created_at
+                });
+              }
+            });
+          }
+
+          // 4. Process Supabase equipment_rentals
+          if (sbResults[3]?.status === 'fulfilled' && sbResults[3].value?.data) {
+            sbResults[3].value.data.forEach((row: any) => {
+              if (row.is_real === false || row.status === 'cancelled' || row.status === 'deleted') return;
+              if (!serverEq.some(e => e.id === String(row.id))) {
+                serverEq.push({
+                  id: String(row.id),
+                  ownerId: row.owner_id ? String(row.owner_id) : undefined,
+                  title: row.title || row.name || 'Equipment Rental',
+                  category: row.category || 'Tractor',
+                  ownerName: row.owner_name || 'Verified Owner',
+                  district: row.district || 'General',
+                  state: row.state || 'India',
+                  ratePerHour: row.rate_per_hour ? Number(row.rate_per_hour) : undefined,
+                  ratePerAcre: row.rate_per_acre ? Number(row.rate_per_acre) : undefined,
+                  operatorIncluded: row.operator_included ?? true,
+                  isAvailableNow: row.is_available_now ?? true,
+                  contactPhone: row.contact_phone || undefined,
+                  modelYear: row.model_year || undefined,
+                  createdAt: row.created_at
+                });
+              }
+            });
+          }
+
+          // 5. Process Supabase service_bookings
+          if (sbResults[4]?.status === 'fulfilled' && sbResults[4].value?.data) {
+            sbResults[4].value.data.forEach((row: any) => {
+              if (!serverBk.some(b => b.id === String(row.id))) {
+                serverBk.push({
+                  id: String(row.id),
+                  serviceId: row.service_id,
+                  serviceType: row.service_type,
+                  serviceTitle: row.service_title,
+                  ownerId: row.owner_id,
+                  ownerName: row.owner_name,
+                  ownerPhone: row.owner_phone,
+                  renterId: row.renter_id,
+                  renterName: row.renter_name,
+                  renterPhone: row.renter_phone,
+                  startDate: row.start_date,
+                  endDate: row.end_date,
+                  quantityRequested: Number(row.quantity_requested),
+                  unit: row.unit,
+                  totalEstimatedAmount: Number(row.total_estimated_amount),
+                  notes: row.notes,
+                  status: row.status,
+                  createdAt: row.created_at
+                });
+              }
+            });
+          }
+
+          // 6. Process Supabase service_messages
+          if (sbResults[5]?.status === 'fulfilled' && sbResults[5].value?.data) {
+            sbResults[5].value.data.forEach((row: any) => {
+              if (!serverMsg.some(m => m.id === String(row.id))) {
+                serverMsg.push({
+                  id: String(row.id),
+                  bookingId: row.booking_id,
+                  serviceId: row.service_id,
+                  serviceTitle: row.service_title,
+                  senderId: row.sender_id,
+                  senderName: row.sender_name,
+                  recipientId: row.recipient_id,
+                  recipientName: row.recipient_name,
+                  text: row.text,
+                  timestamp: row.timestamp || row.created_at || new Date().toISOString(),
+                  isRead: row.is_read ?? false
+                });
+              }
+            });
+          }
+
+          // 7. Process Express API Results
+          if (apiResults[0]?.status === 'fulfilled' && apiResults[0].value?.warehouses) {
+            apiResults[0].value.warehouses.forEach((item: WarehouseFacility) => {
               if (!serverWh.some(s => s.id === item.id)) serverWh.push(item);
             });
           }
-        }
-        if (eRes.ok) {
-          const eData = await eRes.json();
-          if (eData.deletedServiceIds && Array.isArray(eData.deletedServiceIds)) {
-            try {
-              const current = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
-              const merged = Array.from(new Set([...current, ...eData.deletedServiceIds]));
-              localStorage.setItem('kheti_deleted_service_ids', JSON.stringify(merged));
-            } catch {}
-          }
-          if (eData.equipment && Array.isArray(eData.equipment)) {
-            eData.equipment.forEach((item: EquipmentRental) => {
+
+          if (apiResults[1]?.status === 'fulfilled' && apiResults[1].value?.equipment) {
+            apiResults[1].value.equipment.forEach((item: EquipmentRental) => {
               if (!serverEq.some(s => s.id === item.id)) serverEq.push(item);
             });
           }
-        }
-        if (bRes.ok) {
-          const bData = await bRes.json();
-          if (bData.bookings && Array.isArray(bData.bookings)) {
-            bData.bookings.forEach((item: ServiceBooking) => {
+
+          if (apiResults[2]?.status === 'fulfilled' && apiResults[2].value?.bookings) {
+            apiResults[2].value.bookings.forEach((item: ServiceBooking) => {
               const existing = serverBk.find(s => s.id === item.id);
               if (existing) {
                 if (item.status === 'confirmed') existing.status = 'confirmed';
@@ -318,20 +295,18 @@ export function useServicesManager() {
               }
             });
           }
-        }
-        if (mRes.ok) {
-          const mData = await mRes.json();
-          if (mData.messages && Array.isArray(mData.messages)) {
-            mData.messages.forEach((item: ServiceMessage) => {
+
+          if (apiResults[3]?.status === 'fulfilled' && apiResults[3].value?.messages) {
+            apiResults[3].value.messages.forEach((item: ServiceMessage) => {
               if (!serverMsg.some(s => s.id === item.id)) serverMsg.push(item);
             });
           }
         }
       } catch (err) {
-        console.warn('Notice: Server API services fetch notice:', err);
+        console.warn('[Services Sync] Notice during parallel fetch:', err);
       }
 
-      // Check for confirmed offers across messages (deals confirmed via bilateral negotiation)
+      // Check for confirmed offers across messages
       const confirmedBookingIds = new Set(
         serverMsg
           .filter(m => m.bookingId && (m.text.includes('[BOOKING_ACCEPTED]') || m.text.includes('[OFFER_ACCEPTED]')))
@@ -344,7 +319,7 @@ export function useServicesManager() {
         }
       });
 
-      // 3. Filter out permanently deleted service IDs
+      // Filter out permanently deleted service IDs
       let deletedServiceIds = new Set<string>();
       try {
         const delArr = JSON.parse(localStorage.getItem('kheti_deleted_service_ids') || '[]');
@@ -366,7 +341,7 @@ export function useServicesManager() {
       serverWh = serverWh.filter(w => !deletedServiceIds.has(w.id) && !deletedServiceIds.has(String(w.id).toLowerCase()));
       serverEq = serverEq.filter(e => !deletedServiceIds.has(e.id) && !deletedServiceIds.has(String(e.id).toLowerCase()));
 
-      // 4. Merge local items created in this browser
+      // Merge local items created in this browser
       const localWh = getLocalData<WarehouseFacility>(STORAGE_KEYS.WAREHOUSES);
       const localEq = getLocalData<EquipmentRental>(STORAGE_KEYS.EQUIPMENT);
       const localBk = getLocalData<ServiceBooking>(STORAGE_KEYS.BOOKINGS);
@@ -426,12 +401,12 @@ export function useServicesManager() {
       setIsSyncing(false);
     }
 
-    fetchAllServices();
+    fetchAllServices(tick === 0);
 
-    // Fast multi-device polling interval (2.0s) for instant cross-device updates
+    // Silent background polling interval (4.0s) for non-blocking multi-device updates
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 2000);
+    }, 4000);
 
     // Supabase Realtime channel subscription for instant storage, machinery, booking & message sync
     let rtChannel: any = null;
