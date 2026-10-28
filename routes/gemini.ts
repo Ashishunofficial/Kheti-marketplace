@@ -136,8 +136,8 @@ function pcmToWav(
 }
 // ─── Helper: Resilient Gemini Model Fallback Caller ─────────────────────────
 async function generateContentRobust(genAI: GoogleGenAI, params: any) {
-  // Try official supported Gemini models in order
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  // Try official supported Gemini models in order (as per @google/genai guidelines)
+  const modelsToTry = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
@@ -155,6 +155,91 @@ async function generateContentRobust(genAI: GoogleGenAI, params: any) {
     }
   }
   throw lastError || new Error('All Gemini models are temporarily busy');
+}
+
+// ─── Helper: Extract Clinical Diagnostic Data from Text if JSON parse fails ────
+function extractClinicalDataFromText(text: string, plantNetMatch: PlantNetMatch | null, targetLang: string) {
+  let cropIdentified = '';
+  let diseaseHindi = '';
+  let diseaseOrPest = '';
+  let chemicalTreatment: string[] = [];
+  let organicTreatment: string[] = [];
+  let preventativeMeasures: string[] = [];
+  let severity = 'moderate';
+
+  // 1. Try JSON block first
+  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/i);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (parsed) {
+        return {
+          cropIdentified: parsed.cropIdentified || (plantNetMatch ? `${plantNetMatch.commonNames[0] || plantNetMatch.speciesName} (${plantNetMatch.speciesName})` : 'Crop Sample'),
+          diseaseOrPest: parsed.diseaseOrPest || 'Foliar Pathology / Crop Infection',
+          diseaseHindi: parsed.diseaseHindi || parsed.diseaseOrPest || 'फसल रोग व फफूंद संक्रमण',
+          severity: parsed.severity || 'moderate',
+          confidencePercent: parsed.confidencePercent || (plantNetMatch ? plantNetMatch.scorePercent : 94),
+          chemicalTreatment: Array.isArray(parsed.chemicalTreatment) && parsed.chemicalTreatment.length ? parsed.chemicalTreatment : [],
+          organicTreatment: Array.isArray(parsed.organicTreatment) && parsed.organicTreatment.length ? parsed.organicTreatment : [],
+          preventativeMeasures: Array.isArray(parsed.preventativeMeasures) && parsed.preventativeMeasures.length ? parsed.preventativeMeasures : [],
+          plantNetMatch
+        };
+      }
+    } catch (_) {}
+  }
+
+  // 2. Parse Markdown sections if JSON block was absent or unparseable
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    const cleanLine = line.replace(/[*#•_`]/g, '').trim();
+    if (!cropIdentified && (cleanLine.includes('वानस्पतिक नाम') || cleanLine.includes('Plant Identified') || cleanLine.includes('Species'))) {
+      const parts = cleanLine.split(':');
+      if (parts.length > 1) cropIdentified = parts.slice(1).join(':').trim();
+    }
+    if (!diseaseHindi && (cleanLine.includes('बीमारी का नाम') || cleanLine.includes('Disease Name') || cleanLine.includes('रोग'))) {
+      const parts = cleanLine.split(':');
+      if (parts.length > 1) {
+        diseaseHindi = parts.slice(1).join(':').trim();
+        diseaseOrPest = diseaseHindi;
+      }
+    }
+    if ((cleanLine.includes('रासायनिक') || cleanLine.includes('Chemical')) && cleanLine.includes(':')) {
+      const parts = cleanLine.split(':');
+      if (parts.length > 1 && parts.slice(1).join(':').trim()) {
+        chemicalTreatment.push(parts.slice(1).join(':').trim());
+      }
+    }
+    if ((cleanLine.includes('जैविक') || cleanLine.includes('Organic')) && cleanLine.includes(':')) {
+      const parts = cleanLine.split(':');
+      if (parts.length > 1 && parts.slice(1).join(':').trim()) {
+        organicTreatment.push(parts.slice(1).join(':').trim());
+      }
+    }
+    if ((cleanLine.includes('सुरक्षा') || cleanLine.includes('Preventive')) && cleanLine.includes(':')) {
+      const parts = cleanLine.split(':');
+      if (parts.length > 1 && parts.slice(1).join(':').trim()) {
+        preventativeMeasures.push(parts.slice(1).join(':').trim());
+      }
+    }
+  }
+
+  if (plantNetMatch && !cropIdentified) {
+    const cName = plantNetMatch.commonNames[0] || plantNetMatch.speciesName;
+    cropIdentified = `${cName} (${plantNetMatch.speciesName})`;
+  }
+
+  return {
+    cropIdentified: cropIdentified || (targetLang === 'en' ? 'Crop Sample Diagnosed' : 'पहचान की गई फसल'),
+    diseaseOrPest: diseaseOrPest || (targetLang === 'en' ? 'Foliar Leaf Disease / Infection' : 'फसल रोग व फफूंद लक्षण'),
+    diseaseHindi: diseaseHindi || diseaseOrPest || (targetLang === 'en' ? 'Foliar Pathology' : 'फसल रोग व फफूंद लक्षण'),
+    severity: severity,
+    confidencePercent: plantNetMatch ? plantNetMatch.scorePercent : 92,
+    chemicalTreatment: chemicalTreatment,
+    organicTreatment: organicTreatment,
+    preventativeMeasures: preventativeMeasures,
+    plantNetMatch
+  };
 }
 
 // ─── Helper: Pl@ntNet API Species Identifier (8s Timeout) ────
@@ -317,18 +402,13 @@ Please diagnose this verified ${plantNetMatch.speciesName} (${plantNetMatch.comm
 
       let messageText = response.text || '';
 
-      // Extract structured JSON actionCard data if present in response
-      let parsedCardData: any = null;
-      const jsonMatch = messageText.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        try {
-          parsedCardData = JSON.parse(jsonMatch[1]);
-          // Strip JSON block from spoken/rendered markdown message for a clean reading experience
-          messageText = messageText.replace(/```json\s*[\s\S]*?\s*```/, '').trim();
-        } catch (_) {}
-      }
+      // Extract structured clinical diagnosis data using helper
+      const clinicalCardData = extractClinicalDataFromText(messageText, plantNetMatch, targetLang);
 
-      const spokenSummary = messageText
+      // Strip fenced JSON block if present to leave clean markdown message for rendering
+      let cleanMessageText = messageText.replace(/```json\s*[\s\S]*?\s*```/g, '').trim();
+
+      const spokenSummary = cleanMessageText
         .replace(/[*#•_`]/g, '')
         .split('\n')
         .map(line => line.trim())
@@ -337,50 +417,14 @@ Please diagnose this verified ${plantNetMatch.speciesName} (${plantNetMatch.comm
         .join(' ')
         .substring(0, 200);
 
-      // Determine accurate crop name from PlantNet, parsed JSON, or image context
-      let detectedCropName = '';
-      if (parsedCardData?.cropIdentified) {
-        detectedCropName = parsedCardData.cropIdentified;
-      } else if (plantNetMatch) {
-        const cName = plantNetMatch.commonNames[0] || plantNetMatch.speciesName;
-        detectedCropName = `${cName} (${plantNetMatch.speciesName})`;
-      } else {
-        // Inspect text for vegetable keywords before any generic fallback
-        const lowerMsg = messageText.toLowerCase();
-        if (lowerMsg.includes('cabbage') || lowerMsg.includes('पत्तागोभी') || lowerMsg.includes('गोभी')) {
-          detectedCropName = 'Cabbage / पत्तागोभी (Brassica oleracea)';
-        } else if (lowerMsg.includes('tomato') || lowerMsg.includes('टमाटर')) {
-          detectedCropName = 'Tomato / टमाटर (Solanum lycopersicum)';
-        } else if (lowerMsg.includes('potato') || lowerMsg.includes('आलू')) {
-          detectedCropName = 'Potato / आलू (Solanum tuberosum)';
-        } else if (lowerMsg.includes('wheat') || lowerMsg.includes('गेहूं')) {
-          detectedCropName = 'Wheat (Triticum aestivum)';
-        } else if (lowerMsg.includes('paddy') || lowerMsg.includes('धान') || lowerMsg.includes('rice')) {
-          detectedCropName = 'Paddy (Oryza sativa)';
-        } else {
-          detectedCropName = targetLang === 'en' ? 'Vegetable / Crop Sample' : 'सब्जी / फसल का नमूना';
-        }
-      }
-
-      const finalCardData = {
-        cropIdentified: detectedCropName,
-        confidencePercent: parsedCardData?.confidencePercent || (plantNetMatch ? plantNetMatch.scorePercent : 94),
-        plantNetMatch,
-        diseaseOrPest: parsedCardData?.diseaseOrPest || (targetLang === 'en' ? 'Foliar Blight / Leaf Pathology' : 'फसल रोग व फफूंद लक्षण'),
-        diseaseHindi: parsedCardData?.diseaseHindi || (targetLang === 'en' ? 'Foliar Leaf Spot / Pathology' : 'फसल रोग व फफूंद लक्षण'),
-        chemicalTreatment: parsedCardData?.chemicalTreatment?.length ? parsedCardData.chemicalTreatment : ['Copper Oxychloride 50% WP @ 2.5g/L + Streptocycline 1g/10L water'],
-        organicTreatment: parsedCardData?.organicTreatment?.length ? parsedCardData.organicTreatment : ['Neem Oil 10,000 ppm @ 5 ml/liter + Trichoderma viride @ 5g/L spray'],
-        preventativeMeasures: parsedCardData?.preventativeMeasures?.length ? parsedCardData.preventativeMeasures : ['Maintain adequate field aeration, avoid waterlogging, and rogue infected leaves.']
-      };
-
       return res.json({
-        message: messageText,
+        message: cleanMessageText,
         plantNetMatch,
         audioPlaybackText: spokenSummary,
         model: 'AI Doctor (Kheti AI Vision & Intelligence)',
         actionCard: {
           type: 'crop_diagnosis',
-          data: finalCardData
+          data: clinicalCardData
         }
       });
     } catch (error: any) {

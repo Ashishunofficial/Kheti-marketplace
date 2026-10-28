@@ -73,10 +73,12 @@ export async function processUserMessage(
     matchedCard = { type: 'weather_alert', data: matchedTool.data };
     toolLabel = 'IMD Agro-Weather Grid';
   } else if (
-    imagePayload || lower.includes('disease') || lower.includes('bimari') || lower.includes('keeda') ||
-    lower.includes('yellow') || lower.includes('peela') || lower.includes('fungus') || lower.includes('rog') ||
-    lower.includes('रोग') || lower.includes('पत्ती') || lower.includes('कीड़ा') || lower.includes('cabbage') ||
-    lower.includes('gobhi') || lower.includes('गोभी') || lower.includes('पत्तागोभी')
+    !imagePayload && (
+      lower.includes('disease') || lower.includes('bimari') || lower.includes('keeda') ||
+      lower.includes('yellow') || lower.includes('peela') || lower.includes('fungus') || lower.includes('rog') ||
+      lower.includes('रोग') || lower.includes('पत्ती') || lower.includes('कीड़ा') || lower.includes('cabbage') ||
+      lower.includes('gobhi') || lower.includes('गोभी') || lower.includes('पत्तागोभी')
+    )
   ) {
     let cropTarget = 'crop';
     if (lower.includes('cabbage') || lower.includes('gobhi') || lower.includes('gobi') || lower.includes('पत्तागोभी') || lower.includes('फूलगोभी')) {
