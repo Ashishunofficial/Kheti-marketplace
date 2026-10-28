@@ -139,12 +139,39 @@ export const AgriToolRegistry = {
     const isPotato = lower.includes('potato') || lower.includes('aloo') || lower.includes('आलू') || lower.includes('tuberosum');
     const isMustard = lower.includes('mustard') || lower.includes('sarson') || lower.includes('सरसों') || lower.includes('juncea');
     const isWheat = lower.includes('wheat') || lower.includes('gehun') || lower.includes('गेहूं') || lower.includes('aestivum');
+    const isCauliflower = lower.includes('cauliflower') || lower.includes('फूलगोभी') || lower.includes('botrytis');
     const isCorn = lower.includes('corn') || lower.includes('maize') || lower.includes('makka') || lower.includes('मक्का') || lower.includes('bhutta') || lower.includes('zea') || lower.includes('mays');
     const isPaddy = lower.includes('paddy') || lower.includes('rice') || lower.includes('धान') || lower.includes('sativa');
 
     let diag: CropDiagnosticResult;
 
-    if (isCorn) {
+    if (isCauliflower) {
+      diag = {
+        cropIdentified: 'Cauliflower / फूलगोभी (Brassica oleracea var. botrytis)',
+        diseaseOrPest: 'Alternaria Leaf Spot & Curd Rot (Downy Mildew)',
+        diseaseHindi: 'फूलगोभी का काला धब्बा व कर्ड सड़न रोग (Black Spot & Curd Rot)',
+        confidencePercent: 94,
+        severity: 'high',
+        symptoms: [
+          'Dark necrotic brown-black spots and water-soaked lesions on curd surface',
+          'Concentric chlorotic rings on outer wrapper leaves',
+          'Browning and soft rotting of edible white curd heads in moist weather'
+        ],
+        organicTreatment: [
+          'Neem oil 10,000 ppm @ 4 ml/L water foliar spray',
+          'Trichoderma viride @ 5g/L water bio-fungicide spray on foliage'
+        ],
+        chemicalTreatment: [
+          'Copper Oxychloride 50% WP @ 2.5g/L + Streptocycline 1g/10L water',
+          'Mancozeb 75% WP @ 2g per litre of water'
+        ],
+        preventativeMeasures: [
+          'Avoid overhead sprinkler irrigation directly on white curds',
+          'Harvest mature curds in dry morning weather and maintain field aeration'
+        ],
+        estimatedYieldImpactPercent: 18
+      };
+    } else if (isCorn) {
       diag = {
         cropIdentified: 'Maize / मक्का (Zea mays)',
         diseaseOrPest: 'Maydis Leaf Blight / Fall Armyworm Infestation',

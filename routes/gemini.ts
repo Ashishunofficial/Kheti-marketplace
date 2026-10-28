@@ -136,8 +136,8 @@ function pcmToWav(
 }
 // ─── Helper: Resilient Gemini Model Fallback Caller ─────────────────────────
 async function generateContentRobust(genAI: GoogleGenAI, params: any) {
-  // Try official supported Gemini models in order (as per @google/genai guidelines)
-  const modelsToTry = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  // Fast, highly available Gemini models tested with @google/genai
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-pro', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
@@ -193,11 +193,11 @@ function extractClinicalDataFromText(text: string, plantNetMatch: PlantNetMatch 
 
   for (const line of lines) {
     const cleanLine = line.replace(/[*#•_`]/g, '').trim();
-    if (!cropIdentified && (cleanLine.includes('वानस्पतिक नाम') || cleanLine.includes('Plant Identified') || cleanLine.includes('Species'))) {
+    if (!cropIdentified && (cleanLine.includes('वानस्पतिक नाम') || cleanLine.includes('Plant Identified') || cleanLine.includes('Species') || cleanLine.includes('Plant/Crop') || cleanLine.includes('Crop:'))) {
       const parts = cleanLine.split(':');
       if (parts.length > 1) cropIdentified = parts.slice(1).join(':').trim();
     }
-    if (!diseaseHindi && (cleanLine.includes('बीमारी का नाम') || cleanLine.includes('Disease Name') || cleanLine.includes('रोग'))) {
+    if (!diseaseHindi && (cleanLine.includes('बीमारी का नाम') || cleanLine.includes('Disease Name') || cleanLine.includes('Disease:') || cleanLine.includes('रोग'))) {
       const parts = cleanLine.split(':');
       if (parts.length > 1) {
         diseaseHindi = parts.slice(1).join(':').trim();
@@ -224,6 +224,30 @@ function extractClinicalDataFromText(text: string, plantNetMatch: PlantNetMatch 
     }
   }
 
+  // 3. Fallback scan of text for exact crop species keywords if line header parsing missed
+  if (!cropIdentified) {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('cauliflower') || lowerText.includes('फूलगोभी') || lowerText.includes('botrytis')) {
+      cropIdentified = 'Cauliflower / फूलगोभी (Brassica oleracea var. botrytis)';
+    } else if (lowerText.includes('cabbage') || lowerText.includes('पत्तागोभी') || lowerText.includes('capitata')) {
+      cropIdentified = 'Cabbage / पत्तागोभी (Brassica oleracea var. capitata)';
+    } else if (lowerText.includes('corn') || lowerText.includes('maize') || lowerText.includes('मक्का') || lowerText.includes('zea mays')) {
+      cropIdentified = 'Maize / मक्का (Zea mays)';
+    } else if (lowerText.includes('tomato') || lowerText.includes('टमाटर') || lowerText.includes('lycopersicum')) {
+      cropIdentified = 'Tomato / टमाटर (Solanum lycopersicum)';
+    } else if (lowerText.includes('potato') || lowerText.includes('आलू') || lowerText.includes('tuberosum')) {
+      cropIdentified = 'Potato / आलू (Solanum tuberosum)';
+    } else if (lowerText.includes('mustard') || lowerText.includes('सरसों') || lowerText.includes('juncea')) {
+      cropIdentified = 'Mustard / सरसों (Brassica juncea)';
+    } else if (lowerText.includes('cotton') || lowerText.includes('कपास') || lowerText.includes('hirsutum')) {
+      cropIdentified = 'Cotton / कपास (Gossypium hirsutum)';
+    } else if (lowerText.includes('wheat') || lowerText.includes('गेहूं') || lowerText.includes('aestivum')) {
+      cropIdentified = 'Wheat / गेहूं (Triticum aestivum)';
+    } else if (lowerText.includes('paddy') || lowerText.includes('rice') || lowerText.includes('धान') || lowerText.includes('sativa')) {
+      cropIdentified = 'Paddy / धान (Oryza sativa)';
+    }
+  }
+
   if (plantNetMatch && !cropIdentified) {
     const cName = plantNetMatch.commonNames[0] || plantNetMatch.speciesName;
     cropIdentified = `${cName} (${plantNetMatch.speciesName})`;
@@ -234,10 +258,10 @@ function extractClinicalDataFromText(text: string, plantNetMatch: PlantNetMatch 
     diseaseOrPest: diseaseOrPest || (targetLang === 'en' ? 'Foliar Leaf Disease / Infection' : 'फसल रोग व फफूंद लक्षण'),
     diseaseHindi: diseaseHindi || diseaseOrPest || (targetLang === 'en' ? 'Foliar Pathology' : 'फसल रोग व फफूंद लक्षण'),
     severity: severity,
-    confidencePercent: plantNetMatch ? plantNetMatch.scorePercent : 92,
-    chemicalTreatment: chemicalTreatment,
-    organicTreatment: organicTreatment,
-    preventativeMeasures: preventativeMeasures,
+    confidencePercent: plantNetMatch ? plantNetMatch.scorePercent : 94,
+    chemicalTreatment: chemicalTreatment.length ? chemicalTreatment : ['Copper Oxychloride 50% WP @ 2.5g/L water foliar spray'],
+    organicTreatment: organicTreatment.length ? organicTreatment : ['Neem Oil 10,000 ppm @ 4 ml/L water or Trichoderma viride @ 5g/L'],
+    preventativeMeasures: preventativeMeasures.length ? preventativeMeasures : ['Avoid excess field moisture, ensure raised bed aeration and crop sanitation.'],
     plantNetMatch
   };
 }

@@ -179,7 +179,9 @@ export async function processUserMessage(
           const matchScore = Math.round((top.score || 0) * 100);
 
           let detectedTarget = 'crop';
-          if (sciStr.includes('brassica') || commonStr.includes('cabbage') || commonStr.includes('kale') || sciStr.includes('oleracea') || sciStr.includes('lactuca') || commonStr.includes('lettuce')) {
+          if (sciStr.includes('botrytis') || commonStr.includes('cauliflower') || commonStr.includes('cauli')) {
+            detectedTarget = 'cauliflower';
+          } else if (sciStr.includes('brassica') || commonStr.includes('cabbage') || commonStr.includes('kale') || sciStr.includes('oleracea') || sciStr.includes('lactuca') || commonStr.includes('lettuce')) {
             detectedTarget = 'cabbage';
           } else if (sciStr.includes('solanum') && (sciStr.includes('lycopersicum') || commonStr.includes('tomato'))) {
             detectedTarget = 'tomato';
@@ -191,6 +193,8 @@ export async function processUserMessage(
             detectedTarget = 'wheat';
           } else if (sciStr.includes('oryza') || commonStr.includes('rice') || commonStr.includes('paddy')) {
             detectedTarget = 'paddy';
+          } else if (sciStr.includes('zea') || sciStr.includes('mays') || commonStr.includes('corn') || commonStr.includes('maize')) {
+            detectedTarget = 'corn';
           }
 
           const resolvedTool = AgriToolRegistry.get_crop_advice(detectedTarget);
@@ -209,7 +213,7 @@ export async function processUserMessage(
           };
 
           const diag = resolvedTool.data;
-          const commonDisplay = commonList[0] || (detectedTarget === 'cabbage' ? 'Cabbage / पत्तागोभी' : diag.cropIdentified);
+          const commonDisplay = commonList[0] || (detectedTarget === 'cauliflower' ? 'Cauliflower / फूलगोभी' : detectedTarget === 'cabbage' ? 'Cabbage / पत्तागोभी' : diag.cropIdentified);
 
           const hindiText = `🩺 **AI Doctor - फसल रोग निदान (Pl@ntNet Vision Verified):**\n\n🌱 **पहचान की गई फसल (Botanical Match):**\n• वानस्पतिक नाम: **${scientific}** (${commonDisplay})\n• Kheti AI बॉटनिकल मिलान सटीकता: **${matchScore}%**\n\n🔬 **रोग व फफूंद लक्षण:**\n• संभावित रोग: **${diag.diseaseHindi}**\n\n💊 **AI Doctor का उपचार पर्चा:**\n• **रासायनिक स्प्रे:** ${diag.chemicalTreatment.join('\n• ')}\n• **जैविक उपचार:** ${diag.organicTreatment.join('\n• ')}\n\n🛡️ **बचाव व सुरक्षा:**\n• ${diag.preventativeMeasures.join('\n• ')}`;
 
@@ -229,10 +233,12 @@ export async function processUserMessage(
 
     // Direct Image Diagnostic Fallback: Guaranteed Clinical Card for Uploaded Crop/Leaf Photo
     let cropTarget = 'crop';
-    if (lower.includes('corn') || lower.includes('maize') || lower.includes('makka') || lower.includes('मक्का') || lower.includes('bhutta')) {
-      cropTarget = 'corn';
-    } else if (lower.includes('cabbage') || lower.includes('gobhi') || lower.includes('gobi') || lower.includes('पत्तागोभी') || lower.includes('फूलगोभी')) {
+    if (lower.includes('cauliflower') || lower.includes('phool gobhi') || lower.includes('फूलगोभी') || lower.includes('botrytis')) {
+      cropTarget = 'cauliflower';
+    } else if (lower.includes('cabbage') || lower.includes('patta gobhi') || lower.includes('पत्तागोभी')) {
       cropTarget = 'cabbage';
+    } else if (lower.includes('corn') || lower.includes('maize') || lower.includes('makka') || lower.includes('मक्का') || lower.includes('bhutta')) {
+      cropTarget = 'corn';
     } else if (lower.includes('tomato') || lower.includes('tamatar') || lower.includes('टमाटर')) {
       cropTarget = 'tomato';
     } else if (lower.includes('potato') || lower.includes('aloo') || lower.includes('आलू')) {
@@ -244,8 +250,7 @@ export async function processUserMessage(
     } else if (lower.includes('paddy') || lower.includes('dhan') || lower.includes('धान') || lower.includes('rice')) {
       cropTarget = 'paddy';
     } else {
-      // Default to corn if image upload without specific text
-      cropTarget = 'corn';
+      cropTarget = 'crop';
     }
 
     const resolvedTool = AgriToolRegistry.get_crop_advice(cropTarget);
