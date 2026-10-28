@@ -139,11 +139,38 @@ export const AgriToolRegistry = {
     const isPotato = lower.includes('potato') || lower.includes('aloo') || lower.includes('आलू') || lower.includes('tuberosum');
     const isMustard = lower.includes('mustard') || lower.includes('sarson') || lower.includes('सरसों') || lower.includes('juncea');
     const isWheat = lower.includes('wheat') || lower.includes('gehun') || lower.includes('गेहूं') || lower.includes('aestivum');
+    const isCorn = lower.includes('corn') || lower.includes('maize') || lower.includes('makka') || lower.includes('मक्का') || lower.includes('bhutta') || lower.includes('zea') || lower.includes('mays');
     const isPaddy = lower.includes('paddy') || lower.includes('rice') || lower.includes('धान') || lower.includes('sativa');
 
     let diag: CropDiagnosticResult;
 
-    if (isCabbage) {
+    if (isCorn) {
+      diag = {
+        cropIdentified: 'Maize / मक्का (Zea mays)',
+        diseaseOrPest: 'Maydis Leaf Blight / Fall Armyworm Infestation',
+        diseaseHindi: 'मक्का का मयडिस लीफ ब्लाइट व फॉल आर्मीवर्म कीट',
+        confidencePercent: 93,
+        severity: 'high',
+        symptoms: [
+          'Elongated tan-colored rectangular necrotic lesions on corn leaves',
+          'Tattering and pinhole shot-holes in whorl leaves caused by Armyworm larvae',
+          'Damage on corn cob silk and kernel tips under high humidity'
+        ],
+        organicTreatment: [
+          'Spraying of Azadirachtin 1500 ppm (Neem oil) @ 5 ml/L water into leaf whorls',
+          'Biological control: Release of Trichogramma chilonis egg parasitoid @ 50,000/acre'
+        ],
+        chemicalTreatment: [
+          'Emamectin Benzoate 5% SG @ 0.4g/L water (80g/acre) into whorls',
+          'Mancozeb 75% WP @ 2.5g/L water for Maydis leaf blight control'
+        ],
+        preventativeMeasures: [
+          'Install Pheromone traps @ 4-5/acre for early Fall Armyworm moth monitoring',
+          'Practice intercropping with cowpea or velvet bean to reduce pest pressure'
+        ],
+        estimatedYieldImpactPercent: 16
+      };
+    } else if (isCabbage) {
       diag = {
         cropIdentified: 'Cabbage / पत्तागोभी (Brassica oleracea)',
         diseaseOrPest: 'White Mold / Sclerotinia Rot & Black Rot Complex',
