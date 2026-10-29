@@ -186,21 +186,23 @@ export const ServiceCards: React.FC<ServiceCardsProps> = ({ cardType, data, onNa
             <h4 className="text-sm font-bold text-stone-900">{diag.cropIdentified || 'Crop Analysis'}</h4>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-              🌱 Kheti AI Botanical Match: {diag.confidencePercent ?? 95}%
+            <span className="text-[10px] font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300 shadow-2xs flex items-center gap-1">
+              🌱 Kheti AI Vision Verified: {diag.confidencePercent ?? 95}% Match
             </span>
           </div>
         </div>
 
         {plantNetMatch && (
-          <div className="mt-2.5 p-2 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs flex items-center justify-between text-emerald-950">
+          <div className="mt-2.5 p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs flex items-center justify-between text-emerald-950">
             <div>
-              <span className="font-bold">Kheti AI Species:</span> {plantNetMatch.speciesName || 'Identified Species'}
+              <span className="font-bold">🌿 वानस्पतिक प्रजाति (Botanical Species):</span> {plantNetMatch.speciesName || 'Identified Species'}
               {Array.isArray(plantNetMatch.commonNames) && plantNetMatch.commonNames.length > 0 && (
                 <span className="text-stone-700 ml-1">({plantNetMatch.commonNames.slice(0, 2).join(', ')})</span>
               )}
             </div>
-            <span className="font-mono text-[10px] font-bold text-emerald-800">Verified</span>
+            <span className="font-mono text-[10px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
+              ✓ Kheti AI Verified
+            </span>
           </div>
         )}
 

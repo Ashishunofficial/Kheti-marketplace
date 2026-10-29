@@ -215,15 +215,15 @@ export async function processUserMessage(
           const diag = resolvedTool.data;
           const commonDisplay = commonList[0] || (detectedTarget === 'cauliflower' ? 'Cauliflower / फूलगोभी' : detectedTarget === 'cabbage' ? 'Cabbage / पत्तागोभी' : diag.cropIdentified);
 
-          const hindiText = `🩺 **AI Doctor - फसल रोग निदान (Pl@ntNet Vision Verified):**\n\n🌱 **पहचान की गई फसल (Botanical Match):**\n• वानस्पतिक नाम: **${scientific}** (${commonDisplay})\n• Kheti AI बॉटनिकल मिलान सटीकता: **${matchScore}%**\n\n🔬 **रोग व फफूंद लक्षण:**\n• संभावित रोग: **${diag.diseaseHindi}**\n\n💊 **AI Doctor का उपचार पर्चा:**\n• **रासायनिक स्प्रे:** ${diag.chemicalTreatment.join('\n• ')}\n• **जैविक उपचार:** ${diag.organicTreatment.join('\n• ')}\n\n🛡️ **बचाव व सुरक्षा:**\n• ${diag.preventativeMeasures.join('\n• ')}`;
+          const hindiText = `🩺 **AI Doctor - फसल रोग निदान (Kheti AI Vision Verified):**\n\n🌱 **पहचान की गई फसल (Botanical Match):**\n• वानस्पतिक नाम: **${scientific}** (${commonDisplay})\n• Kheti AI विज़न मिलान सटीकता: **${matchScore}%**\n\n🔬 **रोग व फफूंद लक्षण:**\n• संभावित रोग: **${diag.diseaseHindi}**\n\n💊 **AI Doctor का उपचार पर्चा:**\n• **रासायनिक स्प्रे:** ${diag.chemicalTreatment.join('\n• ')}\n• **जैविक उपचार:** ${diag.organicTreatment.join('\n• ')}\n\n🛡️ **बचाव व सुरक्षा:**\n• ${diag.preventativeMeasures.join('\n• ')}`;
 
           return {
             message: hindiText,
             toolResult: resolvedTool,
             actionCard: { type: 'crop_diagnosis', data: actionCardData },
             audioPlaybackText: `फसल में ${diag.diseaseHindi} के लक्षण हैं। आप सुझाई गई दवा का तुरंत छिड़काव करें।`,
-            detectedToolName: 'AI Doctor (Pl@ntNet & Kheti AI Vision)',
-            model: 'AI Doctor (Kheti AI Vision)'
+            detectedToolName: 'AI Doctor (Kheti AI Vision & Intelligence)',
+            model: 'AI Doctor (Kheti AI Vision & Intelligence)'
           };
         }
       }

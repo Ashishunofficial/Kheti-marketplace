@@ -39,36 +39,36 @@ export const AIDoctorProgressStepper: React.FC<AIDoctorProgressStepperProps> = (
   const imageSteps = [
     {
       id: 0,
-      title: '1. Uploaded & Scanning Leaf',
-      subtitle: 'फोटो स्कैन व पत्ती इमेज ऑप्टिमाइज़ेशन',
+      title: '1. Photo Uploaded & Preprocessed',
+      subtitle: 'फसल/पत्ती फोटो स्कैन व रेजोल्यूशन ऑप्टिमाइज़ेशन',
       percent: 20,
       icon: Leaf
     },
     {
       id: 1,
-      title: '2. Kheti AI Vision Species Match',
-      subtitle: 'खेती AI विज़न वनस्पति प्रजाति पहचान व मिलान',
+      title: '2. Kheti AI Vision Botanical Verification',
+      subtitle: 'खेती AI विज़न द्वारा वैज्ञानिक वनस्पति प्रजाति सत्यापन',
       percent: 45,
       icon: Sparkles
     },
     {
       id: 2,
-      title: '3. Analysing Disease & Symptoms',
-      subtitle: 'खेती AI इंटेलिजेंस द्वारा फसल रोग व लक्षण विश्लेषण',
+      title: '3. Kheti AI Intelligence Pathology Diagnosis',
+      subtitle: 'खेती AI इंटेलिजेंस द्वारा फसल रोग, कीट व लक्षण विस्तृत विश्लेषण',
       percent: 70,
       icon: Microscope
     },
     {
       id: 3,
-      title: '4. Prescribing Clinical Remedies',
-      subtitle: 'रासायनिक खुराक व जैविक उपचार पर्चा निर्माण',
-      percent: 90,
+      title: '4. Clinical Prescription & Dosages',
+      subtitle: 'रासायनिक स्प्रे खुराक व जैविक देसी उपचार पर्चा निर्माण',
+      percent: 88,
       icon: Pill
     },
     {
       id: 4,
-      title: '5. Finalising Doctor Report',
-      subtitle: 'अंतिम डॉक्टर रिपोर्ट व ऑडियो सलाह सहेजी जा रही है',
+      title: '5. Official Prescription & Audio Ready',
+      subtitle: 'सत्यापित डॉक्टर पर्चा (PDF) व ऑडियो सलाह तैयार',
       percent: 98,
       icon: FileText
     }
@@ -106,8 +106,9 @@ export const AIDoctorProgressStepper: React.FC<AIDoctorProgressStepperProps> = (
   ];
 
   const steps = isImage ? imageSteps : textSteps;
+  const isAllComplete = currentStep >= steps.length;
   const activeStepObj = steps[Math.min(currentStep, steps.length - 1)] || steps[0];
-  const progressPercent = activeStepObj.percent;
+  const progressPercent = isAllComplete ? 100 : activeStepObj.percent;
 
   return (
     <div className="bg-white border-2 border-emerald-300 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 my-3 text-stone-900 animate-fadeIn">
@@ -123,13 +124,20 @@ export const AIDoctorProgressStepper: React.FC<AIDoctorProgressStepperProps> = (
               <h3 className="text-sm font-black text-stone-900">
                 AI Doctor & Crop Clinic (एआई डॉक्टर)
               </h3>
-              <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <Loader2 className="w-3 h-3 text-amber-800 animate-spin" />
-                <span>लाइव जांच जारी</span>
-              </span>
+              {isAllComplete ? (
+                <span className="bg-emerald-100 text-emerald-950 border border-emerald-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                  <span>जांच पूर्ण (Complete)</span>
+                </span>
+              ) : (
+                <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 text-amber-800 animate-spin" />
+                  <span>लाइव जांच जारी</span>
+                </span>
+              )}
             </div>
             <p className="text-[11px] font-bold text-emerald-800 mt-0.5">
-              {activeStepObj.subtitle}
+              {isAllComplete ? 'सत्यापित डॉक्टर पर्चा व संपूर्ण निदान तैयार' : activeStepObj.subtitle}
             </p>
           </div>
         </div>
@@ -139,7 +147,7 @@ export const AIDoctorProgressStepper: React.FC<AIDoctorProgressStepperProps> = (
             {progressPercent}%
           </div>
           <div className="text-[10px] font-bold text-stone-500">
-            ~2-3 सेकंड शेष
+            {isAllComplete ? 'पूर्ण (Ready)' : '~2-3 सेकंड शेष'}
           </div>
         </div>
       </div>

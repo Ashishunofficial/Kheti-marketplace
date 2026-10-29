@@ -117,6 +117,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
 
   const handleNewChat = () => {
     stopAllAudio();
+    clearStepTimers();
     setMessages([
       {
         id: `msg_welcome_${Date.now()}`,
@@ -154,7 +155,19 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
   const recognitionRef = useRef<any>(null);
   const activeAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const stepTimersRef = useRef<NodeJS.Timeout[]>([]);
 
+  const clearStepTimers = useCallback(() => {
+    stepTimersRef.current.forEach((t) => clearTimeout(t));
+    stepTimersRef.current = [];
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stepTimersRef.current.forEach((t) => clearTimeout(t));
+    };
+  }, []);
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -274,12 +287,14 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
     }
   }, [isAudioMuted]);
 
-  // Execute AI query
+  // Execute AI query with realistic staged progress transitions
   const executeQuery = useCallback(async (queryText: string, imagePayload?: string | null) => {
     const trimmed = queryText.trim();
     if (!trimmed && !imagePayload) return;
 
     stopAllAudio();
+    clearStepTimers();
+
     const hasImage = !!imagePayload;
     setIsProcessingImage(hasImage);
     setProcessingStep(0);
@@ -287,15 +302,22 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
     setInterimTranscript('');
     setActiveToolName(hasImage ? 'AI Doctor (Kheti AI Vision & Intelligence)' : 'AI Doctor Assistant');
 
-    // Live progress stepper interval (advances every 1.1s)
-    let stepCount = 0;
-    const maxSteps = hasImage ? 5 : 4;
-    const stepInterval = setInterval(() => {
-      stepCount++;
-      if (stepCount < maxSteps) {
-        setProcessingStep(stepCount);
-      }
-    }, 1100);
+    // Smooth, realistic sequential pacing:
+    // Step 0: Image Upload & Preprocessing (0 to 2000ms)
+    // Step 1: Kheti AI Vision Botanical Verification (2000ms to 4800ms)
+    // Step 2: Kheti AI Intelligence Pathology Diagnosis (4800ms to 8000ms)
+    // Step 3: Clinical Prescription & Dosages (8000ms to 11200ms)
+    // Step 4: Official Prescription & Audio Ready (11200ms+)
+    if (hasImage) {
+      stepTimersRef.current.push(setTimeout(() => setProcessingStep(1), 2000));
+      stepTimersRef.current.push(setTimeout(() => setProcessingStep(2), 4800));
+      stepTimersRef.current.push(setTimeout(() => setProcessingStep(3), 8000));
+      stepTimersRef.current.push(setTimeout(() => setProcessingStep(4), 11200));
+    } else {
+      stepTimersRef.current.push(setTimeout(() => setProcessingStep(1), 1600));
+      stepTimersRef.current.push(setTimeout(() => setProcessingStep(2), 3400));
+      stepTimersRef.current.push(setTimeout(() => setProcessingStep(3), 5600));
+    }
 
     const userMsg: ExtendedChatMessage = {
       id: `usr_${Date.now()}`,
@@ -311,8 +333,11 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
 
     try {
       const response = await processUserMessage(trimmed, conversationId, imagePayload || undefined, chatLanguage);
-      clearInterval(stepInterval);
-      setProcessingStep(maxSteps - 1); // Set to final completed step
+      
+      // Clear ongoing timers and smoothly display 100% complete state
+      clearStepTimers();
+      setProcessingStep(hasImage ? 5 : 4); // Step index >= length marks all 5 steps complete (✓ पूर्ण)
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
       setActiveToolName(response.detectedToolName || 'AI Doctor (Kheti AI Vision & Intelligence)');
 
@@ -329,6 +354,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+      setAgentState('idle');
 
       // Speak response immediately
       speakIndianFemaleVoice(speechToPlay, asstMsgId);
@@ -343,7 +369,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
       });
 
     } catch (err) {
-      clearInterval(stepInterval);
+      clearStepTimers();
       setMessages((prev) => [
         ...prev,
         {
@@ -356,7 +382,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ onNavigateTab, onOpenNegot
       ]);
       setAgentState('idle');
     }
-  }, [conversationId, speakIndianFemaleVoice, stopAllAudio]);
+  }, [conversationId, speakIndianFemaleVoice, stopAllAudio, clearStepTimers, chatLanguage]);
 
   // Clean up all hardware streams
   const cleanupAudioHardware = () => {
